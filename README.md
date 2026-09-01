@@ -2,8 +2,8 @@
 
 Keycade = Key + Arcade. It is a native Omarchy overlay that turns the
 shortcuts active in the current Hyprland session into a short adaptive arcade
-run. Correct input is recognized locally and is never dispatched as the bound
-action.
+run. Version 0.2.0 implements the v0.5 continuous-mastery design. Correct input
+is recognized locally and is never dispatched as the bound action.
 
 This repository implements Stage 0 and the MVP described in [DESIGN.md](DESIGN.md):
 
@@ -14,9 +14,16 @@ This repository implements Stage 0 and the MVP described in [DESIGN.md](DESIGN.m
   physical-only shortcuts;
 - automatic classification of active shortcuts into windows, workspaces,
   system, applications, media, capture, utilities, groups, and scratchpad;
-- category-balanced scheduling so each wave covers the widest available mix;
+- due, unseen, weak, and maintenance queues with a persistent coverage cursor,
+  so sustained play cannot randomly starve an eligible shortcut;
 - an Exclusive layer-shell overlay plus Wayland Shortcuts Inhibitor guard;
-- a 24-card, three-wave adaptive run with guided, recall, and speed cards;
+- 24 planned cards with guided, learning, maintenance, and short-interval review;
+- no lives or score: a mistake keeps the answer visible until corrected, then
+  schedules another unassisted attempt 3–5 cards later;
+- first-try accuracy, spaced review, lapse handling, and mastery based on five
+  unassisted successes across at least three runs;
+- local correct, wrong, correction, and 3/2/1 countdown sounds with independent
+  sound/countdown controls;
 - local atomic stats and settings under `$XDG_STATE_HOME/omarchy/keycade/`;
 - English, Simplified Chinese, Japanese, and Spanish interface text;
 - Tokyo Night, Gruvbox, and Catppuccin arcade palettes;
@@ -91,7 +98,8 @@ hyprctl configerrors
 
 Inside Keycade, press Enter to start and release Esc to exit safely. On exit,
 Keycade waits for all held modifiers before disabling the inhibitor and giving
-keyboard focus back.
+keyboard focus back. The `SFX` button cycles 30%, 60%, 100%, and off; the
+`3·2·1` button independently controls countdown beats.
 
 ## Native Stage 0 probe
 

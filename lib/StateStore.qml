@@ -14,12 +14,23 @@ Item {
   readonly property string settingsPath: stateDir + "/settings.json"
 
   property var stats: Stats.defaults()
-  property var settings: ({ schemaVersion: 1, locale: "en", reducedMotion: false })
+  property var settings: defaultSettings()
   property bool ready: false
   property bool statsCorrupt: false
   property bool settingsCorrupt: false
   property string pendingStats: ""
   property string pendingSettings: ""
+
+  function defaultSettings() {
+    return {
+      schemaVersion: 1,
+      locale: "en",
+      reducedMotion: false,
+      soundEnabled: true,
+      countdownSound: true,
+      soundVolume: 0.6
+    }
+  }
 
   function loadStats(raw) {
     var text = String(raw || "").trim()
@@ -30,8 +41,11 @@ Item {
       try {
         var value = JSON.parse(text)
         if (!Stats.valid(value)) throw new Error("unsupported stats schema")
-        root.stats = value
+        var previousSchema = Number(value.schemaVersion || 0)
+        root.stats = Stats.migrate(value)
         root.statsCorrupt = false
+        if (previousSchema !== root.stats.schemaVersion)
+          Qt.callLater(function() { root.saveStats() })
       } catch (error) {
         root.stats = Stats.defaults()
         root.statsCorrupt = true
@@ -45,7 +59,12 @@ Item {
     try {
       var value = JSON.parse(String(raw || ""))
       if (value.schemaVersion === 1) {
-        root.settings = value
+        var merged = root.defaultSettings()
+        Object.keys(value).forEach(function(key) { merged[key] = value[key] })
+        merged.soundEnabled = Boolean(merged.soundEnabled)
+        merged.countdownSound = Boolean(merged.countdownSound)
+        merged.soundVolume = Math.max(0, Math.min(1, Number(merged.soundVolume)))
+        root.settings = merged
         root.settingsCorrupt = false
       } else {
         root.settingsCorrupt = true

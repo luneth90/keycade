@@ -26,20 +26,21 @@ Item {
   property var deck: []
   property int cardIndex: 0
   property int runNumber: 1
-  property int lives: 3
-  property int score: 0
-  property int combo: 0
-  property int bestCombo: 0
   property int correct: 0
   property int attempts: 0
+  property int newLearned: 0
+  property int masteredGained: 0
   property var reactions: []
   property var runResults: ({})
   property var reviewSuggestions: []
+  property var progressCounts: ({ unseen: 0, learning: 0, mastered: 0, due: 0, total: 0 })
   property double cardStartedAt: 0
   property double deadline: 0
   property real energy: 1
+  property int lastCountdownBeat: 0
   property bool cardLocked: false
   property bool correctionRequired: false
+  property bool cardErrorSoundPlayed: false
   property string feedbackKind: "idle"
   property string feedbackText: ""
   property bool revealChord: false
@@ -49,6 +50,7 @@ Item {
   readonly property var currentBinding: currentCard ? currentCard.binding : null
   readonly property int waveNumber: currentCard ? currentCard.wave : Math.min(3, Math.floor(cardIndex / 8) + 1)
   readonly property bool reducedMotion: Boolean(store.settings.reducedMotion)
+  readonly property int activeRunId: Number(store.stats.runs || 0) + 1
 
   readonly property color voidColor: themeName === "gruvbox" ? "#141412" : themeName === "catppuccin" ? "#090912" : "#080b14"
   readonly property color cabinetColor: themeName === "gruvbox" ? "#3c3836" : themeName === "catppuccin" ? "#313244" : "#242a46"
@@ -94,8 +96,10 @@ Item {
 
   function requestSafeClose() {
     cardTimer.stop()
+    sounds.stopCountdown()
     feedbackTimer.stop()
     waveTimer.stop()
+    if (store.ready) store.saveStats()
     root.view = "closing"
     guard.requestClose()
   }
@@ -109,6 +113,8 @@ Item {
       guard.fail(root.errorMessage)
       return
     }
+    root.runNumber = Number(store.stats.runs || 0) + 1
+    refreshProgressCounts()
     root.view = "home"
     root.feedbackText = i18n.t("ready")
     if (root.startRequested) {
@@ -146,6 +152,34 @@ Item {
     store.saveSettings()
   }
 
+  function toggleSound() {
+    store.settings.soundEnabled = !Boolean(store.settings.soundEnabled)
+    store.settings = Object.assign({}, store.settings)
+    store.saveSettings()
+  }
+
+  function toggleCountdownSound() {
+    store.settings.countdownSound = !Boolean(store.settings.countdownSound)
+    store.settings = Object.assign({}, store.settings)
+    store.saveSettings()
+  }
+
+  function cycleSoundVolume() {
+    var value = Number(store.settings.soundVolume || 0)
+    if (!store.settings.soundEnabled) {
+      store.settings.soundEnabled = true
+      store.settings.soundVolume = 0.3
+    } else if (value < 0.45) store.settings.soundVolume = 0.6
+    else if (value < 0.8) store.settings.soundVolume = 1.0
+    else store.settings.soundEnabled = false
+    store.settings = Object.assign({}, store.settings)
+    store.saveSettings()
+  }
+
+  function refreshProgressCounts() {
+    root.progressCounts = Stats.counts(store.stats, root.eligibleBindings, Date.now(), root.activeRunId)
+  }
+
   function startRun() {
     if (root.view !== "home" && root.view !== "summary") return
     if (!guard.active) {
@@ -153,18 +187,19 @@ Item {
       return
     }
     guard.play()
-    root.deck = Scheduler.build(root.eligibleBindings, store.stats, 24)
+    root.runNumber = root.activeRunId
+    root.deck = Scheduler.build(root.eligibleBindings, store.stats, 24, { runId: root.activeRunId })
     root.cardIndex = 0
-    root.lives = 3
-    root.score = 0
-    root.combo = 0
-    root.bestCombo = 0
     root.correct = 0
     root.attempts = 0
+    root.newLearned = 0
+    root.masteredGained = 0
     root.reactions = []
     root.runResults = ({})
     root.reviewSuggestions = []
     root.correctionRequired = false
+    refreshProgressCounts()
+    store.saveStats()
     root.view = "playing"
     showCard()
   }
@@ -172,25 +207,23 @@ Item {
   function showCard() {
     feedbackTimer.stop()
     cardTimer.stop()
-    if (root.cardIndex >= root.deck.length || root.lives <= 0) {
+    sounds.stopCountdown()
+    if (root.cardIndex >= root.deck.length) {
       finishRun()
       return
     }
     root.cardLocked = false
     root.correctionRequired = false
+    root.cardErrorSoundPlayed = false
     root.feedbackKind = "idle"
     root.revealChord = root.currentCard.tier === "guided"
     root.feedbackText = i18n.t(root.currentCard.tier === "guided" ? "copyChord" : "waiting")
     root.cardStartedAt = Date.now()
+    root.lastCountdownBeat = 0
     var duration = Scheduler.durationFor(root.currentCard, store.stats)
     root.energy = 1
     root.deadline = duration ? Date.now() + duration : 0
     if (duration) cardTimer.start()
-  }
-
-  function speedBonus(reaction, duration) {
-    if (!duration) return 0
-    return Math.max(0, Math.min(50, Math.round((duration - reaction) / duration * 50)))
   }
 
   function handleGameInput(event) {
@@ -229,38 +262,58 @@ Item {
     root.revealChord = true
     root.feedbackKind = "hit"
     root.feedbackText = i18n.t("correctionHit")
+    sounds.playCorrection()
     if (!root.reducedMotion) hitFlash.restart()
     feedbackTimer.interval = 320
     feedbackTimer.restart()
+  }
+
+  function scheduleRetest(binding) {
+    root.deck = Scheduler.insertRemedial(root.deck, root.cardIndex, binding)
+  }
+
+  function retryGuided() {
+    root.cardLocked = false
+    root.feedbackKind = "idle"
+    root.feedbackText = i18n.t("copyChord")
+    root.revealChord = true
+    root.deadline = 0
+    root.energy = 1
   }
 
   function hitCurrent() {
     if (root.cardLocked) return
     root.cardLocked = true
     cardTimer.stop()
+    sounds.stopCountdown()
     var reaction = Math.max(0, Date.now() - root.cardStartedAt)
     var guided = root.currentCard.tier === "guided"
-    var duration = Number(root.deadline ? root.deadline - root.cardStartedAt : 0)
-    root.combo += 1
-    root.bestCombo = Math.max(root.bestCombo, root.combo)
-    root.correct += 1
-    root.attempts += 1
-    if (!guided) root.reactions = root.reactions.concat([reaction])
-    var base = guided ? 60 : root.currentCard.tier === "rush" ? 125 : 100
-    root.score += base + speedBonus(reaction, duration) + Math.min(50, root.combo * 5)
-    Stats.record(store.stats, root.currentBinding.id, true, reaction, guided)
     var hitResult = root.runResults[root.currentBinding.id] || { binding: root.currentBinding, misses: 0, reactions: [] }
-    if (!guided) hitResult.reactions.push(reaction)
-    root.runResults[root.currentBinding.id] = hitResult
     if (guided) {
+      var before = Stats.entry(store.stats, root.currentBinding.id)
+      if (!before.guidedCompleted) root.newLearned += 1
+      Stats.recordGuided(store.stats, root.currentBinding.id, root.activeRunId, Date.now())
       for (var i = root.cardIndex + 1; i < root.deck.length; i++) {
-        if (root.deck[i].binding.id === root.currentBinding.id) root.deck[i].tier = "recall"
+        if (root.deck[i].binding.id === root.currentBinding.id) root.deck[i].tier = "learning"
       }
       root.deck = root.deck.slice()
+      scheduleRetest(root.currentBinding)
+    } else {
+      root.correct += 1
+      root.attempts += 1
+      root.reactions = root.reactions.concat([reaction])
+      hitResult.reactions.push(reaction)
+      var transition = Stats.recordFirstTry(store.stats, root.currentBinding.id, true,
+                                            reaction, root.activeRunId, Date.now())
+      if (transition.masteredGained) root.masteredGained += 1
     }
+    root.runResults[root.currentBinding.id] = hitResult
+    refreshProgressCounts()
+    store.saveStats()
     root.revealChord = true
     root.feedbackKind = "hit"
-    root.feedbackText = i18n.t(guided ? "guidedHit" : "hit", { combo: root.combo })
+    root.feedbackText = i18n.t(guided ? "guidedHit" : "hit")
+    sounds.playCorrect()
     if (!root.reducedMotion) hitFlash.restart()
     feedbackTimer.interval = 320
     feedbackTimer.restart()
@@ -269,10 +322,14 @@ Item {
   function missCurrent(reason, received) {
     if (root.cardLocked) return
     cardTimer.stop()
+    sounds.stopCountdown()
     var guided = root.currentCard.tier === "guided"
     root.cardLocked = true
-    root.combo = 0
     root.feedbackKind = "miss"
+    if (!root.cardErrorSoundPlayed) {
+      sounds.playWrong()
+      root.cardErrorSoundPlayed = true
+    }
     if (guided) {
       root.feedbackText = i18n.t("guidedMiss", { keys: received || "?" })
       if (!root.reducedMotion) missShake.restart()
@@ -280,15 +337,18 @@ Item {
       feedbackTimer.restart()
       return
     }
-    root.lives = Math.max(0, root.lives - 1)
     root.correctionRequired = true
     root.attempts += 1
     root.revealChord = true
     root.feedbackText = i18n.t(reason === "timeout" ? "timeout" : "miss")
-    Stats.record(store.stats, root.currentBinding.id, false, -1, false)
+    Stats.recordFirstTry(store.stats, root.currentBinding.id, false, -1,
+                         root.activeRunId, Date.now())
+    scheduleRetest(root.currentBinding)
     var missResult = root.runResults[root.currentBinding.id] || { binding: root.currentBinding, misses: 0, reactions: [] }
     missResult.misses += 1
     root.runResults[root.currentBinding.id] = missResult
+    refreshProgressCounts()
+    store.saveStats()
     if (!root.reducedMotion) missShake.restart()
     feedbackTimer.interval = 700
     feedbackTimer.restart()
@@ -296,11 +356,11 @@ Item {
 
   function advanceCard() {
     if (root.currentCard && root.currentCard.tier === "guided" && root.feedbackKind === "miss") {
-      showCard()
+      retryGuided()
       return
     }
     root.cardIndex += 1
-    if (root.cardIndex >= root.deck.length || root.lives <= 0) {
+    if (root.cardIndex >= root.deck.length) {
       finishRun()
       return
     }
@@ -314,15 +374,14 @@ Item {
     cardTimer.stop()
     root.view = "summary"
     store.stats.runs = Number(store.stats.runs || 0) + 1
-    store.stats.bestScore = Math.max(Number(store.stats.bestScore || 0), root.score)
     var resultRows = Object.keys(root.runResults).map(function(id) { return root.runResults[id] })
     resultRows.sort(function(left, right) {
       if (left.misses !== right.misses) return right.misses - left.misses
       return Stats.percentile75(right.reactions) - Stats.percentile75(left.reactions)
     })
     root.reviewSuggestions = resultRows.slice(0, 3)
+    refreshProgressCounts()
     store.saveStats()
-    root.runNumber += 1
   }
 
   function accuracyPercent() {
@@ -334,12 +393,18 @@ Item {
   }
 
   function requestHint(bindingId) {
-    var item = Stats.entry(store.stats, bindingId)
-    item.forceGuided = true
+    Stats.requestGuidance(store.stats, bindingId)
+    refreshProgressCounts()
     store.saveStats()
   }
 
   I18n { id: i18n }
+  SoundManager {
+    id: sounds
+    soundEnabled: Boolean(store.settings.soundEnabled)
+    countdownEnabled: Boolean(store.settings.countdownSound)
+    volume: Number(store.settings.soundVolume || 0.6)
+  }
   StateStore {
     id: store
     onReadyChanged: root.maybeShowHome()
@@ -377,6 +442,11 @@ Item {
       var remaining = root.deadline - Date.now()
       var duration = root.deadline - root.cardStartedAt
       root.energy = Math.max(0, remaining / duration)
+      var beat = Math.ceil(remaining / 1000)
+      if (beat > 0 && beat <= 3 && beat !== root.lastCountdownBeat) {
+        root.lastCountdownBeat = beat
+        sounds.playCountdown(beat === 1)
+      }
       if (remaining <= 0) {
         stop()
         root.missCurrent("timeout", "")
@@ -533,6 +603,26 @@ Item {
           spacing: 10
 
           Rectangle {
+            width: 94; height: 36; color: root.screenColor; border.width: 3; border.color: root.voidColor
+            Text {
+              anchors.centerIn: parent
+              text: store.settings.soundEnabled ? "SFX " + Math.round(Number(store.settings.soundVolume || 0.6) * 100) : "SFX OFF"
+              color: store.settings.soundEnabled ? root.successColor : root.mutedColor
+              font.family: "monospace"; font.bold: true; font.pixelSize: 10
+            }
+            MouseArea { anchors.fill: parent; onClicked: root.cycleSoundVolume() }
+          }
+          Rectangle {
+            width: 86; height: 36; color: root.screenColor; border.width: 3; border.color: root.voidColor
+            Text {
+              anchors.centerIn: parent
+              text: store.settings.countdownSound ? "3·2·1 ON" : "3·2·1 OFF"
+              color: store.settings.countdownSound ? root.coinColor : root.mutedColor
+              font.family: "monospace"; font.bold: true; font.pixelSize: 9
+            }
+            MouseArea { anchors.fill: parent; onClicked: root.toggleCountdownSound() }
+          }
+          Rectangle {
             width: 86; height: 36; color: root.screenColor; border.width: 3; border.color: root.voidColor
             Text { anchors.centerIn: parent; text: i18n.locale.toUpperCase(); color: root.inkColor; font.family: "monospace"; font.bold: true; font.pixelSize: 12 }
             MouseArea { anchors.fill: parent; onClicked: root.cycleLocale() }
@@ -564,13 +654,14 @@ Item {
             Repeater {
               model: [
                 { label: i18n.t("run"), value: String(root.runNumber).padStart(2, "0") },
-                { label: i18n.t("card"), value: String(Math.min(root.cardIndex + 1, 24)).padStart(2, "0") + " / 24" },
-                { label: i18n.t("score"), value: String(root.score).padStart(6, "0") }
+                { label: i18n.t("card"), value: String(Math.min(root.cardIndex + 1, root.deck.length || 24)).padStart(2, "0") + " / " + String(root.deck.length || 24) },
+                { label: i18n.t("accuracy"), value: root.accuracyPercent() + "%" },
+                { label: i18n.t("mastered"), value: root.progressCounts.mastered + " / " + root.progressCounts.total }
               ]
               delegate: Item {
                 id: hudDatum
                 required property var modelData
-                width: parent.width / 3; height: 58
+                width: parent.width / 4; height: 58
                 Column {
                   anchors.centerIn: parent
                   Text { anchors.horizontalCenter: parent.horizontalCenter; text: hudDatum.modelData.label; color: root.mutedColor; font.family: "monospace"; font.pixelSize: 10; font.bold: true }
@@ -589,15 +680,8 @@ Item {
               anchors.left: parent.left
               anchors.verticalCenter: parent.verticalCenter
               spacing: 8
-              Text { anchors.horizontalCenter: parent.horizontalCenter; text: i18n.t("lives"); color: root.mutedColor; font.family: "monospace"; font.pixelSize: 10; font.bold: true }
-              Row {
-                anchors.horizontalCenter: parent.horizontalCenter
-                spacing: 5
-                Repeater {
-                  model: 3
-                  Text { required property int index; text: "♥"; color: index < root.lives ? root.dangerColor : "#3a405c"; font.pixelSize: 22 }
-                }
-              }
+              Text { anchors.horizontalCenter: parent.horizontalCenter; text: i18n.t("newLearned"); color: root.mutedColor; font.family: "monospace"; font.pixelSize: 10; font.bold: true }
+              Text { anchors.horizontalCenter: parent.horizontalCenter; text: "+" + root.newLearned; color: root.successColor; font.family: "monospace"; font.pixelSize: 28; font.bold: true }
             }
 
             Column {
@@ -605,8 +689,8 @@ Item {
               anchors.right: parent.right
               anchors.verticalCenter: parent.verticalCenter
               spacing: 8
-              Text { anchors.horizontalCenter: parent.horizontalCenter; text: i18n.t("combo"); color: root.mutedColor; font.family: "monospace"; font.pixelSize: 10; font.bold: true }
-              Text { anchors.horizontalCenter: parent.horizontalCenter; text: "×" + root.combo; color: root.coinColor; font.family: "monospace"; font.pixelSize: 28; font.bold: true }
+              Text { anchors.horizontalCenter: parent.horizontalCenter; text: i18n.t("due"); color: root.mutedColor; font.family: "monospace"; font.pixelSize: 10; font.bold: true }
+              Text { anchors.horizontalCenter: parent.horizontalCenter; text: root.progressCounts.due; color: root.coinColor; font.family: "monospace"; font.pixelSize: 28; font.bold: true }
             }
 
             Item {
@@ -705,8 +789,8 @@ Item {
         Text {
           width: parent.width; horizontalAlignment: Text.AlignHCenter
           text: (root.currentBinding ? i18n.t("category_" + root.currentBinding.category) + " · " : "")
-                + i18n.t(root.currentCard && root.currentCard.tier === "guided" ? "guided" : root.currentCard && root.currentCard.tier === "rush" ? "rush" : "recall")
-          color: root.currentCard && root.currentCard.tier === "rush" ? root.coinColor : root.secondaryColor
+                + i18n.t(root.correctionRequired ? "correction" : root.currentCard && root.currentCard.remedial ? "remedial" : root.currentCard && root.currentCard.tier === "guided" ? "guided" : root.currentCard && root.currentCard.tier === "maintenance" ? "maintenance" : "learning")
+          color: root.currentCard && root.currentCard.tier === "maintenance" ? root.coinColor : root.secondaryColor
           font.family: "monospace"; font.pixelSize: 12; font.bold: true; font.letterSpacing: 2
         }
         Text {
@@ -716,7 +800,7 @@ Item {
         }
         Text {
           width: parent.width; horizontalAlignment: Text.AlignHCenter
-          text: i18n.t(root.currentCard && root.currentCard.tier === "guided" ? "guidedInstruction" : root.currentCard && root.currentCard.tier === "rush" ? "rushInstruction" : "recallInstruction")
+          text: i18n.t(root.correctionRequired ? "correctionInstruction" : root.currentCard && root.currentCard.remedial ? "remedialInstruction" : root.currentCard && root.currentCard.tier === "guided" ? "guidedInstruction" : root.currentCard && root.currentCard.tier === "maintenance" ? "maintenanceInstruction" : "learningInstruction")
           color: root.mutedColor; font.pixelSize: 14; wrapMode: Text.WordWrap
         }
         Item {
@@ -745,6 +829,7 @@ Item {
         }
         Row {
           width: parent.width; height: 14; spacing: 3
+          visible: root.deadline > 0
           Repeater {
             model: 20
             Rectangle {
@@ -770,7 +855,7 @@ Item {
       Column {
         anchors.centerIn: parent; width: parent.width - 70; spacing: 20
         Text { width: parent.width; horizontalAlignment: Text.AlignHCenter; text: i18n.t("wave", { wave: Math.floor(root.cardIndex / 8) }); color: root.coinColor; font.family: "monospace"; font.bold: true; font.pixelSize: 30 }
-        Text { width: parent.width; horizontalAlignment: Text.AlignHCenter; text: i18n.t("waveStats", { accuracy: root.accuracyPercent(), combo: root.bestCombo }); color: root.inkColor; font.pixelSize: 17 }
+        Text { width: parent.width; horizontalAlignment: Text.AlignHCenter; text: i18n.t("waveStats", { accuracy: root.accuracyPercent(), learned: root.newLearned, mastered: root.masteredGained }); color: root.inkColor; font.pixelSize: 17 }
       }
     }
   }
@@ -786,13 +871,14 @@ Item {
           Repeater {
             model: [
               { label: i18n.t("accuracy"), value: root.accuracyPercent() + "%" },
-              { label: i18n.t("bestCombo"), value: "×" + root.bestCombo },
+              { label: i18n.t("newLearned"), value: "+" + root.newLearned },
+              { label: i18n.t("masteredNow"), value: "+" + root.masteredGained },
               { label: i18n.t("p75"), value: root.p75Reaction() ? root.p75Reaction() + " ms" : "—" }
             ]
             delegate: Rectangle {
               id: summaryDatum
               required property var modelData
-              width: (parent.width - 16) / 3; height: 94; color: root.screenColor; border.width: 2; border.color: root.primaryColor
+              width: (parent.width - 24) / 4; height: 94; color: root.screenColor; border.width: 2; border.color: root.primaryColor
               Column { anchors.centerIn: parent; spacing: 5
                 Text { anchors.horizontalCenter: parent.horizontalCenter; text: summaryDatum.modelData.label; color: root.mutedColor; font.family: "monospace"; font.pixelSize: 10; font.bold: true }
                 Text { anchors.horizontalCenter: parent.horizontalCenter; text: summaryDatum.modelData.value; color: root.inkColor; font.family: "monospace"; font.pixelSize: 22; font.bold: true }

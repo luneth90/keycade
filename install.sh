@@ -72,7 +72,12 @@ if [[ -e $target || -L $target ]]; then
   [[ -f $target/manifest.json ]] && installed_id=$(jq -r '.id // empty' "$target/manifest.json" 2>/dev/null || true)
   [[ $installed_id == "$PLUGIN_ID" ]] \
     || fail "$target already exists and is not a Keycade installation"
-  note "Keycade is already installed; keeping the existing plugin copy"
+  [[ -d $target/.git ]] \
+    || fail "$target is not a Git checkout; remove it with ./uninstall.sh before reinstalling"
+  note "Updating the existing Keycade plugin copy"
+  git -C "$target" pull --quiet --ff-only \
+    || fail "installed copy has local changes or cannot be fast-forwarded"
+  omarchy plugin validate "$target"
 else
   stage="$plugins_dir/.keycade-install.$$"
   cleanup_stage() {

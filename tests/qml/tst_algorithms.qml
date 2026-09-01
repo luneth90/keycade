@@ -228,16 +228,63 @@ TestCase {
     compare(Eligibility.reason(binding({ key: "LEFT", description: "Focus left window" })), "")
   }
 
-  function test_guidedAttemptsDoNotAffectMasteryWindow() {
+  function test_guidedInputDoesNotAffectFirstTryWindow() {
     var stats = Stats.defaults()
-    Stats.record(stats, "one", true, 900, true)
+    Stats.recordGuided(stats, "one", 1, 1000)
     compare(Stats.metrics(stats.bindings.one).samples, 0)
-    Stats.record(stats, "one", true, 1000, false)
-    Stats.record(stats, "one", false, -1, false)
+    Stats.recordFirstTry(stats, "one", true, 1000, 1, 2000)
+    Stats.recordFirstTry(stats, "one", false, -1, 1, 3000)
     compare(Stats.metrics(stats.bindings.one).samples, 2)
     compare(Stats.metrics(stats.bindings.one).accuracy, 0.5)
-    stats.bindings.one.forceGuided = true
+    Stats.requestGuidance(stats, "one")
     compare(Stats.tier(stats.bindings.one), "guided")
+  }
+
+  function test_masteryRequiresFiveCorrectAcrossThreeRunsAndLapses() {
+    var stats = Stats.defaults()
+    Stats.recordGuided(stats, "one", 1, 1000)
+    Stats.recordFirstTry(stats, "one", true, 900, 1, 2000)
+    Stats.recordFirstTry(stats, "one", true, 850, 1, 3000)
+    Stats.recordFirstTry(stats, "one", true, 800, 2, 4000)
+    Stats.recordFirstTry(stats, "one", true, 780, 2, 5000)
+    Stats.recordFirstTry(stats, "one", true, 760, 3, 6000)
+    compare(stats.bindings.one.state, "learning")
+    var result = Stats.recordFirstTry(stats, "one", true, 740, 3, 7000)
+    verify(result.masteredGained)
+    compare(stats.bindings.one.state, "mastered")
+    compare(stats.bindings.one.successfulRuns.length, 3)
+
+    result = Stats.recordFirstTry(stats, "one", false, -1, 4, 8000)
+    verify(result.lapsed)
+    compare(stats.bindings.one.state, "learning")
+    compare(stats.bindings.one.lapseCount, 1)
+  }
+
+  function test_v1StatsMigrateWithoutInventingMastery() {
+    var migrated = Stats.migrate({
+      schemaVersion: 1,
+      runs: 9,
+      bestScore: 5000,
+      bindings: {
+        one: {
+          attempts: [
+            { correct: true, guided: true, at: 1, reactionMs: 900 },
+            { correct: true, guided: false, at: 2, reactionMs: 800 },
+            { correct: false, guided: false, at: 3 }
+          ],
+          hits: 2,
+          misses: 1,
+          guidedHits: 1,
+          lastSeen: 3
+        }
+      }
+    })
+    compare(migrated.schemaVersion, 2)
+    compare(migrated.runs, 9)
+    compare(migrated.bindings.one.state, "learning")
+    compare(migrated.bindings.one.firstTryAttempts, 2)
+    compare(migrated.bindings.one.firstTryCorrect, 1)
+    compare(migrated.bindings.one.successfulRuns.length, 0)
   }
 
   function test_schedulerCapsEachBindingPerWaveAndAvoidsRepeats() {
@@ -282,5 +329,87 @@ TestCase {
       counts[name] = Number(counts[name] || 0) + 1
     }
     for (var j = 0; j < categories.length; j++) compare(counts[categories[j]], 2)
+  }
+
+  function test_schedulerKeepsCoverageMovingWithAllQueuesPopulated() {
+    var stats = Stats.defaults()
+    var bindings = []
+    var now = 1000000
+    for (var index = 0; index < 60; index++) {
+      var item = binding({
+        key: String(index),
+        arg: String(index),
+        description: "Shortcut " + index
+      })
+      item.id = "binding-" + String(index).padStart(2, "0")
+      item.category = ["windows", "workspaces", "system", "applications"][index % 4]
+      bindings.push(item)
+      if (index >= 30 && index < 40) {
+        Stats.recordGuided(stats, item.id, 1, now - 100)
+        stats.bindings[item.id].dueRun = 1
+      } else if (index >= 40 && index < 50) {
+        Stats.recordGuided(stats, item.id, 1, now - 100)
+        stats.bindings[item.id].dueRun = 99
+      } else if (index >= 50) {
+        var mastered = Stats.entry(stats, item.id)
+        mastered.guidedCompleted = true
+        mastered.state = "mastered"
+        mastered.dueAt = now + 86400000
+      }
+    }
+
+    var seen = {}
+    for (var run = 1; run <= 5; run++) {
+      var deck = Scheduler.build(bindings, stats, 24, { now: now, runId: run })
+      var unseenCards = deck.filter(function(card) { return card.queue === "unseen" })
+      compare(unseenCards.length, 6)
+      unseenCards.forEach(function(card) {
+        seen[card.binding.id] = true
+        Stats.recordGuided(stats, card.binding.id, run, now)
+        stats.bindings[card.binding.id].dueRun = 99
+      })
+    }
+    compare(Object.keys(seen).length, 30)
+  }
+
+  function test_schedulerPrioritizesDueBeforeMaintenance() {
+    var stats = Stats.defaults()
+    var bindings = []
+    for (var index = 0; index < 24; index++) {
+      var item = binding({ key: String(index), arg: String(index), description: "Item " + index })
+      item.id = "item-" + index
+      bindings.push(item)
+      var progress = Stats.entry(stats, item.id)
+      progress.guidedCompleted = true
+      progress.state = "mastered"
+      progress.dueAt = index < 10 ? 1 : 999999999
+    }
+    var deck = Scheduler.build(bindings, stats, 10, { now: 100, runId: 1 })
+    compare(deck.filter(function(card) { return card.queue === "due" }).length, 10)
+    compare(deck.filter(function(card) { return card.queue === "maintenance" }).length, 0)
+  }
+
+  function test_remedialReviewIsInsertedAfterThreeToFiveOtherCards() {
+    var stats = Stats.defaults()
+    var bindings = []
+    for (var index = 0; index < 8; index++) {
+      var item = binding({ key: String(index), arg: String(index), description: "Review " + index })
+      item.id = "review-" + index
+      bindings.push(item)
+    }
+    var deck = Scheduler.build(bindings, stats, 8, { now: 100, runId: 1 })
+    var updated = Scheduler.insertRemedial(deck, 1, deck[1].binding)
+    compare(updated.length, 9)
+    var remedialIndex = updated.findIndex(function(card) {
+      return card.remedial && card.binding.id === deck[1].binding.id
+    })
+    verify(remedialIndex - 1 - 1 >= 3)
+    verify(remedialIndex - 1 - 1 <= 5)
+
+    var late = Scheduler.insertRemedial(deck, 7, deck[7].binding)
+    remedialIndex = late.findIndex(function(card) {
+      return card.remedial && card.binding.id === deck[7].binding.id
+    })
+    compare(remedialIndex - 7 - 1, 4)
   }
 }
