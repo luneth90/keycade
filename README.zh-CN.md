@@ -46,7 +46,7 @@ cd keycade
 ./install.sh
 ```
 
-安装器会验证并启用插件，并且只在没有冲突时添加 `Super + Ctrl + G`。如果不希望
+安装器会验证并启用插件，并且只在没有冲突时添加 `Super + Shift + K`。如果不希望
 修改 Hyprland 快捷键：
 
 ```bash
@@ -62,12 +62,12 @@ omarchy plugin add https://github.com/luneth90/keycade.git --enable
 然后自行添加一个没有冲突的快捷键，例如：
 
 ```lua
-o.bind("SUPER + CTRL + G", "Keycade", "omarchy-shell shell summon luneth90.keycade '{}'")
+o.bind("SUPER + SHIFT + K", "Keycade", "omarchy-shell shell summon luneth90.keycade '{}'")
 ```
 
 ## 使用
 
-- 按 `Super + Ctrl + G` 启动，或执行
+- 按 `Super + Shift + K` 启动，或执行
   `omarchy-shell shell summon luneth90.keycade '{}'`。
 - 按 Enter 开始或继续对局。
 - 释放 Esc 保存当前对局并安全退出。

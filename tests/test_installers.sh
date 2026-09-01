@@ -24,7 +24,7 @@ printf '%s\n' '-- existing user binding' >"$HOME/.config/hypr/bindings.lua"
 plugin_dir="$HOME/.config/omarchy/plugins/luneth90.keycade"
 [[ -f $plugin_dir/manifest.json ]]
 grep -Fq -- '-- keycade:begin' "$HOME/.config/hypr/bindings.lua"
-grep -Fq -- 'SUPER + CTRL + G' "$HOME/.config/hypr/bindings.lua"
+grep -Fq -- 'SUPER + SHIFT + K' "$HOME/.config/hypr/bindings.lua"
 grep -Fq -- 'luneth90.keycade' "$HOME/.config/hypr/bindings.lua"
 if grep -Fq -- 'xiaowei.keycade' "$HOME/.config/hypr/bindings.lua"; then
   printf 'installer wrote the legacy plugin id\n' >&2

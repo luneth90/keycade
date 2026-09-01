@@ -4,7 +4,7 @@ set -euo pipefail
 
 PLUGIN_ID="luneth90.keycade"
 LEGACY_PLUGIN_ID="xiaowei.keycade"
-DEFAULT_CHORD="SUPER CTRL + G"
+DEFAULT_CHORD="SUPER SHIFT + K"
 MARKER_BEGIN="-- keycade:begin"
 MARKER_END="-- keycade:end"
 INSTALL_BINDING=1
@@ -14,7 +14,7 @@ usage() {
 Usage: ./install.sh [--no-bind]
 
 Install Keycade from this repository into the current user's Omarchy plugin
-directory, enable it, and add Super + Ctrl + G when that chord is free.
+directory, enable it, and add Super + Shift + K when that chord is free.
 
 Options:
   --no-bind  Install and enable the plugin without editing Hyprland bindings.
@@ -149,8 +149,8 @@ binding_conflicts() {
   binds_json=$(hyprctl -j binds 2>/dev/null || true)
   if jq -e '
     any(.[];
-      (.modmask == 68)
-      and ((.key // "") | ascii_upcase) == "G"
+      (.modmask == 65)
+      and ((.key // "") | ascii_upcase) == "K"
     )
   ' <<<"$binds_json" >/dev/null 2>&1; then
     return 0
@@ -224,7 +224,7 @@ install_binding() {
   cp -p -- "$binding_file" "$backup"
 
   printf '\n%s\n' "$MARKER_BEGIN" >>"$binding_file"
-  printf '%s\n' 'o.bind("SUPER + CTRL + G", "Keycade", "omarchy-shell shell summon luneth90.keycade '\''{}'\''")' >>"$binding_file"
+  printf '%s\n' 'o.bind("SUPER + SHIFT + K", "Keycade", "omarchy-shell shell summon luneth90.keycade '\''{}'\''")' >>"$binding_file"
   printf '%s\n' "$MARKER_END" >>"$binding_file"
 
   hyprctl reload >/dev/null
@@ -235,7 +235,7 @@ install_binding() {
     fail "binding caused a Hyprland config error and was rolled back: $config_errors"
   fi
 
-  note "Added Super + Ctrl + G binding (backup: $backup)"
+  note "Added Super + Shift + K binding (backup: $backup)"
 }
 
 install_binding
@@ -243,6 +243,6 @@ install_binding
 printf '\nKeycade installed successfully.\n'
 printf 'Launch: omarchy-shell shell summon %s '\''{}'\''\n' "$PLUGIN_ID"
 if (( INSTALL_BINDING )); then
-  printf 'Shortcut: Super + Ctrl + G (unless a conflict was reported)\n'
+  printf 'Shortcut: Super + Shift + K (unless a conflict was reported)\n'
 fi
 printf 'Uninstall: %s/uninstall.sh\n' "$repo_root"

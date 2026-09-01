@@ -50,7 +50,7 @@ cd keycade
 ./install.sh
 ```
 
-The installer validates and enables the plugin, then adds `Super + Ctrl + G`
+The installer validates and enables the plugin, then adds `Super + Shift + K`
 only when that shortcut is free. To leave Hyprland bindings unchanged:
 
 ```bash
@@ -66,12 +66,12 @@ omarchy plugin add https://github.com/luneth90/keycade.git --enable
 Then add a free binding yourself, for example:
 
 ```lua
-o.bind("SUPER + CTRL + G", "Keycade", "omarchy-shell shell summon luneth90.keycade '{}'")
+o.bind("SUPER + SHIFT + K", "Keycade", "omarchy-shell shell summon luneth90.keycade '{}'")
 ```
 
 ## Use
 
-- Launch with `Super + Ctrl + G`, or run
+- Launch with `Super + Shift + K`, or run
   `omarchy-shell shell summon luneth90.keycade '{}'`.
 - Press Enter to start or continue a run.
 - Release Esc to save the current run and exit safely.
