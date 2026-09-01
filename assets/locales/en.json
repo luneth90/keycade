@@ -53,7 +53,7 @@
   "summary": "RUN COMPLETE",
   "accuracy": "ACCURACY",
   "masteredNow": "MASTERED NOW",
-  "p75": "P75 RESPONSE",
+  "response": "RESPONSE",
   "review": "REVIEW NEXT",
   "reviewHint": "CLICK A SHORTCUT TO RESTORE ITS HINT",
   "again": "ENTER TO PLAY AGAIN",

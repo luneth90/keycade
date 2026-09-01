@@ -1141,7 +1141,7 @@ Item {
               { label: i18n.t("accuracy"), value: root.accuracyPercent() + "%" },
               { label: i18n.t("newLearned"), value: "+" + root.newLearned },
               { label: i18n.t("masteredNow"), value: "+" + root.masteredGained },
-              { label: i18n.t("p75"), value: root.p75Reaction() ? root.p75Reaction() + " ms" : "—" }
+              { label: i18n.t("response"), value: root.p75Reaction() ? root.p75Reaction() + " ms" : "—" }
             ]
             delegate: Rectangle {
               id: summaryDatum
