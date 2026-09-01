@@ -1,6 +1,10 @@
 # Keycade
 
+**English** | [简体中文](README.zh-CN.md)
+
 > Shortcut Recall Arcade · 快捷键记忆训练机
+
+![Keycade English learning screen](docs/screenshots/keycade-en.png)
 
 Keycade = Key + Arcade. It is a native Omarchy overlay that turns the
 shortcuts active in the current Hyprland session into a short adaptive arcade
@@ -97,7 +101,7 @@ For a published repository, installation through Omarchy remains available:
 Install from the repository URL:
 
 ```bash
-omarchy plugin add <git-url> --enable
+omarchy plugin add https://github.com/luneth90/keycade.git --enable
 ```
 
 Then add a free shortcut to `~/.config/hypr/bindings.lua` after checking your
@@ -153,3 +157,7 @@ env -u WAYLAND_DISPLAY -u DISPLAY QT_QPA_PLATFORM=offscreen QT_QPA_PLATFORMTHEME
 
 The browser prototype remains available under `prototype/` for visual and
 motion review. It cannot validate Wayland keyboard isolation.
+
+## License
+
+Keycade is released under the [MIT License](LICENSE). Copyright © 2026 luneth90.
