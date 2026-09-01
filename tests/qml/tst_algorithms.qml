@@ -133,6 +133,29 @@ TestCase {
     compare(Normalizer.logicalKey({ key: 0x010000b3 }), "XF86MONBRIGHTNESSDOWN")
   }
 
+  function test_shiftedSymbolsNormalizeToBaseKeys() {
+    var slash = Normalizer.normalizeEvent({
+      key: 0x3f,
+      text: "?",
+      modifiers: 0x12000000,
+      nativeScanCode: 61,
+      isAutoRepeat: false
+    })
+    compare(slash.logicalKey, "/")
+    compare(slash.modMask, 65)
+    verify(Normalizer.matches(binding({
+      modMask: 65,
+      key: "/",
+      dispatcher: "exec",
+      arg: "passwords",
+      description: "Passwords"
+    }), slash))
+
+    compare(Normalizer.logicalKey({ key: 0x2b, text: "+", modifiers: 0x02000000 }), "=")
+    compare(Normalizer.logicalKey({ key: 0x3a, text: ":", modifiers: 0x02000000 }), ";")
+    compare(Normalizer.logicalKey({ key: 0x3f, text: "?", modifiers: 0 }), "?")
+  }
+
   function test_builtinShortcutCategories() {
     compare(Categorizer.category(binding({ description: "Close window", dispatcher: "__lua" })), "windows")
     compare(Categorizer.category(binding({ description: "Switch to workspace 3", dispatcher: "__lua" })), "workspaces")
