@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "xiaowei.keycade",
   "name": "Keycade",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "author": "xiaowei",
   "description": "A native shortcut-learning arcade for Omarchy and Hyprland.",
   "kinds": [

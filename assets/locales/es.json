@@ -39,8 +39,6 @@
   "correctionPrompt": "PULSA EL ATAJO MOSTRADO PARA CONTINUAR",
   "correctionMiss": "USA EL ATAJO MOSTRADO · RECIBIDO {keys}",
   "correctionHit": "MEMORIA REFORZADA",
-  "wave": "RONDA {wave} COMPLETA",
-  "waveStats": "{accuracy}% al primero · +{learned} aprendidos · +{mastered} dominados",
   "run": "PARTIDA",
   "card": "CARTA",
   "mastered": "DOMINADOS",

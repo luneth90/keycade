@@ -54,7 +54,6 @@ Item {
 
   readonly property var currentCard: deck.length > cardIndex ? deck[cardIndex] : null
   readonly property var currentBinding: currentCard ? currentCard.binding : null
-  readonly property int waveNumber: Math.floor((runOffset + cardIndex) / 8) + 1
   readonly property bool reducedMotion: Boolean(store.settings.reducedMotion)
   readonly property int activeRunId: Number(store.stats.runs || 0) + 1
 
@@ -106,7 +105,6 @@ Item {
     cardTimer.stop()
     sounds.stopCountdown()
     feedbackTimer.stop()
-    waveTimer.stop()
     if (root.view === "playing" && root.cardLocked && !root.correctionRequired
         && root.feedbackKind === "hit" && root.cardIndex + 1 >= root.deck.length)
       finishRun()
@@ -204,7 +202,7 @@ Item {
   }
 
   function saveRunSession() {
-    if (root.view !== "playing" && root.view !== "wave") return
+    if (root.view !== "playing") return
     var resumeIndex = root.cardIndex
     var resumeCorrection = root.correctionRequired
     if (root.cardLocked && !root.correctionRequired && root.feedbackKind === "hit") resumeIndex += 1
@@ -467,13 +465,7 @@ Item {
       finishRun()
       return
     }
-    if ((root.runOffset + root.cardIndex) % 8 === 0) {
-      root.cardLocked = false
-      root.feedbackKind = "idle"
-      root.view = "wave"
-      saveRunSession()
-      waveTimer.restart()
-    } else showCard()
+    showCard()
   }
 
   function finishRun() {
@@ -570,7 +562,6 @@ Item {
       else root.advanceCard()
     }
   }
-  Timer { id: waveTimer; interval: 2000; repeat: false; onTriggered: { root.view = "playing"; root.showCard() } }
   Timer { id: blockedClose; interval: 5000; repeat: false; onTriggered: root.dismiss() }
 
   SequentialAnimation {
@@ -910,7 +901,7 @@ Item {
 
                 Loader {
                   anchors.fill: parent
-                  sourceComponent: root.view === "playing" ? playCard : root.view === "summary" ? summaryCard : root.view === "wave" ? waveCard : root.view === "blocked" ? blockedCard : root.view === "closing" ? closingCard : homeCard
+                  sourceComponent: root.view === "playing" ? playCard : root.view === "summary" ? summaryCard : root.view === "blocked" ? blockedCard : root.view === "closing" ? closingCard : homeCard
                 }
               }
             }
@@ -1044,17 +1035,6 @@ Item {
           color: root.feedbackKind === "hit" ? root.successColor : root.feedbackKind === "miss" ? root.dangerColor : root.mutedColor
           font.family: "monospace"; font.pixelSize: 13; font.bold: true
         }
-      }
-    }
-  }
-
-  Component {
-    id: waveCard
-    Item {
-      Column {
-        anchors.centerIn: parent; width: parent.width - 70; spacing: 20
-        Text { width: parent.width; horizontalAlignment: Text.AlignHCenter; text: i18n.t("wave", { wave: Math.floor((root.runOffset + root.cardIndex) / 8) }); color: root.coinColor; font.family: "monospace"; font.bold: true; font.pixelSize: 30 }
-        Text { width: parent.width; horizontalAlignment: Text.AlignHCenter; text: i18n.t("waveStats", { accuracy: root.accuracyPercent(), learned: root.newLearned, mastered: root.masteredGained }); color: root.inkColor; font.pixelSize: 17 }
       }
     }
   }

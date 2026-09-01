@@ -39,8 +39,6 @@
   "correctionPrompt": "照答案正确输入一次后继续",
   "correctionMiss": "继续照答案输入 · 收到 {keys}",
   "correctionHit": "记忆强化完成",
-  "wave": "第 {wave} 波完成",
-  "waveStats": "首次正确率 {accuracy}% · 新学 +{learned} · 掌握 +{mastered}",
   "run": "局数",
   "card": "卡片",
   "mastered": "已掌握",

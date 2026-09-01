@@ -289,7 +289,7 @@ TestCase {
     compare(migrated.bindings.one.successfulRuns.length, 0)
   }
 
-  function test_schedulerCapsEachBindingPerWaveAndAvoidsRepeats() {
+  function test_schedulerSpreadsRepeatedBindingsAndAvoidsAdjacentRepeats() {
     var bindings = []
     for (var index = 0; index < 8; index++) {
       var item = binding({ key: String(index), arg: String(index), description: "Switch to workspace " + index })
@@ -299,17 +299,13 @@ TestCase {
     var deck = Scheduler.build(bindings, Stats.defaults(), 24)
     compare(deck.length, 24)
     for (var i = 1; i < deck.length; i++) verify(deck[i].binding.id !== deck[i - 1].binding.id)
-    for (var wave = 1; wave <= 3; wave++) {
-      var counts = {}
-      for (var j = (wave - 1) * 8; j < wave * 8; j++) {
-        var id = deck[j].binding.id
-        counts[id] = Number(counts[id] || 0) + 1
-      }
-      for (var id in counts) verify(counts[id] <= 2)
-    }
+    var counts = {}
+    for (var j = 0; j < deck.length; j++)
+      counts[deck[j].binding.id] = Number(counts[deck[j].binding.id] || 0) + 1
+    for (var id in counts) compare(counts[id], 3)
   }
 
-  function test_schedulerBalancesCategoriesPerWave() {
+  function test_schedulerBalancesCategoriesAcrossTheRun() {
     var categories = ["windows", "workspaces", "system", "applications"]
     var bindings = []
     for (var categoryIndex = 0; categoryIndex < categories.length; categoryIndex++) {
@@ -436,8 +432,8 @@ TestCase {
     var second = binding({ key: "2", arg: "2", description: "Second" })
     second.id = "second"
     var deck = [
-      { binding: first, tier: "learning", queue: "due", remedial: false, wave: 1 },
-      { binding: second, tier: "learning", queue: "remedial", remedial: true, wave: 1 }
+      { binding: first, tier: "learning", queue: "due", remedial: false },
+      { binding: second, tier: "learning", queue: "remedial", remedial: true }
     ]
     var cards = Session.cardsFrom(deck, 1)
     compare(cards.length, 1)

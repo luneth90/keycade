@@ -2,7 +2,7 @@
 
 Keycade = Key + Arcade. It is a native Omarchy overlay that turns the
 shortcuts active in the current Hyprland session into a short adaptive arcade
-run. Version 0.2.2 implements the v0.5.2 continuous-mastery design. Correct input
+run. Version 0.2.3 implements the v0.5.3 continuous-mastery design. Correct input
 is recognized locally and is never dispatched as the bound action.
 
 This repository implements Stage 0 and the MVP described in [DESIGN.md](DESIGN.md):
@@ -18,6 +18,7 @@ This repository implements Stage 0 and the MVP described in [DESIGN.md](DESIGN.m
   so sustained play cannot randomly starve an eligible shortcut;
 - an Exclusive layer-shell overlay plus Wayland Shortcuts Inhibitor guard;
 - 24 planned cards with guided, learning, maintenance, and short-interval review;
+- one uninterrupted adaptive sequence with no artificial wave breaks;
 - no lives or score: a mistake keeps the answer visible until corrected, then
   schedules another unassisted attempt 3–5 cards later;
 - first-try accuracy, spaced review, lapse handling, and mastery based on five

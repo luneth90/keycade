@@ -39,8 +39,6 @@
   "correctionPrompt": "表示されたキーを正しく入力して続行",
   "correctionMiss": "表示どおりに入力 · 受信 {keys}",
   "correctionHit": "記憶を強化しました",
-  "wave": "ウェーブ {wave} クリア",
-  "waveStats": "初回正解率 {accuracy}% · 新規 +{learned} · 習熟 +{mastered}",
   "run": "ラン",
   "card": "カード",
   "mastered": "習熟済み",
