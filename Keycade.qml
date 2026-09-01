@@ -8,6 +8,7 @@ import "lib/InputNormalizer.js" as Normalizer
 import "lib/Eligibility.js" as Eligibility
 import "lib/Scheduler.js" as Scheduler
 import "lib/Stats.js" as Stats
+import "lib/Categorizer.js" as Categorizer
 
 Item {
   id: root
@@ -19,6 +20,7 @@ Item {
   property string errorMessage: ""
   property bool guardReady: false
   property bool escapeDown: false
+  property bool startRequested: false
 
   property var eligibleBindings: []
   property var deck: []
@@ -66,6 +68,7 @@ Item {
     root.view = "loading"
     root.errorMessage = ""
     root.guardReady = false
+    root.startRequested = false
     root.themeName = String(store.settings.theme || payload.theme || "tokyo")
     if (payload.locale && i18n.supported.indexOf(payload.locale) !== -1) i18n.locale = payload.locale
     else i18n.locale = String(store.settings.locale || "en")
@@ -97,8 +100,8 @@ Item {
   }
 
   function maybeShowHome() {
-    if (!root.opened || !root.guardReady || keybinds.loading || !store.ready) return
-    var result = Eligibility.filter(keybinds.bindings, { levelOneOnly: true })
+    if (!root.opened || root.view !== "loading" || !root.guardReady || keybinds.loading || !store.ready) return
+    var result = Eligibility.filter(keybinds.bindings, { appleKeyboard: keybinds.appleKeyboard })
     root.eligibleBindings = result.eligible
     if (!root.eligibleBindings.length) {
       root.errorMessage = i18n.t("noBindings")
@@ -107,6 +110,24 @@ Item {
     }
     root.view = "home"
     root.feedbackText = i18n.t("ready")
+    if (root.startRequested) {
+      root.startRequested = false
+      Qt.callLater(function() { root.startRun() })
+    }
+  }
+
+  function categorySummary() {
+    var counts = {}
+    for (var i = 0; i < root.eligibleBindings.length; i++) {
+      var name = String(root.eligibleBindings[i].category || "uncategorized")
+      counts[name] = Number(counts[name] || 0) + 1
+    }
+    var labels = []
+    var order = Categorizer.categories()
+    for (var j = 0; j < order.length; j++) {
+      if (counts[order[j]]) labels.push(i18n.t("category_" + order[j]) + " " + counts[order[j]])
+    }
+    return labels.join(" · ")
   }
 
   function cycleLocale() {
@@ -173,7 +194,7 @@ Item {
     if (root.view !== "playing" || root.cardLocked || !root.currentBinding) return
     var input = Normalizer.normalizeEvent(event)
     if (input.autoRepeat || Normalizer.isModifier(input.logicalKey)) return
-    if (Normalizer.matches(root.currentBinding, input)) hitCurrent()
+    if (Normalizer.matches(root.currentBinding, input, { appleKeyboard: keybinds.appleKeyboard })) hitCurrent()
     else missCurrent("received", Normalizer.inputDisplay(input))
   }
 
@@ -374,6 +395,12 @@ Item {
         if (event.isAutoRepeat) { event.accepted = true; return }
         if (event.key === Qt.Key_Escape) {
           root.escapeDown = true
+          event.accepted = true
+          return
+        }
+        if (root.view === "loading"
+            && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter)) {
+          root.startRequested = true
           event.accepted = true
           return
         }
@@ -598,18 +625,24 @@ Item {
         spacing: 18
         Text {
           width: parent.width; horizontalAlignment: Text.AlignHCenter
-          text: root.guardReady ? i18n.t("ready") : (root.view === "loading" ? i18n.t("loading") : i18n.t("acquiring"))
+          text: root.view === "home" ? i18n.t("ready") : (keybinds.loading ? i18n.t("loading") : i18n.t("acquiring"))
           color: root.successColor; font.family: "monospace"; font.bold: true; font.pixelSize: 13; font.letterSpacing: 2
         }
         Text {
           width: parent.width; horizontalAlignment: Text.AlignHCenter
-          text: root.guardReady ? i18n.t("start") : "···"
+          text: root.view === "home" ? i18n.t("start") : "···"
           color: root.inkColor; font.family: "monospace"; font.bold: true; font.pixelSize: 28; wrapMode: Text.WordWrap
         }
         Text { width: parent.width; horizontalAlignment: Text.AlignHCenter; text: i18n.t("startHint"); color: root.mutedColor; font.pixelSize: 15 }
+        Text {
+          width: parent.width; horizontalAlignment: Text.AlignHCenter
+          text: root.categorySummary(); color: root.secondaryColor
+          font.family: "monospace"; font.pixelSize: 11; font.bold: true
+          wrapMode: Text.WordWrap
+        }
         Rectangle {
           width: 240; height: 48; anchors.horizontalCenter: parent.horizontalCenter
-          visible: root.guardReady
+          visible: root.view === "home"
           color: root.primaryColor; border.width: 4; border.color: root.voidColor
           Text { anchors.centerIn: parent; text: "▶  START RUN"; color: root.voidColor; font.family: "monospace"; font.bold: true; font.pixelSize: 15 }
           MouseArea { anchors.fill: parent; onClicked: root.startRun() }
@@ -627,7 +660,8 @@ Item {
         spacing: 10
         Text {
           width: parent.width; horizontalAlignment: Text.AlignHCenter
-          text: i18n.t(root.currentCard && root.currentCard.tier === "guided" ? "guided" : root.currentCard && root.currentCard.tier === "rush" ? "rush" : "recall")
+          text: (root.currentBinding ? i18n.t("category_" + root.currentBinding.category) + " · " : "")
+                + i18n.t(root.currentCard && root.currentCard.tier === "guided" ? "guided" : root.currentCard && root.currentCard.tier === "rush" ? "rush" : "recall")
           color: root.currentCard && root.currentCard.tier === "rush" ? root.coinColor : root.secondaryColor
           font.family: "monospace"; font.pixelSize: 12; font.bold: true; font.letterSpacing: 2
         }

@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+if [[ ${1:-} == shell && ${2:-} == ping ]]; then
+  printf 'pong\n'
+fi

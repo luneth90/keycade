@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+case "${1:-} ${2:-}" in
+  "plugin remove")
+    plugin_id="${3:-}"
+    rm -rf -- "$HOME/.config/omarchy/plugins/$plugin_id"
+    ;;
+  "menu keybindings")
+    ;;
+  *)
+    ;;
+esac

@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+if [[ ${1:-} == -j && ${2:-} == binds ]]; then
+  if [[ ${KEYCADE_MOCK_CONFLICT:-0} == 1 ]]; then
+    printf '[{"modmask":68,"key":"G"}]\n'
+  else
+    printf '[]\n'
+  fi
+fi

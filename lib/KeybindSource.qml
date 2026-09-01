@@ -7,6 +7,7 @@ Item {
   readonly property string helperPath: String(Qt.resolvedUrl("../bin/keybinds-json")).replace("file://", "")
   property var bindings: []
   property string fingerprint: ""
+  property bool appleKeyboard: false
   property bool loading: false
   property string error: ""
 
@@ -21,6 +22,7 @@ Item {
   }
 
   function consume(raw) {
+    root.loading = false
     try {
       var payload = JSON.parse(String(raw || ""))
       if (payload.schemaVersion !== 1) throw new Error("Unsupported keybind schema")
@@ -28,6 +30,7 @@ Item {
       if (!Array.isArray(payload.bindings)) throw new Error("Missing bindings array")
       root.bindings = payload.bindings
       root.fingerprint = String(payload.keymapFingerprint || "")
+      root.appleKeyboard = payload.appleKeyboard === true
       root.loaded()
     } catch (error) {
       root.error = String(error)
@@ -52,4 +55,3 @@ Item {
     }
   }
 }
-

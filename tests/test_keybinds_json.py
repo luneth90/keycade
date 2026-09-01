@@ -27,10 +27,17 @@ class KeybindHelperTests(unittest.TestCase):
     def test_snapshot_preserves_logical_and_physical_bindings(self):
         result = self.helper.snapshot(self.binds, self.devices)
         self.assertEqual(result["schemaVersion"], 1)
+        self.assertFalse(result["appleKeyboard"])
         self.assertEqual(len(result["bindings"]), 3)
         self.assertEqual(result["bindings"][0]["key"], "3")
         self.assertEqual(result["bindings"][1]["matchMode"], "physical")
         self.assertEqual(result["bindings"][1]["keycode"], 12)
+
+    def test_apple_keyboard_detection_is_limited_to_keyboard_section(self):
+        apple = """Mice:\n  apple-mtp-multi-touch\n\nKeyboards:\n  apple-mtp-keyboard\n\nSwitches:\n"""
+        mouse_only = """Mice:\n  apple-mtp-multi-touch\n\nKeyboards:\n  usb-keyboard\n\nSwitches:\n"""
+        self.assertTrue(self.helper.has_apple_keyboard(apple))
+        self.assertFalse(self.helper.has_apple_keyboard(mouse_only))
 
     def test_flags_and_commas_are_not_lost(self):
         binding = self.helper.snapshot(self.binds)["bindings"][2]

@@ -332,11 +332,20 @@ def fingerprint(raw_binds: str, raw_devices: str) -> str:
     return hashlib.sha256((raw_binds + "\n" + keymaps).encode()).hexdigest()
 
 
+def has_apple_keyboard(raw_devices: str) -> bool:
+    section = re.search(
+        r"(?ims)^Keyboards:\s*(.*?)(?=^[A-Za-z][^\n]*:\s*$|\Z)",
+        raw_devices,
+    )
+    return bool(section and "apple" in section.group(1).lower())
+
+
 def snapshot(raw_binds: str, raw_devices: str = "") -> dict[str, Any]:
     bindings = [binding_from_block(block) for block in split_blocks(raw_binds)]
     return {
         "schemaVersion": SCHEMA_VERSION,
         "keymapFingerprint": fingerprint(raw_binds, raw_devices),
+        "appleKeyboard": has_apple_keyboard(raw_devices),
         "bindings": bindings,
     }
 
@@ -406,6 +415,7 @@ def snapshot_json(raw_json: str, raw_plain: str, raw_devices: str = "") -> dict[
     return {
         "schemaVersion": SCHEMA_VERSION,
         "keymapFingerprint": fingerprint(raw_plain, raw_devices),
+        "appleKeyboard": has_apple_keyboard(raw_devices),
         "bindings": bindings,
     }
 
