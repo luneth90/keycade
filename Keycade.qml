@@ -39,6 +39,7 @@ Item {
   property double deadline: 0
   property real energy: 1
   property bool cardLocked: false
+  property bool correctionRequired: false
   property string feedbackKind: "idle"
   property string feedbackText: ""
   property bool revealChord: false
@@ -163,6 +164,7 @@ Item {
     root.reactions = []
     root.runResults = ({})
     root.reviewSuggestions = []
+    root.correctionRequired = false
     root.view = "playing"
     showCard()
   }
@@ -175,6 +177,7 @@ Item {
       return
     }
     root.cardLocked = false
+    root.correctionRequired = false
     root.feedbackKind = "idle"
     root.revealChord = root.currentCard.tier === "guided"
     root.feedbackText = i18n.t(root.currentCard.tier === "guided" ? "copyChord" : "waiting")
@@ -194,8 +197,41 @@ Item {
     if (root.view !== "playing" || root.cardLocked || !root.currentBinding) return
     var input = Normalizer.normalizeEvent(event)
     if (input.autoRepeat || Normalizer.isModifier(input.logicalKey)) return
+    if (root.correctionRequired) {
+      if (Normalizer.matches(root.currentBinding, input, { appleKeyboard: keybinds.appleKeyboard })) completeCorrection()
+      else missCorrection(Normalizer.inputDisplay(input))
+      return
+    }
     if (Normalizer.matches(root.currentBinding, input, { appleKeyboard: keybinds.appleKeyboard })) hitCurrent()
     else missCurrent("received", Normalizer.inputDisplay(input))
+  }
+
+  function beginCorrection() {
+    if (!root.correctionRequired || root.view !== "playing") return
+    root.cardLocked = false
+    root.revealChord = true
+    root.feedbackKind = "idle"
+    root.feedbackText = i18n.t("correctionPrompt")
+    root.deadline = 0
+    root.energy = 1
+  }
+
+  function missCorrection(received) {
+    root.revealChord = true
+    root.feedbackKind = "miss"
+    root.feedbackText = i18n.t("correctionMiss", { keys: received || "?" })
+    if (!root.reducedMotion) missShake.restart()
+  }
+
+  function completeCorrection() {
+    root.cardLocked = true
+    root.correctionRequired = false
+    root.revealChord = true
+    root.feedbackKind = "hit"
+    root.feedbackText = i18n.t("correctionHit")
+    if (!root.reducedMotion) hitFlash.restart()
+    feedbackTimer.interval = 320
+    feedbackTimer.restart()
   }
 
   function hitCurrent() {
@@ -245,6 +281,7 @@ Item {
       return
     }
     root.lives = Math.max(0, root.lives - 1)
+    root.correctionRequired = true
     root.attempts += 1
     root.revealChord = true
     root.feedbackText = i18n.t(reason === "timeout" ? "timeout" : "miss")
@@ -347,7 +384,14 @@ Item {
     }
   }
 
-  Timer { id: feedbackTimer; repeat: false; onTriggered: root.advanceCard() }
+  Timer {
+    id: feedbackTimer
+    repeat: false
+    onTriggered: {
+      if (root.correctionRequired) root.beginCorrection()
+      else root.advanceCard()
+    }
+  }
   Timer { id: waveTimer; interval: 2000; repeat: false; onTriggered: { root.view = "playing"; root.showCard() } }
   Timer { id: blockedClose; interval: 5000; repeat: false; onTriggered: root.dismiss() }
 
