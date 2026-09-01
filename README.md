@@ -2,54 +2,34 @@
 
 **English** | [简体中文](README.zh-CN.md)
 
-> Shortcut Recall Arcade · 快捷键记忆训练机
+> Shortcut Recall Arcade
 
 ![Keycade English learning screen](docs/screenshots/keycade-en.png)
 
-Keycade = Key + Arcade. It is a native Omarchy overlay that turns the
-shortcuts active in the current Hyprland session into a short adaptive arcade
-run. Version 0.2.10 implements the v0.5.10 continuous-mastery design. Correct input
-is recognized locally and is never dispatched as the bound action.
+Keycade is a native Omarchy shortcut trainer for Hyprland. It reads the
+shortcuts active on your machine and turns them into short, adaptive recall
+runs. Correct input is recognized locally and never dispatches the original
+shortcut action.
 
-This repository implements Stage 0 and the MVP described in [DESIGN.md](DESIGN.md):
+## Core features
 
-- a versioned `hyprctl binds` JSON helper with logical and physical-key modes;
-- strict eligibility filtering for unsafe, ambiguous, and unsupported binds;
-- hardware-independent training that omits function-row, XF86 media/device,
-  Print/Pause/SysRq, dedicated Home/End/Insert/Page keys, and unlabeled
-  physical-only shortcuts;
-- automatic classification of active shortcuts into windows, workspaces,
-  system, applications, media, capture, utilities, groups, and scratchpad;
-- due, unseen, weak, and maintenance queues with a persistent coverage cursor,
-  so sustained play cannot randomly starve an eligible shortcut;
-- an Exclusive layer-shell overlay plus Wayland Shortcuts Inhibitor guard;
-- exactly 24 planned card slots shared by guided, learning, maintenance, and
-  short-interval review; remedial reviews replace lower-priority future slots
-  instead of extending the run;
-- one uninterrupted adaptive sequence with no artificial wave breaks;
-- a run HUD for fixed progress, planned review/new shortcuts, pending
-  reinforcement, accuracy, and the global due backlog;
-- a segmented total-mastery bar plus the current successful response time;
-  summaries use a plain "Response" label backed by a robust percentile while
-  each shortcut stores only its latest ten timings;
-- a one-time first-100% celebration after the completed run, summarizing
-  eligible shortcuts, completed runs, active training time, lifetime accuracy,
-  response, and the achievement date before continuing to the run summary;
-- no lives or score: a mistake keeps the answer visible until corrected, then
-  schedules another unassisted attempt 3–5 cards later;
-- first-try accuracy, spaced review, lapse handling, and mastery based on three
-  consecutive unassisted successes across at least three runs;
-- local correct, wrong, and 3/2/1 countdown sounds with independent
-  sound/countdown controls;
-- resumable runs: Esc stores the remaining deck and correction state, while a
-  fresh-run button remains available on the next launch;
-- a language dropdown and localized names for recognized built-in Omarchy
-  actions; custom descriptions remain untouched;
-- pointer-safe language and sound popovers, with a 60% default sound volume;
-- local atomic stats and settings under `$XDG_STATE_HOME/omarchy/keycade/`;
-- English and Simplified Chinese interface text, with English as the default;
-- Tokyo Night, Gruvbox, and Catppuccin arcade palettes;
-- a standalone native input probe for machine-specific verification.
+- Trains your active Hyprland shortcuts instead of a fixed generic list.
+- Uses a protected full-screen overlay with Exclusive focus and Wayland
+  Shortcuts Inhibitor, so training input does not trigger desktop actions.
+- Builds one continuous 24-card run from new, due, weak, and mastered
+  shortcuts without artificial waves.
+- Guarantees coverage over continued play and schedules spaced reviews.
+- Marks a shortcut mastered after three consecutive first-try successes across
+  at least three different runs.
+- Keeps the correct answer visible after a mistake, requires a correction, and
+  reviews the shortcut again later in the run.
+- Saves progress locally, resumes interrupted runs, tracks total mastery, and
+  shows a one-time celebration when every eligible shortcut first reaches 100%.
+- Includes English and Simplified Chinese, local feedback/countdown sounds,
+  and Tokyo Night, Gruvbox, and Catppuccin palettes.
+
+Function-row, XF86 media/device, Print/Pause/SysRq, dedicated
+Home/End/Insert/Page, ambiguous, unsafe, and unsupported bindings are excluded.
 
 ## Requirements
 
@@ -57,93 +37,62 @@ This repository implements Stage 0 and the MVP described in [DESIGN.md](DESIGN.m
 - Quickshell 0.3.1 with
   `Quickshell.Wayland._ShortcutsInhibitor.ShortcutInhibitor`
 - Hyprland with `binds:disable_keybind_grabbing = false`
-- Python 3 (for `bin/keybinds-json`)
+- Python 3
 
-The Shortcuts Inhibitor module is currently a private Quickshell API. Keycade
-intentionally refuses to start a run when it cannot verify or activate input
-protection; there is no Exclusive-focus-only fallback.
+Keycade refuses to start a run when it cannot verify input protection. It does
+not fall back to an unsafe focus-only mode.
 
-## Install and summon
-
-For a local checkout, the quickest path is the guarded installer. It validates
-the manifest, clones the current repository into the user plugin directory,
-enables the plugin, and adds `Super + Ctrl + G` only when that chord is free:
+## Install
 
 ```bash
+git clone https://github.com/luneth90/keycade.git
+cd keycade
 ./install.sh
 ```
 
-Skip the Hyprland configuration edit when desired:
+The installer validates and enables the plugin, then adds `Super + Ctrl + G`
+only when that shortcut is free. To leave Hyprland bindings unchanged:
 
 ```bash
 ./install.sh --no-bind
 ```
 
-Remove the installed plugin and only the marked binding block created by the
-installer. Progress is preserved by default:
-
-```bash
-./uninstall.sh
-```
-
-To also permanently delete settings and progress:
-
-```bash
-./uninstall.sh --purge-state
-```
-
-The scripts back up `~/.config/hypr/bindings.lua` before modifying it and
-validate with `hyprctl reload` plus `hyprctl configerrors`. They never edit
-files under `/usr/share/omarchy`.
-
-For a published repository, installation through Omarchy remains available:
-
-Install from the repository URL:
+You can also install the plugin without the helper script:
 
 ```bash
 omarchy plugin add https://github.com/luneth90/keycade.git --enable
 ```
 
-Then add a free shortcut to `~/.config/hypr/bindings.lua` after checking your
-current bindings. For example:
+Then add a free binding yourself, for example:
 
 ```lua
 o.bind("SUPER + CTRL + G", "Keycade", "omarchy-shell shell summon luneth90.keycade '{}'")
 ```
 
-Hyprland reloads configuration changes automatically. Validate them with:
+## Use
+
+- Launch with `Super + Ctrl + G`, or run
+  `omarchy-shell shell summon luneth90.keycade '{}'`.
+- Press Enter to start or continue a run.
+- Release Esc to save the current run and exit safely.
+- Use the top menus to switch language, sound, volume, and palette.
+
+Progress is stored under `$XDG_STATE_HOME/omarchy/keycade/` and is preserved
+across updates.
+
+## Uninstall
+
+Keep progress:
 
 ```bash
-hyprctl reload
-hyprctl configerrors
+./uninstall.sh
 ```
 
-Inside Keycade, press Enter to start and release Esc to exit safely. On exit,
-Keycade waits for all held modifiers before disabling the inhibitor and giving
-keyboard focus back. The next launch offers to continue the exact remaining
-deck. Open the sound menu to adjust volume in 10% steps or independently toggle
-feedback and countdown sounds. Feedback uses softer, faded two-tone cues and
-does not play an extra sound after corrective input. The first time every
-eligible shortcut reaches Mastered, the current 24-card run finishes normally
-and then shows a one-time achievement summary. Active training time starts
-accumulating with version 0.2.7; earlier play time cannot be reconstructed.
-
-## Native Stage 0 probe
-
-Run this from a Hyprland session before relying on the game overlay:
+Also delete all local settings and progress:
 
 ```bash
-quickshell -p dev/InputProbe.qml
+./uninstall.sh --purge-state
 ```
-
-Verify 10–20 real bindings, including letters, digits, punctuation, Shift,
-`code:` bindings, and every keyboard layout you use. The panel shows Qt's
-logical key, text, native scan code, modifiers, focus, and inhibitor state.
-Also verify that one harmless Hyprland binding works outside the probe, is
-received but not executed inside it, and works again immediately after exit.
-
-Bindings marked `dont_inhibit`, compositor-reserved operations, firmware keys,
-and setups with `binds:disable_keybind_grabbing = true` are not supported.
 
 ## Development
 
@@ -154,9 +103,6 @@ env -u WAYLAND_DISPLAY -u DISPLAY QT_QPA_PLATFORM=offscreen QT_QPA_PLATFORMTHEME
 ./tests/test_installers.sh
 /usr/lib/qt6/bin/qmllint -I /usr/lib/qt6/qml Keycade.qml lib/*.qml dev/InputProbe.qml
 ```
-
-The browser prototype remains available under `prototype/` for visual and
-motion review. It cannot validate Wayland keyboard isolation.
 
 ## License
 
