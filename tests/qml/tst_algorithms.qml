@@ -412,7 +412,7 @@ TestCase {
     }
     var deck = Scheduler.build(bindings, stats, 8, { now: 100, runId: 1 })
     var updated = Scheduler.insertRemedial(deck, 1, deck[1].binding)
-    compare(updated.length, 9)
+    compare(updated.length, 8)
     var remedialIndex = updated.findIndex(function(card) {
       return card.remedial && card.binding.id === deck[1].binding.id
     })
@@ -420,10 +420,54 @@ TestCase {
     verify(remedialIndex - 1 - 1 <= 5)
 
     var late = Scheduler.insertRemedial(deck, 7, deck[7].binding)
-    remedialIndex = late.findIndex(function(card) {
-      return card.remedial && card.binding.id === deck[7].binding.id
-    })
-    compare(remedialIndex - 7 - 1, 4)
+    compare(late.length, 8)
+    compare(late.filter(function(card) { return card.remedial }).length, 0)
+  }
+
+  function test_remedialReviewNeverExtendsTheRunNearTheEnd() {
+    var deck = []
+    for (var index = 0; index < 24; index++) {
+      var item = binding({ key: String(index), arg: String(index), description: "Card " + index })
+      item.id = "fixed-" + index
+      deck.push({ binding: item, tier: "learning", queue: "weak", remedial: false })
+    }
+    var updated = Scheduler.insertRemedial(deck, 21, deck[21].binding)
+    compare(updated.length, 24)
+    compare(updated.filter(function(card) { return card.remedial }).length, 0)
+  }
+
+  function test_remedialReviewReplacesTheLowestPriorityFutureSlot() {
+    var deck = []
+    for (var index = 0; index < 8; index++) {
+      var item = binding({ key: String(index), arg: String(index), description: "Priority " + index })
+      item.id = "priority-" + index
+      deck.push({
+        binding: item,
+        tier: index === 6 ? "maintenance" : "learning",
+        queue: index === 6 ? "maintenance" : "due",
+        remedial: false
+      })
+    }
+    var updated = Scheduler.insertRemedial(deck, 0, deck[0].binding)
+    compare(updated.length, 8)
+    verify(updated[6].remedial)
+    compare(updated[6].binding.id, deck[0].binding.id)
+    compare(updated[4].queue, "due")
+    compare(updated[5].queue, "due")
+  }
+
+  function test_runPlanCountsDistinctNewAndReviewBindings() {
+    var first = binding({ key: "1", arg: "1", description: "First" })
+    first.id = "first-plan"
+    var second = binding({ key: "2", arg: "2", description: "Second" })
+    second.id = "second-plan"
+    var counts = Scheduler.planCounts([
+      { binding: first, tier: "guided", queue: "unseen", remedial: false },
+      { binding: first, tier: "guided", queue: "unseen", remedial: false },
+      { binding: second, tier: "learning", queue: "due", remedial: false }
+    ])
+    compare(counts.added, 1)
+    compare(counts.review, 1)
   }
 
   function test_savedSessionRestoresRemainingCardsAndCorrection() {
@@ -440,8 +484,10 @@ TestCase {
     compare(cards[0].bindingId, "second")
     verify(cards[0].remedial)
     var saved = { schemaVersion: 1, runId: 4, cards: cards, correctionRequired: true }
-    verify(Session.canResume(saved, 4, [first, second]))
+    verify(Session.canResume(saved, 4, [first, second], 24))
     verify(!Session.canResume(saved, 5, [first, second]))
+    saved.offset = 24
+    verify(!Session.canResume(saved, 4, [first, second], 24))
     var restored = Session.restoreCards(cards, [first, second])
     compare(restored.length, 1)
     compare(restored[0].binding.id, "second")

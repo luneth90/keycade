@@ -29,12 +29,15 @@ Item {
   property int cardIndex: 0
   property int runNumber: 1
   property int runOffset: 0
+  property int runReviewTarget: 0
+  property int runNewTarget: 0
   property int correct: 0
   property int attempts: 0
   property int newLearned: 0
   property int masteredGained: 0
   property var reactions: []
   property var runResults: ({})
+  property var pendingReinforcements: ({})
   property var reviewSuggestions: []
   property var progressCounts: ({ unseen: 0, learning: 0, mastered: 0, due: 0, total: 0 })
   property double cardStartedAt: 0
@@ -54,6 +57,7 @@ Item {
 
   readonly property var currentCard: deck.length > cardIndex ? deck[cardIndex] : null
   readonly property var currentBinding: currentCard ? currentCard.binding : null
+  readonly property int runCardLimit: 24
   readonly property bool reducedMotion: Boolean(store.settings.reducedMotion)
   readonly property int activeRunId: Number(store.stats.runs || 0) + 1
 
@@ -197,8 +201,27 @@ Item {
     root.progressCounts = Stats.counts(store.stats, root.eligibleBindings, Date.now(), root.activeRunId)
   }
 
+  function completedCardCount() {
+    if (root.view === "summary") return root.runCardLimit
+    var completed = root.runOffset + root.cardIndex
+    if (root.view === "playing" && root.cardLocked && !root.correctionRequired
+        && root.feedbackKind === "hit") completed += 1
+    return Math.max(0, Math.min(root.runCardLimit, completed))
+  }
+
+  function pendingReinforcementCount() {
+    return Object.keys(root.pendingReinforcements || {}).length
+  }
+
+  function setReinforcementPending(bindingId, pending) {
+    var updated = Object.assign({}, root.pendingReinforcements)
+    if (pending) updated[bindingId] = true
+    else delete updated[bindingId]
+    root.pendingReinforcements = updated
+  }
+
   function hasResumableSession() {
-    return Session.canResume(store.session, root.activeRunId, root.eligibleBindings)
+    return Session.canResume(store.session, root.activeRunId, root.eligibleBindings, root.runCardLimit)
   }
 
   function saveRunSession() {
@@ -221,6 +244,9 @@ Item {
       attempts: root.attempts,
       newLearned: root.newLearned,
       masteredGained: root.masteredGained,
+      runReviewTarget: root.runReviewTarget,
+      runNewTarget: root.runNewTarget,
+      pendingReinforcements: Object.keys(root.pendingReinforcements || {}),
       reactions: root.reactions,
       runResults: Session.serializableResults(root.runResults),
       correctionRequired: resumeCorrection && resumeIndex === root.cardIndex,
@@ -232,7 +258,9 @@ Item {
   function resumeRun() {
     if (!root.resumeAvailable || !guard.active) return
     var session = store.session
+    var offset = Math.max(0, Math.min(root.runCardLimit - 1, Number(session.offset || 0)))
     var restoredDeck = Session.restoreCards(session.cards, root.eligibleBindings)
+    restoredDeck = restoredDeck.slice(0, root.runCardLimit - offset)
     if (!restoredDeck.length) {
       store.clearSession()
       root.resumeAvailable = false
@@ -242,12 +270,21 @@ Item {
     guard.play()
     root.deck = restoredDeck
     root.cardIndex = 0
-    root.runOffset = Math.max(0, Number(session.offset || 0))
+    root.runOffset = offset
     root.runNumber = Number(session.runId || root.activeRunId)
     root.correct = Math.max(0, Number(session.correct || 0))
     root.attempts = Math.max(0, Number(session.attempts || 0))
     root.newLearned = Math.max(0, Number(session.newLearned || 0))
     root.masteredGained = Math.max(0, Number(session.masteredGained || 0))
+    var plan = Scheduler.planCounts(restoredDeck)
+    root.runReviewTarget = Math.max(0, Number(session.runReviewTarget === undefined
+                                             ? plan.review : session.runReviewTarget))
+    root.runNewTarget = Math.max(0, Number(session.runNewTarget === undefined
+                                          ? plan.added : session.runNewTarget))
+    root.pendingReinforcements = ({})
+    var pendingIds = Array.isArray(session.pendingReinforcements) ? session.pendingReinforcements : []
+    for (var pendingIndex = 0; pendingIndex < pendingIds.length; pendingIndex++)
+      root.setReinforcementPending(String(pendingIds[pendingIndex]), true)
     root.reactions = Array.isArray(session.reactions) ? session.reactions : []
     root.runResults = Session.restoreResults(session.runResults, root.eligibleBindings)
     root.reviewSuggestions = []
@@ -270,7 +307,11 @@ Item {
     store.clearSession()
     root.resumeAvailable = false
     root.runNumber = root.activeRunId
-    root.deck = Scheduler.build(root.eligibleBindings, store.stats, 24, { runId: root.activeRunId })
+    root.deck = Scheduler.build(root.eligibleBindings, store.stats, root.runCardLimit,
+                                { runId: root.activeRunId })
+    var plan = Scheduler.planCounts(root.deck)
+    root.runReviewTarget = plan.review
+    root.runNewTarget = plan.added
     root.cardIndex = 0
     root.runOffset = 0
     root.correct = 0
@@ -279,6 +320,7 @@ Item {
     root.masteredGained = 0
     root.reactions = []
     root.runResults = ({})
+    root.pendingReinforcements = ({})
     root.reviewSuggestions = []
     root.correctionRequired = false
     refreshProgressCounts()
@@ -366,6 +408,7 @@ Item {
   }
 
   function scheduleRetest(binding) {
+    root.setReinforcementPending(binding.id, true)
     root.deck = Scheduler.insertRemedial(root.deck, root.cardIndex, binding)
   }
 
@@ -397,6 +440,8 @@ Item {
       root.deck = root.deck.slice()
       scheduleRetest(root.currentBinding)
     } else {
+      if (root.currentCard.remedial)
+        root.setReinforcementPending(root.currentBinding.id, false)
       root.correct += 1
       root.attempts += 1
       root.reactions = root.reactions.concat([reaction])
@@ -408,10 +453,10 @@ Item {
     root.runResults[root.currentBinding.id] = hitResult
     refreshProgressCounts()
     store.saveStats()
-    saveRunSession()
     root.revealChord = true
     root.feedbackKind = "hit"
     root.feedbackText = i18n.t(guided ? "guidedHit" : "hit")
+    saveRunSession()
     sounds.playCorrect()
     if (!root.reducedMotion) hitFlash.restart()
     feedbackTimer.interval = 320
@@ -837,18 +882,21 @@ Item {
             Repeater {
               model: [
                 { label: i18n.t("run"), value: String(root.runNumber).padStart(2, "0") },
-                { label: i18n.t("card"), value: String(root.runOffset + Math.min(root.cardIndex + 1, root.deck.length || 24)).padStart(2, "0") + " / " + String(root.runOffset + (root.deck.length || 24)) },
-                { label: i18n.t("accuracy"), value: root.accuracyPercent() + "%" },
-                { label: i18n.t("mastered"), value: root.progressCounts.mastered + " / " + root.progressCounts.total }
+                { label: i18n.t("progress"), value: String(root.completedCardCount()).padStart(2, "0") + " / " + root.runCardLimit },
+                { label: i18n.t("runReview"), value: root.runReviewTarget },
+                { label: i18n.t("runNew"), value: root.runNewTarget },
+                { label: i18n.t("reinforce"), value: root.pendingReinforcementCount() },
+                { label: i18n.t("accuracy"), value: root.accuracyPercent() + "%" }
               ]
               delegate: Item {
                 id: hudDatum
                 required property var modelData
-                width: parent.width / 4; height: 58
+                width: parent.width / 6; height: 58
                 Column {
+                  width: parent.width
                   anchors.centerIn: parent
-                  Text { anchors.horizontalCenter: parent.horizontalCenter; text: hudDatum.modelData.label; color: root.mutedColor; font.family: "monospace"; font.pixelSize: 10; font.bold: true }
-                  Text { anchors.horizontalCenter: parent.horizontalCenter; text: hudDatum.modelData.value; color: root.inkColor; font.family: "monospace"; font.pixelSize: 24; font.bold: true }
+                  Text { width: parent.width; horizontalAlignment: Text.AlignHCenter; elide: Text.ElideRight; text: hudDatum.modelData.label; color: root.mutedColor; font.family: "monospace"; font.pixelSize: 9; font.bold: true }
+                  Text { width: parent.width; horizontalAlignment: Text.AlignHCenter; text: hudDatum.modelData.value; color: root.inkColor; font.family: "monospace"; font.pixelSize: 20; font.bold: true }
                 }
               }
             }
