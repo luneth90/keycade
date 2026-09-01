@@ -59,18 +59,11 @@ cd keycade
 omarchy plugin add https://github.com/luneth90/keycade.git --enable
 ```
 
-然后自行添加一个没有冲突的快捷键。`o.bind(...)` 是 Hyprland Lua 配置里的函数，
-不是终端命令，不能直接在 shell 里敲。加之前最好先用 `hyprctl -j binds` 或
-`omarchy menu keybindings --print` 确认这个组合键没被占用（`install.sh` 会
-自动帮你查，但手动 `o.bind` 只会在已有绑定上再叠加一条，不会提醒你冲突），
-然后一条命令追加进 `~/.config/hypr/bindings.lua`：
+然后向 `~/.config/hypr/bindings.lua` 添加快捷键，例如：
 
 ```bash
 echo 'o.bind("SUPER + SHIFT + K", "Keycade", "omarchy-shell shell summon luneth90.keycade '\''{}'\''")' >> ~/.config/hypr/bindings.lua
 ```
-
-Hyprland 默认会在保存配置文件时自动重新加载，写入即生效；如果你关掉了这个
-默认设置，就要自己执行一次 `hyprctl reload`。
 
 ## 使用
 

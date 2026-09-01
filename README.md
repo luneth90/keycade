@@ -63,21 +63,11 @@ You can also install the plugin without the helper script:
 omarchy plugin add https://github.com/luneth90/keycade.git --enable
 ```
 
-Then add a free binding yourself. `o.bind(...)` is a Hyprland Lua config
-function, not a shell command — you can't type it into a terminal directly.
-Check the chord is free first with `hyprctl -j binds` or
-`omarchy menu keybindings --print` (`install.sh` does this for you, but a
-manual `o.bind` will silently stack a second binding on top of an existing
-one instead of warning you), then append it to
-`~/.config/hypr/bindings.lua` in one line:
+Then add a shortcut to `~/.config/hypr/bindings.lua`, for example:
 
 ```bash
 echo 'o.bind("SUPER + SHIFT + K", "Keycade", "omarchy-shell shell summon luneth90.keycade '\''{}'\''")' >> ~/.config/hypr/bindings.lua
 ```
-
-Hyprland autoreloads config files on save by default, so it takes effect as
-soon as the file is written; run `hyprctl reload` yourself if you've
-disabled that.
 
 ## Use
 
