@@ -156,6 +156,26 @@ TestCase {
     compare(Normalizer.logicalKey({ key: 0x3f, text: "?", modifiers: 0 }), "?")
   }
 
+  function test_spaceNormalization() {
+    var space = Normalizer.normalizeEvent({
+      key: 0x20,
+      text: " ",
+      modifiers: 0x14000000,
+      nativeScanCode: 65,
+      isAutoRepeat: false
+    })
+    compare(space.logicalKey, "SPACE")
+    compare(space.modMask, 68)
+    compare(Normalizer.canonicalKey(" "), "SPACE")
+    verify(Normalizer.matches(binding({
+      modMask: 68,
+      key: "SPACE",
+      dispatcher: "exec",
+      arg: "background-switcher",
+      description: "Background switcher"
+    }), space))
+  }
+
   function test_builtinShortcutCategories() {
     compare(Categorizer.category(binding({ description: "Close window", dispatcher: "__lua" })), "windows")
     compare(Categorizer.category(binding({ description: "Switch to workspace 3", dispatcher: "__lua" })), "workspaces")
