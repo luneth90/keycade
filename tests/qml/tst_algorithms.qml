@@ -262,6 +262,17 @@ TestCase {
     compare(stats.bindings.one.lapseCount, 1)
   }
 
+  function test_reactionHistoryKeepsOnlyTheLatestTenSamples() {
+    var stats = Stats.defaults()
+    Stats.recordGuided(stats, "timed", 1, 100)
+    for (var index = 0; index < 12; index++)
+      Stats.recordFirstTry(stats, "timed", true, 500 + index * 10, index + 1, 200 + index)
+    compare(stats.bindings.timed.reactions.length, 10)
+    compare(stats.bindings.timed.reactions[0], 520)
+    compare(stats.bindings.timed.reactions[9], 610)
+    compare(Stats.percentile75(stats.bindings.timed.reactions), 590)
+  }
+
   function test_v1StatsMigrateWithoutInventingMastery() {
     var migrated = Stats.migrate({
       schemaVersion: 1,

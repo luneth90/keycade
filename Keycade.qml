@@ -455,7 +455,8 @@ Item {
     store.saveStats()
     root.revealChord = true
     root.feedbackKind = "hit"
-    root.feedbackText = i18n.t(guided ? "guidedHit" : "hit")
+    root.feedbackText = guided ? i18n.t("guidedHit")
+                               : i18n.t("hitReaction", { ms: Math.round(reaction) })
     saveRunSession()
     sounds.playCorrect()
     if (!root.reducedMotion) hitFlash.restart()
@@ -903,8 +904,48 @@ Item {
           }
 
           Item {
+            width: parent.width; height: 24
+            Text {
+              id: totalProgressLabel
+              width: 118; anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter
+              text: i18n.t("totalProgress")
+              color: root.mutedColor; font.family: "monospace"; font.pixelSize: 10; font.bold: true
+            }
+            Rectangle {
+              id: totalProgressTrack
+              anchors.left: totalProgressLabel.right; anchors.right: totalProgressValue.left
+              anchors.leftMargin: 10; anchors.rightMargin: 12; anchors.verticalCenter: parent.verticalCenter
+              height: 12; color: "#293252"; border.width: 1; border.color: root.mutedColor
+              Rectangle {
+                id: masteredProgressSegment
+                anchors.left: parent.left; anchors.top: parent.top; anchors.bottom: parent.bottom
+                anchors.margins: 1
+                width: Math.max(0, (parent.width - 2) * root.progressCounts.mastered
+                                / Math.max(1, root.progressCounts.total))
+                color: root.successColor
+              }
+              Rectangle {
+                anchors.left: masteredProgressSegment.right; anchors.top: parent.top; anchors.bottom: parent.bottom
+                anchors.topMargin: 1; anchors.bottomMargin: 1
+                width: Math.max(0, (parent.width - 2) * root.progressCounts.learning
+                                / Math.max(1, root.progressCounts.total))
+                color: root.secondaryColor
+              }
+            }
+            Text {
+              id: totalProgressValue
+              width: 154; anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
+              horizontalAlignment: Text.AlignRight
+              text: root.progressCounts.mastered + " / " + root.progressCounts.total
+                    + " · " + Math.round(root.progressCounts.mastered * 100
+                                         / Math.max(1, root.progressCounts.total)) + "%"
+              color: root.inkColor; font.family: "monospace"; font.pixelSize: 11; font.bold: true
+            }
+          }
+
+          Item {
             width: parent.width
-            height: parent.height - 70
+            height: parent.height - 106
 
             Column {
               width: 90
