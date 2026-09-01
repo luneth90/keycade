@@ -723,7 +723,10 @@ Item {
       Keys.onPressed: function(event) {
         guard.updateInput(Normalizer.modifierMask(event.modifiers))
         if (event.isAutoRepeat) { event.accepted = true; return }
-        if (event.key === Qt.Key_Escape) {
+        // Safe-exit is bound to a bare Escape only. Escape held with a modifier
+        // (e.g. Super + Esc) is a real shortcut chord and must reach
+        // handleGameInput() below instead of being swallowed as an exit request.
+        if (event.key === Qt.Key_Escape && event.modifiers === Qt.NoModifier) {
           if (root.languageMenuOpen || root.soundMenuOpen) {
             root.languageMenuOpen = false
             root.soundMenuOpen = false

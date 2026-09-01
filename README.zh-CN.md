@@ -70,7 +70,10 @@ o.bind("SUPER + SHIFT + K", "Keycade", "omarchy-shell shell summon luneth90.keyc
 - 按 `Super + Shift + K` 启动，或执行
   `omarchy-shell shell summon luneth90.keycade '{}'`。
 - 按 Enter 开始或继续对局。
-- 释放 Esc 保存当前对局并安全退出。
+- 释放 Esc 保存当前对局并安全退出。这个操作只在单独按 Esc（不带任何修饰键）时触发；
+  带修饰键的 Esc 组合（例如 `Super + Esc`）会被当作普通快捷键处理，
+  不会跟系统里同样用到 Esc 的绑定（比如 Super + Esc 打开系统菜单）冲突，
+  练习到这个组合时也能正常答题。
 - 使用顶部菜单切换语言、声音、音量和配色。
 
 学习进度保存在 `$XDG_STATE_HOME/omarchy/keycade/`，更新插件不会丢失。

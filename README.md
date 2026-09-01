@@ -74,7 +74,10 @@ o.bind("SUPER + SHIFT + K", "Keycade", "omarchy-shell shell summon luneth90.keyc
 - Launch with `Super + Shift + K`, or run
   `omarchy-shell shell summon luneth90.keycade '{}'`.
 - Press Enter to start or continue a run.
-- Release Esc to save the current run and exit safely.
+- Release Esc to save the current run and exit safely. This only fires for a
+  bare Esc; Esc held with a modifier (e.g. `Super + Esc`) is treated as a
+  normal shortcut chord, so it won't fight with a system binding that also
+  uses Esc (like a Super + Esc menu) while you're answering a card for it.
 - Use the top menus to switch language, sound, volume, and palette.
 
 Progress is stored under `$XDG_STATE_HOME/omarchy/keycade/` and is preserved
