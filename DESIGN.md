@@ -209,8 +209,9 @@ helper 必须读取 `dont_inhibit` 标志并从题库排除对应绑定。打开
 
 - 键盘绑定，且有一个可识别的非修饰主键；
 - 仅使用 Ctrl/Shift/Super/Alt 和 MVP 已验证的普通按键；
-- 排除 F1–F35、XF86 音量/亮度/媒体/设备键、Print/Pause/SysRq 等
-  依赖机型或顶栏模式的特殊键，以及没有可读键名的纯物理绑定；
+- 排除 F1–F35、XF86 音量/亮度/媒体/设备键、Print/Pause/SysRq，以及
+  Home/End/Insert/PageUp/PageDown 等依赖机型、Fn 层或顶栏模式的特殊键；
+  同时排除没有可读键名的纯物理绑定；
 - 是按下触发的常规绑定；排除 release、long-press、switch、mouse、滚轮和
   仅在特殊设备上存在的事件；
 - 有非空 description，或能由一小组可信 dispatcher 规则生成清晰动作名；

@@ -192,6 +192,11 @@ TestCase {
       binding({ key: "XF86AUDIORAISEVOLUME", modMask: 0, description: "Volume up" }),
       binding({ key: "XF86MONBRIGHTNESSDOWN", modMask: 0, description: "Brightness down" }),
       binding({ key: "PRINT", description: "Screenshot" }),
+      binding({ key: "HOME", description: "Save window width" }),
+      binding({ key: "END", description: "Go to end" }),
+      binding({ key: "INSERT", description: "Insert mode" }),
+      binding({ key: "PAGEUP", description: "Page up" }),
+      binding({ key: "PAGEDOWN", description: "Page down" }),
       binding({ key: "", keycode: 201, matchMode: "physical", description: "Hardware menu" })
     ]
     for (var i = 0; i < specialBindings.length; i++) {

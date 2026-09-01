@@ -10,7 +10,8 @@ This repository implements Stage 0 and the MVP described in [DESIGN.md](DESIGN.m
 - a versioned `hyprctl binds` JSON helper with logical and physical-key modes;
 - strict eligibility filtering for unsafe, ambiguous, and unsupported binds;
 - hardware-independent training that omits function-row, XF86 media/device,
-  Print/Pause/SysRq, and unlabeled physical-only shortcuts;
+  Print/Pause/SysRq, dedicated Home/End/Insert/Page keys, and unlabeled
+  physical-only shortcuts;
 - automatic classification of active shortcuts into windows, workspaces,
   system, applications, media, capture, utilities, groups, and scratchpad;
 - category-balanced scheduling so each wave covers the widest available mix;
