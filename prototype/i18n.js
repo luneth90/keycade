@@ -7,7 +7,7 @@ window.KeycadeI18n = {
   messages: {
     en: {
       pageTitle: "Keycade — 16-bit Shortcut Arcade",
-      tagline: "16-BIT SHORTCUT TRAINER",
+      brandSubtitle: "SHORTCUT RECALL ARCADE",
       playerOne: "[ PLAYER 1 ]",
       themeLabel: "Theme",
       languageLabel: "Language",
@@ -62,7 +62,7 @@ window.KeycadeI18n = {
 
     "zh-CN": {
       pageTitle: "Keycade — 16 位快捷键街机",
-      tagline: "16 位快捷键训练机",
+      brandSubtitle: "快捷键记忆训练机",
       playerOne: "[ 玩家 1 ]",
       themeLabel: "主题",
       languageLabel: "语言",

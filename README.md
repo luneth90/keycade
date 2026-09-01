@@ -1,8 +1,10 @@
 # Keycade
 
+> Shortcut Recall Arcade · 快捷键记忆训练机
+
 Keycade = Key + Arcade. It is a native Omarchy overlay that turns the
 shortcuts active in the current Hyprland session into a short adaptive arcade
-run. Version 0.2.9 implements the v0.5.9 continuous-mastery design. Correct input
+run. Version 0.2.10 implements the v0.5.10 continuous-mastery design. Correct input
 is recognized locally and is never dispatched as the bound action.
 
 This repository implements Stage 0 and the MVP described in [DESIGN.md](DESIGN.md):

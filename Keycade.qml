@@ -823,8 +823,8 @@ Item {
           anchors.left: parent.left; anchors.leftMargin: 92
           anchors.verticalCenter: parent.verticalCenter
           spacing: 0
-          Text { text: i18n.t("tagline"); color: root.voidColor; font.family: "monospace"; font.pixelSize: 11; font.bold: true }
           Text { text: "KEYCADE"; color: root.voidColor; font.family: "monospace"; font.pixelSize: 32; font.bold: true; font.letterSpacing: 4 }
+          Text { text: i18n.t("brandSubtitle"); color: root.voidColor; font.family: "monospace"; font.pixelSize: 11; font.bold: true }
         }
 
         Row {
