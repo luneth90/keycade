@@ -5,6 +5,8 @@ import "../../lib/Eligibility.js" as Eligibility
 import "../../lib/Scheduler.js" as Scheduler
 import "../../lib/Stats.js" as Stats
 import "../../lib/Categorizer.js" as Categorizer
+import "../../lib/ActionLocalizer.js" as Actions
+import "../../lib/Session.js" as Session
 
 TestCase {
   name: "KeycadeAlgorithms"
@@ -365,11 +367,26 @@ TestCase {
       compare(unseenCards.length, 6)
       unseenCards.forEach(function(card) {
         seen[card.binding.id] = true
+        Scheduler.markCovered(bindings, stats, card.binding.id)
         Stats.recordGuided(stats, card.binding.id, run, now)
         stats.bindings[card.binding.id].dueRun = 99
       })
     }
     compare(Object.keys(seen).length, 30)
+  }
+
+  function test_schedulerOnlyAdvancesCoverageAfterCardIsShown() {
+    var stats = Stats.defaults()
+    var bindings = []
+    for (var index = 0; index < 10; index++) {
+      var item = binding({ key: String(index), arg: String(index), description: "New " + index })
+      item.id = "new-" + index
+      bindings.push(item)
+    }
+    var deck = Scheduler.build(bindings, stats, 8, { now: 100, runId: 1 })
+    compare(stats.coverageCursor, 0)
+    Scheduler.markCovered(bindings, stats, deck[0].binding.id)
+    verify(stats.coverageCursor !== 0)
   }
 
   function test_schedulerPrioritizesDueBeforeMaintenance() {
@@ -411,5 +428,42 @@ TestCase {
       return card.remedial && card.binding.id === deck[7].binding.id
     })
     compare(remedialIndex - 7 - 1, 4)
+  }
+
+  function test_savedSessionRestoresRemainingCardsAndCorrection() {
+    var first = binding({ key: "1", arg: "1", description: "First" })
+    first.id = "first"
+    var second = binding({ key: "2", arg: "2", description: "Second" })
+    second.id = "second"
+    var deck = [
+      { binding: first, tier: "learning", queue: "due", remedial: false, wave: 1 },
+      { binding: second, tier: "learning", queue: "remedial", remedial: true, wave: 1 }
+    ]
+    var cards = Session.cardsFrom(deck, 1)
+    compare(cards.length, 1)
+    compare(cards[0].bindingId, "second")
+    verify(cards[0].remedial)
+    var saved = { schemaVersion: 1, runId: 4, cards: cards, correctionRequired: true }
+    verify(Session.canResume(saved, 4, [first, second]))
+    verify(!Session.canResume(saved, 5, [first, second]))
+    var restored = Session.restoreCards(cards, [first, second])
+    compare(restored.length, 1)
+    compare(restored[0].binding.id, "second")
+    verify(restored[0].remedial)
+  }
+
+  function test_builtinActionsHaveLocaleKeysAndCustomTextStaysRaw() {
+    compare(Actions.translation(binding({ description: "Close window" })).key, "action_closeWindow")
+    var workspace = Actions.translation(binding({ description: "Switch to workspace 3" }))
+    compare(workspace.key, "action_switchWorkspace")
+    compare(workspace.values.workspace, "3")
+    compare(Actions.translation(binding({ description: "My custom backup script", dispatcher: "__lua" })), null)
+    var chinese = {
+      messages: { action_closeWindow: "关闭当前窗口" },
+      t: function(key) { return chinese.messages[key] || key }
+    }
+    compare(Actions.actionName(binding({ description: "Close window" }), chinese), "关闭当前窗口")
+    compare(Actions.actionName(binding({ description: "My custom backup script", dispatcher: "__lua" }), chinese),
+            "My custom backup script")
   }
 }

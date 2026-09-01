@@ -12,10 +12,15 @@ Item {
   }
   readonly property string statsPath: stateDir + "/stats.json"
   readonly property string settingsPath: stateDir + "/settings.json"
+  readonly property string sessionPath: stateDir + "/session.json"
 
   property var stats: Stats.defaults()
   property var settings: defaultSettings()
+  property var session: null
   property bool ready: false
+  property bool statsLoaded: false
+  property bool settingsLoaded: false
+  property bool sessionLoaded: false
   property bool statsCorrupt: false
   property bool settingsCorrupt: false
   property string pendingStats: ""
@@ -23,13 +28,17 @@ Item {
 
   function defaultSettings() {
     return {
-      schemaVersion: 1,
+      schemaVersion: 2,
       locale: "en",
       reducedMotion: false,
-      soundEnabled: true,
+      feedbackSound: true,
       countdownSound: true,
-      soundVolume: 0.6
+      soundVolume: 0.3
     }
+  }
+
+  function updateReady() {
+    root.ready = root.statsLoaded && root.settingsLoaded && root.sessionLoaded
   }
 
   function loadStats(raw) {
@@ -52,20 +61,28 @@ Item {
         console.warn("Keycade stats quarantined on next save:", error)
       }
     }
-    root.ready = true
+    root.statsLoaded = true
+    root.updateReady()
   }
 
   function loadSettings(raw) {
     try {
       var value = JSON.parse(String(raw || ""))
-      if (value.schemaVersion === 1) {
+      if (value.schemaVersion === 1 || value.schemaVersion === 2) {
+        var previousSchema = Number(value.schemaVersion)
         var merged = root.defaultSettings()
         Object.keys(value).forEach(function(key) { merged[key] = value[key] })
-        merged.soundEnabled = Boolean(merged.soundEnabled)
+        merged.schemaVersion = 2
+        if (value.feedbackSound === undefined)
+          merged.feedbackSound = value.soundEnabled === undefined ? true : Boolean(value.soundEnabled)
+        else merged.feedbackSound = Boolean(value.feedbackSound)
         merged.countdownSound = Boolean(merged.countdownSound)
         merged.soundVolume = Math.max(0, Math.min(1, Number(merged.soundVolume)))
+        if (previousSchema === 1) merged.soundVolume = Math.min(0.3, merged.soundVolume)
         root.settings = merged
         root.settingsCorrupt = false
+        if (previousSchema !== merged.schemaVersion)
+          Qt.callLater(function() { root.saveSettings() })
       } else {
         root.settingsCorrupt = true
       }
@@ -73,6 +90,25 @@ Item {
       root.settingsCorrupt = String(raw || "").trim() !== ""
       console.warn("Keycade settings parse failed:", error)
     }
+    root.settingsLoaded = true
+    root.updateReady()
+  }
+
+  function loadSession(raw) {
+    var text = String(raw || "").trim()
+    root.session = null
+    if (text) {
+      try {
+        var value = JSON.parse(text)
+        if (value.schemaVersion !== 1 || !Array.isArray(value.cards))
+          throw new Error("unsupported session schema")
+        root.session = value
+      } catch (error) {
+        console.warn("Keycade session ignored:", error)
+      }
+    }
+    root.sessionLoaded = true
+    root.updateReady()
   }
 
   function saveStats() {
@@ -93,6 +129,16 @@ Item {
     } else settingsFile.setText(payload)
   }
 
+  function saveSession(value) {
+    root.session = value
+    sessionFile.setText(JSON.stringify(value, null, 2) + "\n")
+  }
+
+  function clearSession() {
+    root.session = null
+    sessionFile.setText("")
+  }
+
   Component.onCompleted: ensureDir.running = true
 
   Process {
@@ -101,6 +147,7 @@ Item {
     onExited: {
       statsFile.reload()
       settingsFile.reload()
+      sessionFile.reload()
     }
   }
 
@@ -137,5 +184,15 @@ Item {
     atomicWrites: true
     printErrors: false
     onLoaded: root.loadSettings(text())
+    onLoadFailed: root.loadSettings("")
+  }
+
+  FileView {
+    id: sessionFile
+    path: root.sessionPath
+    atomicWrites: true
+    printErrors: false
+    onLoaded: root.loadSession(text())
+    onLoadFailed: root.loadSession("")
   }
 }

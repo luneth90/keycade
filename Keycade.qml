@@ -9,6 +9,8 @@ import "lib/Eligibility.js" as Eligibility
 import "lib/Scheduler.js" as Scheduler
 import "lib/Stats.js" as Stats
 import "lib/Categorizer.js" as Categorizer
+import "lib/ActionLocalizer.js" as Actions
+import "lib/Session.js" as Session
 
 Item {
   id: root
@@ -26,6 +28,7 @@ Item {
   property var deck: []
   property int cardIndex: 0
   property int runNumber: 1
+  property int runOffset: 0
   property int correct: 0
   property int attempts: 0
   property int newLearned: 0
@@ -45,10 +48,13 @@ Item {
   property string feedbackText: ""
   property bool revealChord: false
   property string themeName: "tokyo"
+  property bool resumeAvailable: false
+  property bool languageMenuOpen: false
+  property bool soundMenuOpen: false
 
   readonly property var currentCard: deck.length > cardIndex ? deck[cardIndex] : null
   readonly property var currentBinding: currentCard ? currentCard.binding : null
-  readonly property int waveNumber: currentCard ? currentCard.wave : Math.min(3, Math.floor(cardIndex / 8) + 1)
+  readonly property int waveNumber: Math.floor((runOffset + cardIndex) / 8) + 1
   readonly property bool reducedMotion: Boolean(store.settings.reducedMotion)
   readonly property int activeRunId: Number(store.stats.runs || 0) + 1
 
@@ -72,6 +78,8 @@ Item {
     root.errorMessage = ""
     root.guardReady = false
     root.startRequested = false
+    root.languageMenuOpen = false
+    root.soundMenuOpen = false
     root.themeName = String(store.settings.theme || payload.theme || "tokyo")
     if (payload.locale && i18n.supported.indexOf(payload.locale) !== -1) i18n.locale = payload.locale
     else i18n.locale = String(store.settings.locale || "en")
@@ -99,7 +107,13 @@ Item {
     sounds.stopCountdown()
     feedbackTimer.stop()
     waveTimer.stop()
-    if (store.ready) store.saveStats()
+    if (root.view === "playing" && root.cardLocked && !root.correctionRequired
+        && root.feedbackKind === "hit" && root.cardIndex + 1 >= root.deck.length)
+      finishRun()
+    if (store.ready) {
+      saveRunSession()
+      store.saveStats()
+    }
     root.view = "closing"
     guard.requestClose()
   }
@@ -114,12 +128,13 @@ Item {
       return
     }
     root.runNumber = Number(store.stats.runs || 0) + 1
+    root.resumeAvailable = hasResumableSession()
     refreshProgressCounts()
     root.view = "home"
     root.feedbackText = i18n.t("ready")
     if (root.startRequested) {
       root.startRequested = false
-      Qt.callLater(function() { root.startRun() })
+      Qt.callLater(function() { root.startPrimary() })
     }
   }
 
@@ -137,11 +152,20 @@ Item {
     return labels.join(" · ")
   }
 
-  function cycleLocale() {
-    i18n.cycle()
-    store.settings.locale = i18n.locale
+  function localeLabel(code) {
+    if (code === "zh-CN") return "简体中文"
+    if (code === "ja") return "日本語"
+    if (code === "es") return "Español"
+    return "English"
+  }
+
+  function selectLocale(code) {
+    if (i18n.supported.indexOf(code) === -1) return
+    i18n.locale = code
+    store.settings.locale = code
     store.settings = Object.assign({}, store.settings)
     store.saveSettings()
+    root.languageMenuOpen = false
   }
 
   function cycleTheme() {
@@ -153,7 +177,14 @@ Item {
   }
 
   function toggleSound() {
-    store.settings.soundEnabled = !Boolean(store.settings.soundEnabled)
+    store.settings.feedbackSound = !Boolean(store.settings.feedbackSound)
+    store.settings = Object.assign({}, store.settings)
+    store.saveSettings()
+  }
+
+  function adjustSoundVolume(delta) {
+    var value = Math.round(Number(store.settings.soundVolume || 0.3) * 10) / 10
+    store.settings.soundVolume = Math.max(0.1, Math.min(1.0, value + Number(delta || 0)))
     store.settings = Object.assign({}, store.settings)
     store.saveSettings()
   }
@@ -164,20 +195,71 @@ Item {
     store.saveSettings()
   }
 
-  function cycleSoundVolume() {
-    var value = Number(store.settings.soundVolume || 0)
-    if (!store.settings.soundEnabled) {
-      store.settings.soundEnabled = true
-      store.settings.soundVolume = 0.3
-    } else if (value < 0.45) store.settings.soundVolume = 0.6
-    else if (value < 0.8) store.settings.soundVolume = 1.0
-    else store.settings.soundEnabled = false
-    store.settings = Object.assign({}, store.settings)
-    store.saveSettings()
-  }
-
   function refreshProgressCounts() {
     root.progressCounts = Stats.counts(store.stats, root.eligibleBindings, Date.now(), root.activeRunId)
+  }
+
+  function hasResumableSession() {
+    return Session.canResume(store.session, root.activeRunId, root.eligibleBindings)
+  }
+
+  function saveRunSession() {
+    if (root.view !== "playing" && root.view !== "wave") return
+    var resumeIndex = root.cardIndex
+    var resumeCorrection = root.correctionRequired
+    if (root.cardLocked && !root.correctionRequired && root.feedbackKind === "hit") resumeIndex += 1
+    var cards = Session.cardsFrom(root.deck, resumeIndex)
+    if (!cards.length) {
+      store.clearSession()
+      root.resumeAvailable = false
+      return
+    }
+    store.saveSession({
+      schemaVersion: 1,
+      runId: root.activeRunId,
+      offset: root.runOffset + resumeIndex,
+      cards: cards,
+      correct: root.correct,
+      attempts: root.attempts,
+      newLearned: root.newLearned,
+      masteredGained: root.masteredGained,
+      reactions: root.reactions,
+      runResults: Session.serializableResults(root.runResults),
+      correctionRequired: resumeCorrection && resumeIndex === root.cardIndex,
+      savedAt: Date.now()
+    })
+    root.resumeAvailable = true
+  }
+
+  function resumeRun() {
+    if (!root.resumeAvailable || !guard.active) return
+    var session = store.session
+    var restoredDeck = Session.restoreCards(session.cards, root.eligibleBindings)
+    if (!restoredDeck.length) {
+      store.clearSession()
+      root.resumeAvailable = false
+      startRun()
+      return
+    }
+    guard.play()
+    root.deck = restoredDeck
+    root.cardIndex = 0
+    root.runOffset = Math.max(0, Number(session.offset || 0))
+    root.runNumber = Number(session.runId || root.activeRunId)
+    root.correct = Math.max(0, Number(session.correct || 0))
+    root.attempts = Math.max(0, Number(session.attempts || 0))
+    root.newLearned = Math.max(0, Number(session.newLearned || 0))
+    root.masteredGained = Math.max(0, Number(session.masteredGained || 0))
+    root.reactions = Array.isArray(session.reactions) ? session.reactions : []
+    root.runResults = Session.restoreResults(session.runResults, root.eligibleBindings)
+    root.reviewSuggestions = []
+    root.view = "playing"
+    showCard(Boolean(session.correctionRequired))
+  }
+
+  function startPrimary() {
+    if (root.view === "home" && root.resumeAvailable) resumeRun()
+    else startRun()
   }
 
   function startRun() {
@@ -187,9 +269,12 @@ Item {
       return
     }
     guard.play()
+    store.clearSession()
+    root.resumeAvailable = false
     root.runNumber = root.activeRunId
     root.deck = Scheduler.build(root.eligibleBindings, store.stats, 24, { runId: root.activeRunId })
     root.cardIndex = 0
+    root.runOffset = 0
     root.correct = 0
     root.attempts = 0
     root.newLearned = 0
@@ -204,7 +289,7 @@ Item {
     showCard()
   }
 
-  function showCard() {
+  function showCard(resumeCorrection) {
     feedbackTimer.stop()
     cardTimer.stop()
     sounds.stopCountdown()
@@ -220,10 +305,24 @@ Item {
     root.feedbackText = i18n.t(root.currentCard.tier === "guided" ? "copyChord" : "waiting")
     root.cardStartedAt = Date.now()
     root.lastCountdownBeat = 0
+    if (root.currentCard.queue === "unseen") {
+      Scheduler.markCovered(root.eligibleBindings, store.stats, root.currentBinding.id)
+      store.saveStats()
+    }
+    if (resumeCorrection) {
+      root.correctionRequired = true
+      root.revealChord = true
+      root.feedbackText = i18n.t("correctionPrompt")
+      root.energy = 1
+      root.deadline = 0
+      saveRunSession()
+      return
+    }
     var duration = Scheduler.durationFor(root.currentCard, store.stats)
     root.energy = 1
     root.deadline = duration ? Date.now() + duration : 0
     if (duration) cardTimer.start()
+    saveRunSession()
   }
 
   function handleGameInput(event) {
@@ -262,8 +361,8 @@ Item {
     root.revealChord = true
     root.feedbackKind = "hit"
     root.feedbackText = i18n.t("correctionHit")
-    sounds.playCorrection()
     if (!root.reducedMotion) hitFlash.restart()
+    saveRunSession()
     feedbackTimer.interval = 320
     feedbackTimer.restart()
   }
@@ -279,6 +378,7 @@ Item {
     root.revealChord = true
     root.deadline = 0
     root.energy = 1
+    saveRunSession()
   }
 
   function hitCurrent() {
@@ -310,6 +410,7 @@ Item {
     root.runResults[root.currentBinding.id] = hitResult
     refreshProgressCounts()
     store.saveStats()
+    saveRunSession()
     root.revealChord = true
     root.feedbackKind = "hit"
     root.feedbackText = i18n.t(guided ? "guidedHit" : "hit")
@@ -335,6 +436,7 @@ Item {
       if (!root.reducedMotion) missShake.restart()
       feedbackTimer.interval = 700
       feedbackTimer.restart()
+      saveRunSession()
       return
     }
     root.correctionRequired = true
@@ -349,6 +451,7 @@ Item {
     root.runResults[root.currentBinding.id] = missResult
     refreshProgressCounts()
     store.saveStats()
+    saveRunSession()
     if (!root.reducedMotion) missShake.restart()
     feedbackTimer.interval = 700
     feedbackTimer.restart()
@@ -364,8 +467,11 @@ Item {
       finishRun()
       return
     }
-    if (root.cardIndex % 8 === 0) {
+    if ((root.runOffset + root.cardIndex) % 8 === 0) {
+      root.cardLocked = false
+      root.feedbackKind = "idle"
       root.view = "wave"
+      saveRunSession()
       waveTimer.restart()
     } else showCard()
   }
@@ -373,6 +479,8 @@ Item {
   function finishRun() {
     cardTimer.stop()
     root.view = "summary"
+    store.clearSession()
+    root.resumeAvailable = false
     store.stats.runs = Number(store.stats.runs || 0) + 1
     var resultRows = Object.keys(root.runResults).map(function(id) { return root.runResults[id] })
     resultRows.sort(function(left, right) {
@@ -401,9 +509,9 @@ Item {
   I18n { id: i18n }
   SoundManager {
     id: sounds
-    soundEnabled: Boolean(store.settings.soundEnabled)
+    feedbackEnabled: Boolean(store.settings.feedbackSound)
     countdownEnabled: Boolean(store.settings.countdownSound)
-    volume: Number(store.settings.soundVolume || 0.6)
+    volume: Number(store.settings.soundVolume || 0.3)
   }
   StateStore {
     id: store
@@ -508,6 +616,13 @@ Item {
         guard.updateInput(Normalizer.modifierMask(event.modifiers))
         if (event.isAutoRepeat) { event.accepted = true; return }
         if (event.key === Qt.Key_Escape) {
+          if (root.languageMenuOpen || root.soundMenuOpen) {
+            root.languageMenuOpen = false
+            root.soundMenuOpen = false
+            root.escapeDown = false
+            event.accepted = true
+            return
+          }
           root.escapeDown = true
           event.accepted = true
           return
@@ -520,7 +635,7 @@ Item {
         }
         if ((root.view === "home" || root.view === "summary")
             && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter)) {
-          root.startRun()
+          root.startPrimary()
           event.accepted = true
           return
         }
@@ -566,6 +681,7 @@ Item {
 
       Rectangle {
         id: topbar
+        z: 20
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.top: parent.top
@@ -598,34 +714,106 @@ Item {
         }
 
         Row {
+          id: topControls
           anchors.right: parent.right; anchors.rightMargin: 22
           anchors.verticalCenter: parent.verticalCenter
           spacing: 10
 
           Rectangle {
-            width: 94; height: 36; color: root.screenColor; border.width: 3; border.color: root.voidColor
+            id: soundButton
+            width: 116; height: 36; color: root.screenColor; border.width: 3; border.color: root.voidColor
             Text {
               anchors.centerIn: parent
-              text: store.settings.soundEnabled ? "SFX " + Math.round(Number(store.settings.soundVolume || 0.6) * 100) : "SFX OFF"
-              color: store.settings.soundEnabled ? root.successColor : root.mutedColor
+              text: store.settings.feedbackSound || store.settings.countdownSound
+                    ? i18n.t("soundVolume", { volume: Math.round(Number(store.settings.soundVolume || 0.3) * 100) })
+                    : i18n.t("soundOff")
+              color: store.settings.feedbackSound || store.settings.countdownSound ? root.successColor : root.mutedColor
               font.family: "monospace"; font.bold: true; font.pixelSize: 10
             }
-            MouseArea { anchors.fill: parent; onClicked: root.cycleSoundVolume() }
-          }
-          Rectangle {
-            width: 86; height: 36; color: root.screenColor; border.width: 3; border.color: root.voidColor
-            Text {
-              anchors.centerIn: parent
-              text: store.settings.countdownSound ? "3·2·1 ON" : "3·2·1 OFF"
-              color: store.settings.countdownSound ? root.coinColor : root.mutedColor
-              font.family: "monospace"; font.bold: true; font.pixelSize: 9
+            MouseArea {
+              anchors.fill: parent
+              onClicked: {
+                root.soundMenuOpen = !root.soundMenuOpen
+                root.languageMenuOpen = false
+              }
             }
-            MouseArea { anchors.fill: parent; onClicked: root.toggleCountdownSound() }
+            Rectangle {
+              width: 250; height: 150
+              anchors.top: parent.bottom; anchors.topMargin: 8
+              anchors.right: parent.right
+              visible: root.soundMenuOpen
+              z: 200
+              color: root.cabinetColor; border.width: 3; border.color: root.primaryColor
+              Column {
+                anchors.fill: parent; anchors.margins: 10; spacing: 8
+                Text { text: i18n.t("soundSettings"); color: root.inkColor; font.family: "monospace"; font.bold: true; font.pixelSize: 11 }
+                Row {
+                  spacing: 8
+                  Rectangle {
+                    width: 38; height: 30; color: root.screenColor; border.width: 2; border.color: root.mutedColor
+                    Text { anchors.centerIn: parent; text: "−"; color: root.inkColor; font.pixelSize: 18; font.bold: true }
+                    MouseArea { anchors.fill: parent; onClicked: root.adjustSoundVolume(-0.1) }
+                  }
+                  Text {
+                    width: 130; height: 30; verticalAlignment: Text.AlignVCenter; horizontalAlignment: Text.AlignHCenter
+                    text: i18n.t("volumePercent", { volume: Math.round(Number(store.settings.soundVolume || 0.3) * 100) })
+                    color: root.inkColor; font.family: "monospace"; font.pixelSize: 11; font.bold: true
+                  }
+                  Rectangle {
+                    width: 38; height: 30; color: root.screenColor; border.width: 2; border.color: root.mutedColor
+                    Text { anchors.centerIn: parent; text: "+"; color: root.inkColor; font.pixelSize: 18; font.bold: true }
+                    MouseArea { anchors.fill: parent; onClicked: root.adjustSoundVolume(0.1) }
+                  }
+                }
+                Row {
+                  spacing: 8
+                  Rectangle {
+                    width: 108; height: 32; color: store.settings.feedbackSound ? root.successColor : root.screenColor; border.width: 2; border.color: root.mutedColor
+                    Text { anchors.centerIn: parent; text: i18n.t(store.settings.feedbackSound ? "feedbackOn" : "feedbackOff"); color: store.settings.feedbackSound ? root.voidColor : root.mutedColor; font.family: "monospace"; font.pixelSize: 9; font.bold: true }
+                    MouseArea { anchors.fill: parent; onClicked: root.toggleSound() }
+                  }
+                  Rectangle {
+                    width: 108; height: 32; color: store.settings.countdownSound ? root.coinColor : root.screenColor; border.width: 2; border.color: root.mutedColor
+                    Text { anchors.centerIn: parent; text: i18n.t(store.settings.countdownSound ? "countdownOn" : "countdownOff"); color: store.settings.countdownSound ? root.voidColor : root.mutedColor; font.family: "monospace"; font.pixelSize: 9; font.bold: true }
+                    MouseArea { anchors.fill: parent; onClicked: root.toggleCountdownSound() }
+                  }
+                }
+              }
+            }
           }
           Rectangle {
-            width: 86; height: 36; color: root.screenColor; border.width: 3; border.color: root.voidColor
-            Text { anchors.centerIn: parent; text: i18n.locale.toUpperCase(); color: root.inkColor; font.family: "monospace"; font.bold: true; font.pixelSize: 12 }
-            MouseArea { anchors.fill: parent; onClicked: root.cycleLocale() }
+            id: languageButton
+            width: 124; height: 36; color: root.screenColor; border.width: 3; border.color: root.voidColor
+            Text { anchors.centerIn: parent; text: root.localeLabel(i18n.locale) + " ▾"; color: root.inkColor; font.family: "monospace"; font.bold: true; font.pixelSize: 10 }
+            MouseArea {
+              anchors.fill: parent
+              onClicked: {
+                root.languageMenuOpen = !root.languageMenuOpen
+                root.soundMenuOpen = false
+              }
+            }
+            Rectangle {
+              width: 164; height: i18n.supported.length * 36 + 8
+              anchors.top: parent.bottom; anchors.topMargin: 8
+              anchors.horizontalCenter: parent.horizontalCenter
+              visible: root.languageMenuOpen
+              z: 200
+              color: root.cabinetColor; border.width: 3; border.color: root.primaryColor
+              Column {
+                anchors.fill: parent; anchors.margins: 4
+                Repeater {
+                  model: i18n.supported
+                  delegate: Rectangle {
+                    id: languageOption
+                    required property string modelData
+                    width: parent.width; height: 36
+                    color: languageOption.modelData === i18n.locale ? root.primaryColor : root.screenColor
+                    Text { anchors.centerIn: parent; text: root.localeLabel(languageOption.modelData); color: languageOption.modelData === i18n.locale ? root.voidColor : root.inkColor; font.family: "monospace"; font.pixelSize: 11; font.bold: true }
+                    MouseArea { anchors.fill: parent; onClicked: root.selectLocale(languageOption.modelData) }
+                  }
+                }
+              }
+            }
           }
           Rectangle {
             width: 112; height: 36; color: root.screenColor; border.width: 3; border.color: root.voidColor
@@ -654,7 +842,7 @@ Item {
             Repeater {
               model: [
                 { label: i18n.t("run"), value: String(root.runNumber).padStart(2, "0") },
-                { label: i18n.t("card"), value: String(Math.min(root.cardIndex + 1, root.deck.length || 24)).padStart(2, "0") + " / " + String(root.deck.length || 24) },
+                { label: i18n.t("card"), value: String(root.runOffset + Math.min(root.cardIndex + 1, root.deck.length || 24)).padStart(2, "0") + " / " + String(root.runOffset + (root.deck.length || 24)) },
                 { label: i18n.t("accuracy"), value: root.accuracyPercent() + "%" },
                 { label: i18n.t("mastered"), value: root.progressCounts.mastered + " / " + root.progressCounts.total }
               ]
@@ -758,10 +946,10 @@ Item {
         }
         Text {
           width: parent.width; horizontalAlignment: Text.AlignHCenter
-          text: root.view === "home" ? i18n.t("start") : "···"
+          text: root.view === "home" ? i18n.t(root.resumeAvailable ? "resumeTitle" : "start") : "···"
           color: root.inkColor; font.family: "monospace"; font.bold: true; font.pixelSize: 28; wrapMode: Text.WordWrap
         }
-        Text { width: parent.width; horizontalAlignment: Text.AlignHCenter; text: i18n.t("startHint"); color: root.mutedColor; font.pixelSize: 15 }
+        Text { width: parent.width; horizontalAlignment: Text.AlignHCenter; text: i18n.t(root.resumeAvailable ? "resumeHint" : "startHint"); color: root.mutedColor; font.pixelSize: 15 }
         Text {
           width: parent.width; horizontalAlignment: Text.AlignHCenter
           text: root.categorySummary(); color: root.secondaryColor
@@ -772,7 +960,14 @@ Item {
           width: 240; height: 48; anchors.horizontalCenter: parent.horizontalCenter
           visible: root.view === "home"
           color: root.primaryColor; border.width: 4; border.color: root.voidColor
-          Text { anchors.centerIn: parent; text: "▶  START RUN"; color: root.voidColor; font.family: "monospace"; font.bold: true; font.pixelSize: 15 }
+          Text { anchors.centerIn: parent; text: "▶  " + i18n.t(root.resumeAvailable ? "resumeRun" : "startRun"); color: root.voidColor; font.family: "monospace"; font.bold: true; font.pixelSize: 15 }
+          MouseArea { anchors.fill: parent; onClicked: root.startPrimary() }
+        }
+        Rectangle {
+          width: 240; height: 38; anchors.horizontalCenter: parent.horizontalCenter
+          visible: root.view === "home" && root.resumeAvailable
+          color: root.screenColor; border.width: 2; border.color: root.mutedColor
+          Text { anchors.centerIn: parent; text: i18n.t("startFresh"); color: root.mutedColor; font.family: "monospace"; font.bold: true; font.pixelSize: 11 }
           MouseArea { anchors.fill: parent; onClicked: root.startRun() }
         }
       }
@@ -795,7 +990,7 @@ Item {
         }
         Text {
           width: parent.width; height: 82; verticalAlignment: Text.AlignVCenter; horizontalAlignment: Text.AlignHCenter
-          text: root.currentBinding ? root.currentBinding.actionName : ""
+          text: root.currentBinding ? Actions.actionName(root.currentBinding, i18n) : ""
           color: root.inkColor; font.pixelSize: 27; font.bold: true; wrapMode: Text.WordWrap; maximumLineCount: 2
         }
         Text {
@@ -854,7 +1049,7 @@ Item {
     Item {
       Column {
         anchors.centerIn: parent; width: parent.width - 70; spacing: 20
-        Text { width: parent.width; horizontalAlignment: Text.AlignHCenter; text: i18n.t("wave", { wave: Math.floor(root.cardIndex / 8) }); color: root.coinColor; font.family: "monospace"; font.bold: true; font.pixelSize: 30 }
+        Text { width: parent.width; horizontalAlignment: Text.AlignHCenter; text: i18n.t("wave", { wave: Math.floor((root.runOffset + root.cardIndex) / 8) }); color: root.coinColor; font.family: "monospace"; font.bold: true; font.pixelSize: 30 }
         Text { width: parent.width; horizontalAlignment: Text.AlignHCenter; text: i18n.t("waveStats", { accuracy: root.accuracyPercent(), learned: root.newLearned, mastered: root.masteredGained }); color: root.inkColor; font.pixelSize: 17 }
       }
     }

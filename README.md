@@ -2,7 +2,7 @@
 
 Keycade = Key + Arcade. It is a native Omarchy overlay that turns the
 shortcuts active in the current Hyprland session into a short adaptive arcade
-run. Version 0.2.0 implements the v0.5 continuous-mastery design. Correct input
+run. Version 0.2.1 implements the v0.5.1 continuous-mastery design. Correct input
 is recognized locally and is never dispatched as the bound action.
 
 This repository implements Stage 0 and the MVP described in [DESIGN.md](DESIGN.md):
@@ -22,8 +22,12 @@ This repository implements Stage 0 and the MVP described in [DESIGN.md](DESIGN.m
   schedules another unassisted attempt 3–5 cards later;
 - first-try accuracy, spaced review, lapse handling, and mastery based on five
   unassisted successes across at least three runs;
-- local correct, wrong, correction, and 3/2/1 countdown sounds with independent
+- local correct, wrong, and 3/2/1 countdown sounds with independent
   sound/countdown controls;
+- resumable runs: Esc stores the remaining deck and correction state, while a
+  fresh-run button remains available on the next launch;
+- a language dropdown and localized names for recognized built-in Omarchy
+  actions; custom descriptions remain untouched;
 - local atomic stats and settings under `$XDG_STATE_HOME/omarchy/keycade/`;
 - English, Simplified Chinese, Japanese, and Spanish interface text;
 - Tokyo Night, Gruvbox, and Catppuccin arcade palettes;
@@ -98,8 +102,10 @@ hyprctl configerrors
 
 Inside Keycade, press Enter to start and release Esc to exit safely. On exit,
 Keycade waits for all held modifiers before disabling the inhibitor and giving
-keyboard focus back. The `SFX` button cycles 30%, 60%, 100%, and off; the
-`3·2·1` button independently controls countdown beats.
+keyboard focus back. The next launch offers to continue the exact remaining
+deck. Open the sound menu to adjust volume in 10% steps or independently toggle
+feedback and countdown sounds. Feedback uses softer, faded two-tone cues and
+does not play an extra sound after corrective input.
 
 ## Native Stage 0 probe
 

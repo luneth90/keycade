@@ -4,24 +4,31 @@ import QtMultimedia
 Item {
   id: root
 
-  property bool soundEnabled: true
+  property bool feedbackEnabled: true
   property bool countdownEnabled: true
-  property real volume: 0.6
+  property real volume: 0.3
+  property double lastFeedbackAt: 0
+  property int feedbackCooldownMs: 180
+
+  function playFeedback(effect) {
+    var now = Date.now()
+    if (!root.feedbackEnabled || now - root.lastFeedbackAt < root.feedbackCooldownMs) return
+    root.lastFeedbackAt = now
+    correctSound.stop()
+    wrongSound.stop()
+    effect.play()
+  }
 
   function playCorrect() {
-    if (root.soundEnabled) correctSound.play()
+    playFeedback(correctSound)
   }
 
   function playWrong() {
-    if (root.soundEnabled) wrongSound.play()
-  }
-
-  function playCorrection() {
-    if (root.soundEnabled) correctionSound.play()
+    playFeedback(wrongSound)
   }
 
   function playCountdown(finalBeat) {
-    if (!root.soundEnabled || !root.countdownEnabled) return
+    if (!root.countdownEnabled) return
     if (finalBeat) countdownFinalSound.play()
     else countdownSound.play()
   }
@@ -34,30 +41,24 @@ Item {
   SoundEffect {
     id: correctSound
     source: Qt.resolvedUrl("../assets/sfx/correct.wav")
-    volume: root.volume
+    volume: root.volume * 0.5
   }
 
   SoundEffect {
     id: wrongSound
     source: Qt.resolvedUrl("../assets/sfx/wrong.wav")
-    volume: root.volume
-  }
-
-  SoundEffect {
-    id: correctionSound
-    source: Qt.resolvedUrl("../assets/sfx/correction.wav")
-    volume: root.volume * 0.8
+    volume: root.volume * 0.4
   }
 
   SoundEffect {
     id: countdownSound
     source: Qt.resolvedUrl("../assets/sfx/countdown.wav")
-    volume: root.volume * 0.75
+    volume: root.volume * 0.45
   }
 
   SoundEffect {
     id: countdownFinalSound
     source: Qt.resolvedUrl("../assets/sfx/countdown-final.wav")
-    volume: root.volume * 0.85
+    volume: root.volume * 0.5
   }
 }

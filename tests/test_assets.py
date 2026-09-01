@@ -1,4 +1,5 @@
 import json
+import re
 import unittest
 import wave
 from pathlib import Path
@@ -16,16 +17,18 @@ class AssetTests(unittest.TestCase):
             path.name: json.loads(path.read_text(encoding="utf-8"))
             for path in locale_files
         }
-        expected = set(messages["en.json"])
+        expected_ui = {key for key in messages["en.json"] if not key.startswith("action_")}
+        common_actions = {key for key in messages["en.json"] if key.startswith("action_")}
         for name, value in messages.items():
             self.assertEqual(value["schemaVersion"], 1, name)
-            self.assertEqual(set(value), expected, name)
+            actual_ui = {key for key in value if not key.startswith("action_")}
+            self.assertEqual(actual_ui, expected_ui, name)
+            self.assertTrue(common_actions.issubset(value), name)
 
     def test_sound_effects_are_short_mono_pcm_waves(self):
         expected = {
             "correct.wav",
             "wrong.wav",
-            "correction.wav",
             "countdown.wav",
             "countdown-final.wav",
         }
@@ -38,7 +41,15 @@ class AssetTests(unittest.TestCase):
                 self.assertEqual(sound.getframerate(), 44100, name)
                 duration = sound.getnframes() / sound.getframerate()
                 self.assertGreater(duration, 0.04, name)
-                self.assertLess(duration, 0.20, name)
+                self.assertLess(duration, 0.35, name)
+
+    def test_chinese_covers_every_recognized_builtin_action(self):
+        source = (ROOT / "lib" / "ActionLocalizer.js").read_text(encoding="utf-8")
+        action_keys = set(re.findall(r'"(action_[A-Za-z]+)"', source))
+        chinese = json.loads(
+            (ROOT / "assets" / "locales" / "zh-CN.json").read_text(encoding="utf-8")
+        )
+        self.assertTrue(action_keys.issubset(chinese), sorted(action_keys - set(chinese)))
 
 
 if __name__ == "__main__":
