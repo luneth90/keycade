@@ -273,6 +273,38 @@ TestCase {
     compare(Stats.percentile75(stats.bindings.timed.reactions), 590)
   }
 
+  function test_lifetimeSummaryAndFirstMasteryMilestone() {
+    var stats = Stats.defaults()
+    Stats.recordGuided(stats, "first", 1, 100)
+    Stats.recordFirstTry(stats, "first", true, 500, 1, 200)
+    Stats.recordFirstTry(stats, "first", false, -1, 2, 300)
+    Stats.recordGuided(stats, "second", 1, 100)
+    Stats.recordFirstTry(stats, "second", true, 900, 1, 200)
+
+    var summary = Stats.aggregate(stats, [{ id: "first" }, { id: "second" }])
+    compare(summary.attempts, 3)
+    compare(summary.correct, 2)
+    compare(summary.accuracy, 67)
+    compare(summary.response, 900)
+
+    verify(Stats.noteFirstMastery(stats, 12345, 7))
+    compare(stats.firstMasteryAt, 12345)
+    compare(stats.firstMasteryRun, 7)
+    verify(!stats.firstMasteryCelebrated)
+    verify(!Stats.noteFirstMastery(stats, 23456, 8))
+    verify(Stats.markFirstMasteryCelebrated(stats))
+    verify(!Stats.markFirstMasteryCelebrated(stats))
+
+    compare(Stats.addTrainingTime(stats, 654321), 654321)
+    compare(Stats.addTrainingTime(stats, -10), 654321)
+    var migrated = Stats.migrate(stats)
+    compare(migrated.schemaVersion, 3)
+    compare(migrated.totalTrainingMs, 654321)
+    compare(migrated.firstMasteryAt, 12345)
+    compare(migrated.firstMasteryRun, 7)
+    verify(migrated.firstMasteryCelebrated)
+  }
+
   function test_v1StatsMigrateWithoutInventingMastery() {
     var migrated = Stats.migrate({
       schemaVersion: 1,
@@ -292,12 +324,44 @@ TestCase {
         }
       }
     })
-    compare(migrated.schemaVersion, 2)
+    compare(migrated.schemaVersion, 3)
     compare(migrated.runs, 9)
+    compare(migrated.totalTrainingMs, 0)
+    compare(migrated.firstMasteryAt, 0)
+    verify(!migrated.firstMasteryCelebrated)
     compare(migrated.bindings.one.state, "learning")
     compare(migrated.bindings.one.firstTryAttempts, 2)
     compare(migrated.bindings.one.firstTryCorrect, 1)
     compare(migrated.bindings.one.successfulRuns.length, 0)
+  }
+
+  function test_v2StatsPreserveProgressAndGainMilestoneDefaults() {
+    var migrated = Stats.migrate({
+      schemaVersion: 2,
+      runs: 12,
+      coverageCursor: 8,
+      bindings: {
+        one: {
+          state: "mastered",
+          guidedCompleted: true,
+          firstTryAttempts: 6,
+          firstTryCorrect: 5,
+          recentFirstTry: [true, true, true, true, true],
+          reactions: [700, 650],
+          successfulRuns: [8, 10, 12],
+          lastSuccessfulRun: 12
+        }
+      }
+    })
+    compare(migrated.schemaVersion, 3)
+    compare(migrated.runs, 12)
+    compare(migrated.coverageCursor, 8)
+    compare(migrated.bindings.one.state, "mastered")
+    compare(migrated.bindings.one.firstTryCorrect, 5)
+    compare(migrated.totalTrainingMs, 0)
+    compare(migrated.firstMasteryAt, 0)
+    compare(migrated.firstMasteryRun, 0)
+    verify(!migrated.firstMasteryCelebrated)
   }
 
   function test_schedulerSpreadsRepeatedBindingsAndAvoidsAdjacentRepeats() {

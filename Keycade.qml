@@ -39,7 +39,9 @@ Item {
   property var runResults: ({})
   property var pendingReinforcements: ({})
   property var reviewSuggestions: []
+  property var masterySnapshot: ({ attempts: 0, correct: 0, accuracy: 0, response: 0 })
   property var progressCounts: ({ unseen: 0, learning: 0, mastered: 0, due: 0, total: 0 })
+  property double activeSegmentStartedAt: 0
   property double cardStartedAt: 0
   property double deadline: 0
   property real energy: 1
@@ -81,6 +83,7 @@ Item {
     root.errorMessage = ""
     root.guardReady = false
     root.startRequested = false
+    root.activeSegmentStartedAt = 0
     root.languageMenuOpen = false
     root.soundMenuOpen = false
     root.themeName = String(store.settings.theme || payload.theme || "tokyo")
@@ -109,9 +112,10 @@ Item {
     cardTimer.stop()
     sounds.stopCountdown()
     feedbackTimer.stop()
+    commitActiveTraining()
     if (root.view === "playing" && root.cardLocked && !root.correctionRequired
         && root.feedbackKind === "hit" && root.cardIndex + 1 >= root.deck.length)
-      finishRun()
+      finishRun(false)
     if (store.ready) {
       saveRunSession()
       store.saveStats()
@@ -132,6 +136,16 @@ Item {
     root.runNumber = Number(store.stats.runs || 0) + 1
     root.resumeAvailable = hasResumableSession()
     refreshProgressCounts()
+    checkFirstMastery(root.activeRunId)
+    if (!root.resumeAvailable && Number(store.stats.firstMasteryAt || 0) > 0
+        && !Boolean(store.stats.firstMasteryCelebrated)
+        && Number(store.stats.firstMasteryRun || 0) <= Number(store.stats.runs || 0)) {
+      root.masterySnapshot = Stats.aggregate(store.stats, root.eligibleBindings)
+      Stats.markFirstMasteryCelebrated(store.stats)
+      store.saveStats()
+      root.view = "mastery"
+      return
+    }
     root.view = "home"
     root.feedbackText = i18n.t("ready")
     if (root.startRequested) {
@@ -199,6 +213,41 @@ Item {
 
   function refreshProgressCounts() {
     root.progressCounts = Stats.counts(store.stats, root.eligibleBindings, Date.now(), root.activeRunId)
+  }
+
+  function commitActiveTraining() {
+    if (root.activeSegmentStartedAt <= 0) return
+    Stats.addTrainingTime(store.stats, Date.now() - root.activeSegmentStartedAt)
+    root.activeSegmentStartedAt = 0
+  }
+
+  function checkFirstMastery(runId) {
+    if (root.progressCounts.total <= 0
+        || root.progressCounts.mastered !== root.progressCounts.total) return false
+    var reached = Stats.noteFirstMastery(store.stats, Date.now(), runId || root.activeRunId)
+    if (reached) store.saveStats()
+    return reached
+  }
+
+  function formatTrainingTime(milliseconds) {
+    var minutes = Math.floor(Math.max(0, Number(milliseconds || 0)) / 60000)
+    if (minutes < 1) return i18n.t("underOneMinute")
+    if (minutes < 60) return i18n.t("durationMinutes", { minutes: minutes })
+    return i18n.t("durationHours", {
+      hours: Math.floor(minutes / 60),
+      minutes: minutes % 60
+    })
+  }
+
+  function formatMasteryDate(timestamp) {
+    var date = new Date(Number(timestamp || Date.now()))
+    var month = String(date.getMonth() + 1).padStart(2, "0")
+    var day = String(date.getDate()).padStart(2, "0")
+    return date.getFullYear() + "-" + month + "-" + day
+  }
+
+  function continueFromMastery() {
+    if (root.view === "mastery") root.view = "summary"
   }
 
   function completedCardCount() {
@@ -288,6 +337,7 @@ Item {
     root.reactions = Array.isArray(session.reactions) ? session.reactions : []
     root.runResults = Session.restoreResults(session.runResults, root.eligibleBindings)
     root.reviewSuggestions = []
+    root.activeSegmentStartedAt = Date.now()
     root.view = "playing"
     showCard(Boolean(session.correctionRequired))
   }
@@ -325,6 +375,7 @@ Item {
     root.correctionRequired = false
     refreshProgressCounts()
     store.saveStats()
+    root.activeSegmentStartedAt = Date.now()
     root.view = "playing"
     showCard()
   }
@@ -452,6 +503,7 @@ Item {
     }
     root.runResults[root.currentBinding.id] = hitResult
     refreshProgressCounts()
+    checkFirstMastery(root.activeRunId)
     store.saveStats()
     root.revealChord = true
     root.feedbackKind = "hit"
@@ -514,9 +566,9 @@ Item {
     showCard()
   }
 
-  function finishRun() {
+  function finishRun(showMastery) {
     cardTimer.stop()
-    root.view = "summary"
+    commitActiveTraining()
     store.clearSession()
     root.resumeAvailable = false
     store.stats.runs = Number(store.stats.runs || 0) + 1
@@ -527,6 +579,15 @@ Item {
     })
     root.reviewSuggestions = resultRows.slice(0, 3)
     refreshProgressCounts()
+    root.masterySnapshot = Stats.aggregate(store.stats, root.eligibleBindings)
+    if (Number(store.stats.firstMasteryAt || 0) > 0
+        && !Boolean(store.stats.firstMasteryCelebrated)) {
+      if (showMastery === false) root.view = "summary"
+      else {
+        Stats.markFirstMasteryCelebrated(store.stats)
+        root.view = "mastery"
+      }
+    } else root.view = "summary"
     store.saveStats()
   }
 
@@ -667,6 +728,12 @@ Item {
         if (root.view === "loading"
             && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter)) {
           root.startRequested = true
+          event.accepted = true
+          return
+        }
+        if (root.view === "mastery"
+            && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter)) {
+          root.continueFromMastery()
           event.accepted = true
           return
         }
@@ -990,7 +1057,11 @@ Item {
 
                 Loader {
                   anchors.fill: parent
-                  sourceComponent: root.view === "playing" ? playCard : root.view === "summary" ? summaryCard : root.view === "blocked" ? blockedCard : root.view === "closing" ? closingCard : homeCard
+                  sourceComponent: root.view === "playing" ? playCard
+                                 : root.view === "mastery" ? masteryCard
+                                 : root.view === "summary" ? summaryCard
+                                 : root.view === "blocked" ? blockedCard
+                                 : root.view === "closing" ? closingCard : homeCard
                 }
               }
             }
@@ -1123,6 +1194,60 @@ Item {
           text: root.feedbackText
           color: root.feedbackKind === "hit" ? root.successColor : root.feedbackKind === "miss" ? root.dangerColor : root.mutedColor
           font.family: "monospace"; font.pixelSize: 13; font.bold: true
+        }
+      }
+    }
+  }
+
+  Component {
+    id: masteryCard
+    Item {
+      Column {
+        anchors.centerIn: parent; width: parent.width - 44; spacing: 10
+        Text {
+          width: parent.width; horizontalAlignment: Text.AlignHCenter
+          text: "★  " + i18n.t("masteryCelebration") + "  ★"
+          color: root.coinColor; font.family: "monospace"; font.bold: true; font.pixelSize: 24
+        }
+        Text {
+          width: parent.width; horizontalAlignment: Text.AlignHCenter; wrapMode: Text.WordWrap
+          text: i18n.t("masteryBody", { count: root.progressCounts.total })
+          color: root.inkColor; font.pixelSize: 13
+        }
+        Grid {
+          width: parent.width; columns: 3; spacing: 7
+          Repeater {
+            model: [
+              { label: i18n.t("shortcutTotal"), value: root.progressCounts.total },
+              { label: i18n.t("totalRuns"), value: Number(store.stats.runs || 0) },
+              { label: i18n.t("trainingTime"), value: root.formatTrainingTime(store.stats.totalTrainingMs) },
+              { label: i18n.t("accuracy"), value: root.masterySnapshot.accuracy + "%" },
+              { label: i18n.t("response"), value: root.masterySnapshot.response ? root.masterySnapshot.response + " ms" : "—" },
+              { label: i18n.t("masteryDate"), value: root.formatMasteryDate(store.stats.firstMasteryAt) }
+            ]
+            delegate: Rectangle {
+              id: masteryDatum
+              required property var modelData
+              width: (parent.width - 14) / 3; height: 62
+              color: root.screenColor; border.width: 2; border.color: root.successColor
+              Column {
+                width: parent.width - 10; anchors.centerIn: parent; spacing: 3
+                Text { width: parent.width; horizontalAlignment: Text.AlignHCenter; elide: Text.ElideRight; text: masteryDatum.modelData.label; color: root.mutedColor; font.family: "monospace"; font.pixelSize: 9; font.bold: true }
+                Text { width: parent.width; horizontalAlignment: Text.AlignHCenter; elide: Text.ElideRight; text: masteryDatum.modelData.value; color: root.inkColor; font.family: "monospace"; font.pixelSize: 17; font.bold: true }
+              }
+            }
+          }
+        }
+        Text {
+          width: parent.width; horizontalAlignment: Text.AlignHCenter; wrapMode: Text.WordWrap
+          text: i18n.t("maintenanceUnlocked")
+          color: root.secondaryColor; font.pixelSize: 12; font.bold: true
+        }
+        Rectangle {
+          width: 220; height: 36; anchors.horizontalCenter: parent.horizontalCenter
+          color: root.successColor; border.width: 3; border.color: root.voidColor
+          Text { anchors.centerIn: parent; text: i18n.t("continueSummary"); color: root.voidColor; font.family: "monospace"; font.pixelSize: 11; font.bold: true }
+          MouseArea { anchors.fill: parent; onClicked: root.continueFromMastery() }
         }
       }
     }
