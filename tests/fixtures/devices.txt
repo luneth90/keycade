@@ -1,0 +1,3 @@
+Keyboard at cafe:
+	active keymap: English (US)
+

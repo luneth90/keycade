@@ -1,0 +1,51 @@
+bindd
+	locked: false
+	mouse: false
+	release: false
+	repeat: false
+	longPress: false
+	nonConsuming: false
+	has_description: true
+	modmask: 64
+	submap: 
+	key: 3
+	keycode: 0
+	catchAll: false
+	description: Switch to workspace 3
+	dispatcher: workspace
+	arg: 3
+	dontInhibit: false
+bindd
+	locked: false
+	mouse: false
+	release: false
+	repeat: false
+	longPress: false
+	nonConsuming: false
+	has_description: true
+	modmask: 65
+	submap: 
+	key: code:12
+	keycode: 12
+	catchAll: false
+	description: Move window to workspace 3
+	dispatcher: movetoworkspace
+	arg: 3
+	dontInhibit: false
+bindrpd
+	locked: false
+	mouse: false
+	release: true
+	repeat: false
+	longPress: false
+	nonConsuming: false
+	has_description: true
+	modmask: 64
+	submap: 
+	key: W
+	keycode: 0
+	catchAll: false
+	description: Unsafe release action
+	dispatcher: exec
+	arg: printf 'a,b'
+	dontInhibit: true

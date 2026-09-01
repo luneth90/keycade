@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en" data-theme="tokyo">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark" />
+    <title>Keycade — 16-bit Shortcut Arcade</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="desktop" aria-hidden="true">
+      <div class="desktop-panel">
+        <span>OMARCHY</span>
+        <span data-i18n="playerOne">[ PLAYER 1 ]</span>
+        <span>18:42</span>
+      </div>
+      <div class="ghost-window ghost-window--one"></div>
+      <div class="ghost-window ghost-window--two"></div>
+    </div>
+
+    <main class="overlay">
+      <section class="arcade" aria-labelledby="brand-title">
+        <div class="arcade__glow" aria-hidden="true"></div>
+
+        <header class="topbar">
+          <div class="brand">
+            <div class="brand__mark" aria-hidden="true">K</div>
+            <div>
+              <p class="eyebrow" data-i18n="tagline">16-BIT SHORTCUT TRAINER</p>
+              <h1 id="brand-title">KEYCADE</h1>
+            </div>
+          </div>
+
+          <div class="controls">
+            <label class="select-label">
+              <span data-i18n="themeLabel">Theme</span>
+              <select id="theme-select">
+                <option value="tokyo">Tokyo Night</option>
+                <option value="gruvbox">Gruvbox</option>
+                <option value="catppuccin">Catppuccin</option>
+              </select>
+            </label>
+            <label class="select-label">
+              <span data-i18n="languageLabel">Language</span>
+              <select id="locale-select" aria-label="Language" data-i18n-aria-label="languageLabel">
+                <option value="en">English</option>
+                <option value="zh-CN">简体中文</option>
+                <option value="ja">日本語</option>
+                <option value="es">Español</option>
+              </select>
+            </label>
+            <button id="motion-toggle" class="icon-button" type="button" aria-pressed="false">
+              Motion: On
+            </button>
+          </div>
+        </header>
+
+        <div class="run-banner" aria-label="Active adaptive run" data-i18n-aria-label="runStatusAria">
+          <span class="run-banner__live"><i aria-hidden="true"></i><b data-i18n="runLive">RUN LIVE</b></span>
+          <span class="run-banner__track" aria-hidden="true"></span>
+          <span data-i18n="adaptiveDeck">HINTS ADAPT TO YOU</span>
+        </div>
+
+        <section class="game-shell">
+          <div class="hud" aria-label="Game status" data-i18n-aria-label="gameStatusAria">
+            <div class="hud__item">
+              <span class="hud__label" data-i18n="hudRun">RUN</span>
+              <strong id="hud-run">01</strong>
+            </div>
+            <div class="hud__item hud__item--center">
+              <span class="hud__label" data-i18n="hudStage">STAGE</span>
+              <strong id="hud-progress">01 / 08</strong>
+            </div>
+            <div class="hud__item hud__item--score">
+              <span class="hud__label" data-i18n="hudScore">SCORE</span>
+              <strong id="hud-score">000000</strong>
+            </div>
+          </div>
+
+          <div class="playfield">
+            <aside class="side-meter side-meter--left" aria-label="Lives" data-i18n-aria-label="livesAria">
+              <span class="side-meter__label" data-i18n="hudLives">LIVES</span>
+              <div id="lives" class="lives">
+                <span class="life is-on">♥</span>
+                <span class="life is-on">♥</span>
+                <span class="life is-on">♥</span>
+              </div>
+            </aside>
+
+            <div class="card-stage">
+              <div id="timer-ring" class="timer-ring" style="--progress: 1">
+                <article id="task-card" class="task-card" aria-live="polite">
+                  <div class="corner corner--tl"></div>
+                  <div class="corner corner--br"></div>
+
+                  <p id="card-kicker" class="card-kicker">NEW MOVE</p>
+                  <div id="action-icon" class="action-icon" aria-hidden="true">↗</div>
+                  <h2 id="action-name">Focus window right</h2>
+                  <p id="instruction" class="instruction">Press it twice to learn the gesture</p>
+
+                  <div id="key-chord" class="key-chord" aria-label="Target shortcut" data-i18n-aria-label="targetShortcutAria"></div>
+
+                  <div id="feedback" class="feedback" role="status">
+                    <span class="feedback__icon">●</span>
+                    <span class="feedback__text">WAITING FOR INPUT</span>
+                  </div>
+                </article>
+              </div>
+              <div id="sparks" class="sparks" aria-hidden="true"></div>
+            </div>
+
+            <aside class="side-meter side-meter--right" aria-label="Combo" data-i18n-aria-label="comboAria">
+              <span class="side-meter__label" data-i18n="hudCombo">COMBO</span>
+              <strong id="combo" class="combo">×0</strong>
+            </aside>
+          </div>
+
+          <footer class="game-footer">
+            <p id="keyboard-hint" data-i18n="keyboardHint">
+              Press the shortcut shown on the card. Use the demo buttons if the browser intercepts it.
+            </p>
+            <div class="demo-actions">
+              <button id="miss-button" class="button button--ghost" type="button" data-i18n="demoMiss">Demo miss</button>
+              <button id="hit-button" class="button button--primary" type="button" data-i18n="demoHit">Demo hit</button>
+              <button id="next-button" class="button button--ghost" type="button" data-i18n="nextCard">Next card</button>
+            </div>
+          </footer>
+        </section>
+
+        <div class="status-strip" aria-hidden="true">
+          <span class="status-prompt" data-i18n="insertShortcut">INSERT SHORTCUT</span>
+          <span data-i18n="statusLocal">LOCAL ONLY</span>
+          <span class="status-strip__line"></span>
+          <span data-i18n="statusInput">INPUT SAFE</span>
+          <span class="status-strip__line"></span>
+          <span data-i18n="statusDispatch">NO DISPATCH</span>
+        </div>
+      </section>
+    </main>
+
+    <script src="i18n.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>

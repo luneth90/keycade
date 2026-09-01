@@ -1,0 +1,441 @@
+#!/usr/bin/env python3
+"""Emit a versioned, machine-readable snapshot of trainable Hyprland binds.
+
+The helper intentionally parses ``hyprctl binds``' plain output. Hyprland
+versions in current Omarchy releases have shipped malformed JSON for edge-case
+arguments, while the plain block format remains stable and preserves flags.
+"""
+
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import re
+import subprocess
+import sys
+from pathlib import Path
+from typing import Any
+
+SCHEMA_VERSION = 1
+BOOLEAN_FIELDS = {
+    "locked",
+    "mouse",
+    "release",
+    "repeat",
+    "longPress",
+    "nonConsuming",
+    "has_description",
+    "dontInhibit",
+    "catchAll",
+}
+
+HEADER_FLAGS = {
+    "l": "locked",
+    "r": "release",
+    "c": "click",
+    "g": "drag",
+    "o": "long-press",
+    "e": "repeat",
+    "n": "non-consuming",
+    "m": "mouse",
+    "t": "transparent",
+    "i": "ignore-mods",
+    "s": "separate",
+    "d": "description",
+    "p": "dont-inhibit",
+}
+
+KEY_ALIASES = {
+    "comma": ",",
+    "period": ".",
+    "slash": "/",
+    "minus": "-",
+    "equal": "=",
+    "grave": "`",
+    "return": "RETURN",
+    "enter": "RETURN",
+    "space": "SPACE",
+    "escape": "ESCAPE",
+}
+
+PHYSICAL_FALLBACKS = {
+    10: "1", 11: "2", 12: "3", 13: "4", 14: "5",
+    15: "6", 16: "7", 17: "8", 18: "9", 19: "0",
+    20: "-", 21: "=", 59: ",", 60: ".", 61: "/",
+}
+
+MODIFIER_KEYS = {
+    "SHIFT",
+    "CTRL",
+    "CONTROL",
+    "ALT",
+    "SUPER",
+    "META",
+    "WIN",
+    "MOD1",
+    "MOD4",
+}
+
+LUA_BIND_SCANNER = r'''
+local modifiers = { SHIFT = 1, CTRL = 4, CONTROL = 4, ALT = 8, SUPER = 64 }
+
+local function split_keys(keys)
+  local modmask, key = 0, ""
+  for part in string.gmatch(tostring(keys or ""), "[^+]+") do
+    local value = part:gsub("^%s+", ""):gsub("%s+$", "")
+    local modifier = modifiers[string.upper(value)]
+    if modifier then modmask = modmask + modifier else key = value end
+  end
+  return modmask, key
+end
+
+local function literal(value)
+  local kind = type(value)
+  if kind == "string" then return string.format("%q", value) end
+  if kind == "number" or kind == "boolean" then return tostring(value) end
+  if kind ~= "table" then return "nil" end
+  local parts = {}
+  for i = 1, #value do parts[#parts + 1] = literal(value[i]) end
+  return "{ " .. table.concat(parts, ", ") .. " }"
+end
+
+local function call_expression(path, ...)
+  local args = {}
+  for i = 1, select("#", ...) do args[i] = literal(select(i, ...)) end
+  return path .. "(" .. table.concat(args, ", ") .. ")"
+end
+
+local function dispatcher(kind, arg, expression)
+  return { __keycade_dispatcher = true, kind = kind or "", arg = arg or "", expression = expression or "" }
+end
+
+local function dsp_proxy(path)
+  return setmetatable({ path = path }, {
+    __index = function(self, key) return dsp_proxy(self.path .. "." .. tostring(key)) end,
+    __call = function(self, ...)
+      local first = ...
+      local expression = call_expression(self.path, ...)
+      if self.path == "hl.dsp.exec_cmd" and type(first) == "string" then
+        return dispatcher("exec", first, expression)
+      end
+      return dispatcher("lua", expression, expression)
+    end,
+  })
+end
+
+local noop
+noop = setmetatable({}, {
+  __index = function() return noop end,
+  __call = function() return noop end,
+})
+
+hl = setmetatable({
+  dsp = dsp_proxy("hl.dsp"),
+  bind = function(keys, bind_dispatcher, opts)
+    opts = opts or {}
+    if opts.description and opts.description ~= "" then
+      local modmask, key = split_keys(keys)
+      local kind, arg = "", ""
+      if type(bind_dispatcher) == "table" and bind_dispatcher.__keycade_dispatcher then
+        kind, arg = bind_dispatcher.kind or "", bind_dispatcher.arg or bind_dispatcher.expression or ""
+      elseif type(bind_dispatcher) == "string" and bind_dispatcher ~= "" then
+        kind, arg = "exec", bind_dispatcher
+      end
+      io.write(tostring(modmask), "\t", tostring(opts.description), "\t", tostring(key), "\t", kind, "\t", arg, "\n")
+    end
+    return noop
+  end,
+  get_config = function() return nil end,
+}, { __index = function() return noop end })
+
+local home = os.getenv("HOME") or ""
+local file = io.open(home .. "/.config/hypr/hyprland.lua", "r")
+if file then
+  file:close()
+  local ok, error = pcall(dofile, home .. "/.config/hypr/hyprland.lua")
+  if not ok then io.stderr:write("Keycade Lua bind scan failed: " .. tostring(error) .. "\n") end
+end
+'''
+
+
+class HelperError(RuntimeError):
+    pass
+
+
+def command_output(command: list[str]) -> str:
+    try:
+        result = subprocess.run(
+            command,
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=3,
+        )
+    except (FileNotFoundError, subprocess.CalledProcessError, subprocess.TimeoutExpired) as error:
+        raise HelperError(f"{' '.join(command)} failed: {error}") from error
+    return result.stdout
+
+
+def lua_bind_cache() -> dict[tuple[int, str], list[str]]:
+    try:
+        result = subprocess.run(
+            ["lua", "-"],
+            input=LUA_BIND_SCANNER,
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=3,
+        )
+    except (FileNotFoundError, subprocess.CalledProcessError, subprocess.TimeoutExpired):
+        return {}
+    cache: dict[tuple[int, str], list[str]] = {}
+    for line in result.stdout.splitlines():
+        fields = line.split("\t", 4)
+        if len(fields) < 3:
+            continue
+        try:
+            modmask = int(fields[0])
+        except ValueError:
+            continue
+        cache.setdefault((modmask, fields[1]), []).append(fields[2])
+    return cache
+
+
+def resolve_lua_keys(bindings: list[dict[str, Any]]) -> None:
+    missing = [
+        binding for binding in bindings
+        if binding.get("dispatcher") == "__lua"
+        and not binding.get("key")
+        and not binding.get("keycode")
+        and binding.get("description")
+    ]
+    if not missing:
+        return
+    cache = lua_bind_cache()
+    used: dict[tuple[int, str], int] = {}
+    for binding in missing:
+        cache_key = (int(binding["modMask"]), str(binding["description"]))
+        position = used.get(cache_key, 0)
+        candidates = cache.get(cache_key, [])
+        if position >= len(candidates):
+            continue
+        key, keycode, match_mode = canonical_key(candidates[position])
+        binding["key"] = key
+        binding["keycode"] = keycode
+        binding["matchMode"] = match_mode
+        used[cache_key] = position + 1
+
+
+def read_text(path: str | None, command: list[str]) -> str:
+    if path:
+        return Path(path).read_text(encoding="utf-8")
+    return command_output(command)
+
+
+def parse_bool(value: str) -> bool:
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def split_blocks(raw: str) -> list[dict[str, str]]:
+    blocks: list[dict[str, str]] = []
+    current: dict[str, str] | None = None
+
+    for line in raw.splitlines():
+        header = re.match(r"^(bind[A-Za-z]*)\s*$", line, re.IGNORECASE)
+        if header:
+            if current:
+                blocks.append(current)
+            current = {"_header": header.group(1).lower()}
+            continue
+        if current is None:
+            continue
+        match = re.match(r"^\s+([A-Za-z_][A-Za-z0-9_]*):\s?(.*)$", line)
+        if match:
+            current[match.group(1)] = match.group(2)
+
+    if current:
+        blocks.append(current)
+    return blocks
+
+
+def canonical_key(value: str) -> tuple[str, int, str]:
+    key = value.strip()
+    if " + " in key:
+        key = key.rsplit(" + ", 1)[-1].strip()
+    if key.lower().startswith("code:"):
+        try:
+            code = int(key.split(":", 1)[1])
+        except ValueError:
+            code = 0
+        return PHYSICAL_FALLBACKS.get(code, ""), code, "physical"
+    alias = KEY_ALIASES.get(key.lower(), key)
+    return alias.upper() if len(alias) > 1 else alias, 0, "logical"
+
+
+def flags_for(block: dict[str, str]) -> list[str]:
+    aliases = {
+        "release": "release",
+        "repeat": "repeat",
+        "longPress": "long-press",
+        "mouse": "mouse",
+        "locked": "locked",
+        "nonConsuming": "non-consuming",
+        "catchAll": "catch-all",
+    }
+    flags = [label for key, label in aliases.items() if parse_bool(block.get(key, "false"))]
+    suffix = block.get("_header", "")[4:]
+    for code in suffix:
+        label = HEADER_FLAGS.get(code)
+        if label and label not in flags:
+            flags.append(label)
+    return flags
+
+
+def binding_from_block(block: dict[str, str]) -> dict[str, Any]:
+    raw_key = block.get("key", "").strip()
+    key, keycode, match_mode = canonical_key(raw_key)
+    reported_code = block.get("keycode", "").strip()
+    if not keycode and reported_code not in {"", "0"}:
+        try:
+            keycode = int(reported_code)
+        except ValueError:
+            keycode = 0
+    if not raw_key and keycode:
+        match_mode = "physical"
+
+    try:
+        mod_mask = int(block.get("modmask", "0") or 0)
+    except ValueError:
+        mod_mask = 0
+
+    return {
+        "modMask": mod_mask,
+        "key": key,
+        "keycode": keycode,
+        "matchMode": match_mode,
+        "flags": flags_for(block),
+        "dontInhibit": parse_bool(block.get("dontInhibit", block.get("dont_inhibit", "false")))
+        or "p" in block.get("_header", "")[4:],
+        "allowInputCapture": parse_bool(block.get("allow_input_capture", "false")),
+        "dispatcher": block.get("dispatcher", "").strip(),
+        "arg": block.get("arg", "").strip(),
+        "description": block.get("description", "").strip(),
+        "submap": block.get("submap", "").strip(),
+    }
+
+
+def fingerprint(raw_binds: str, raw_devices: str) -> str:
+    keymaps = "\n".join(
+        line.strip() for line in raw_devices.splitlines() if "active keymap:" in line
+    )
+    return hashlib.sha256((raw_binds + "\n" + keymaps).encode()).hexdigest()
+
+
+def snapshot(raw_binds: str, raw_devices: str = "") -> dict[str, Any]:
+    bindings = [binding_from_block(block) for block in split_blocks(raw_binds)]
+    return {
+        "schemaVersion": SCHEMA_VERSION,
+        "keymapFingerprint": fingerprint(raw_binds, raw_devices),
+        "bindings": bindings,
+    }
+
+
+def binding_from_json(value: dict[str, Any]) -> dict[str, Any]:
+    if not isinstance(value.get("modmask", 0), int):
+        raise HelperError("hyprctl JSON has misaligned binding fields")
+    raw_key = str(value.get("key", "") or "")
+    key, keycode, match_mode = canonical_key(raw_key)
+    reported_code = value.get("keycode", 0)
+    if not isinstance(reported_code, int):
+        raise HelperError("hyprctl JSON contains a non-numeric keycode")
+    if not keycode:
+        keycode = reported_code
+    if not raw_key and keycode:
+        match_mode = "physical"
+
+    bool_flags = {
+        "locked": "locked",
+        "mouse": "mouse",
+        "release": "release",
+        "repeat": "repeat",
+        "repeating": "repeat",
+        "longPress": "long-press",
+        "long_press": "long-press",
+        "nonConsuming": "non-consuming",
+        "non_consuming": "non-consuming",
+        "catchAll": "catch-all",
+        "catch_all": "catch-all",
+        "click": "click",
+        "drag": "drag",
+    }
+    flags = [label for name, label in bool_flags.items() if value.get(name) is True]
+    return {
+        "modMask": value.get("modmask", 0),
+        "key": key,
+        "keycode": keycode,
+        "matchMode": match_mode,
+        "flags": sorted(set(flags)),
+        "dontInhibit": value.get("dontInhibit") is True or value.get("dont_inhibit") is True,
+        "allowInputCapture": value.get("allowInputCapture") is True or value.get("allow_input_capture") is True,
+        "dispatcher": str(value.get("dispatcher", "") or "").strip(),
+        "arg": str(value.get("arg", "") or "").strip(),
+        "description": str(value.get("description", "") or "").strip(),
+        "submap": str(value.get("submap", "") or "").strip(),
+    }
+
+
+def snapshot_json(raw_json: str, raw_plain: str, raw_devices: str = "") -> dict[str, Any]:
+    try:
+        values = json.loads(raw_json)
+    except json.JSONDecodeError as error:
+        raise HelperError(f"invalid hyprctl JSON: {error}") from error
+    if not isinstance(values, list):
+        raise HelperError("hyprctl JSON root is not an array")
+    bindings = [binding_from_json(value) for value in values]
+
+    # Current JSON exposes most named flags, but some releases omit
+    # dont_inhibit. Merge the text header's compact `p` flag by record order.
+    plain = [binding_from_block(block) for block in split_blocks(raw_plain)]
+    if len(plain) == len(bindings):
+        for index, binding in enumerate(bindings):
+            binding["dontInhibit"] = binding["dontInhibit"] or plain[index]["dontInhibit"]
+
+    resolve_lua_keys(bindings)
+
+    return {
+        "schemaVersion": SCHEMA_VERSION,
+        "keymapFingerprint": fingerprint(raw_plain, raw_devices),
+        "bindings": bindings,
+    }
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--input", help="read hyprctl binds output from a fixture")
+    parser.add_argument("--devices-input", help="read hyprctl devices output from a fixture")
+    parser.add_argument("--pretty", action="store_true")
+    args = parser.parse_args()
+
+    try:
+        devices = read_text(args.devices_input, ["hyprctl", "devices"])
+        if args.input:
+            binds = read_text(args.input, ["hyprctl", "binds"])
+            result = snapshot(binds, devices)
+        else:
+            plain = command_output(["hyprctl", "binds"])
+            try:
+                result = snapshot_json(command_output(["hyprctl", "-j", "binds"]), plain, devices)
+            except HelperError:
+                result = snapshot(plain, devices)
+    except (OSError, HelperError) as error:
+        print(json.dumps({"schemaVersion": SCHEMA_VERSION, "error": str(error)}))
+        return 1
+
+    json.dump(result, sys.stdout, indent=2 if args.pretty else None, ensure_ascii=False)
+    sys.stdout.write("\n")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

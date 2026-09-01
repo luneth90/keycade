@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "id": "xiaowei.keycade",
+  "name": "Keycade",
+  "version": "0.1.0",
+  "author": "xiaowei",
+  "description": "A native shortcut-learning arcade for Omarchy and Hyprland.",
+  "kinds": [
+    "overlay"
+  ],
+  "keepLoaded": true,
+  "entryPoints": {
+    "overlay": "Keycade.qml"
+  }
+}
+
