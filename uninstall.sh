@@ -2,7 +2,8 @@
 
 set -euo pipefail
 
-PLUGIN_ID="xiaowei.keycade"
+PLUGIN_ID="luneth90.keycade"
+LEGACY_PLUGIN_ID="xiaowei.keycade"
 MARKER_BEGIN="-- keycade:begin"
 MARKER_END="-- keycade:end"
 PURGE_STATE=0
@@ -52,6 +53,12 @@ done
 binding_file="$HOME/.config/hypr/bindings.lua"
 plugins_dir="$HOME/.config/omarchy/plugins"
 target="$plugins_dir/$PLUGIN_ID"
+remove_id="$PLUGIN_ID"
+legacy_target="$plugins_dir/$LEGACY_PLUGIN_ID"
+if [[ ! -e $target && ! -L $target && ( -e $legacy_target || -L $legacy_target ) ]]; then
+  target="$legacy_target"
+  remove_id="$LEGACY_PLUGIN_ID"
+fi
 state_root="${XDG_STATE_HOME:-$HOME/.local/state}"
 state_dir="$state_root/omarchy/keycade"
 backup_dir="$state_root/omarchy/keycade-install-backups"
@@ -108,8 +115,8 @@ if [[ -e $target || -L $target ]]; then
 
   omarchy-shell shell ping >/dev/null 2>&1 \
     || fail "Omarchy shell did not become ready; plugin was not removed"
-  note "Removing $PLUGIN_ID"
-  omarchy plugin remove "$PLUGIN_ID" --yes
+  note "Removing $remove_id"
+  omarchy plugin remove "$remove_id" --yes
 else
   note "Keycade plugin is not installed"
 fi

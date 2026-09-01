@@ -2,7 +2,7 @@
 
 Keycade = Key + Arcade. It is a native Omarchy overlay that turns the
 shortcuts active in the current Hyprland session into a short adaptive arcade
-run. Version 0.2.8 implements the v0.5.8 continuous-mastery design. Correct input
+run. Version 0.2.9 implements the v0.5.9 continuous-mastery design. Correct input
 is recognized locally and is never dispatched as the bound action.
 
 This repository implements Stage 0 and the MVP described in [DESIGN.md](DESIGN.md):
@@ -102,7 +102,7 @@ Then add a free shortcut to `~/.config/hypr/bindings.lua` after checking your
 current bindings. For example:
 
 ```lua
-o.bind("SUPER + CTRL + G", "Keycade", "omarchy-shell shell summon xiaowei.keycade '{}'")
+o.bind("SUPER + CTRL + G", "Keycade", "omarchy-shell shell summon luneth90.keycade '{}'")
 ```
 
 Hyprland reloads configuration changes automatically. Validate them with:

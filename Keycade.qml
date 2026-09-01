@@ -109,7 +109,7 @@ Item {
     root.opened = false
     root.view = "closed"
     if (root.shell && typeof root.shell.hide === "function")
-      root.shell.hide((root.manifest && root.manifest.id) || "xiaowei.keycade")
+      root.shell.hide((root.manifest && root.manifest.id) || "luneth90.keycade")
   }
 
   function requestSafeClose() {

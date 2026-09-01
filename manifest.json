@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
-  "id": "xiaowei.keycade",
+  "id": "luneth90.keycade",
   "name": "Keycade",
-  "version": "0.2.8",
-  "author": "xiaowei",
+  "version": "0.2.9",
+  "author": "luneth90",
   "description": "A native shortcut-learning arcade for Omarchy and Hyprland.",
   "kinds": [
     "overlay"

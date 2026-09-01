@@ -2,7 +2,8 @@
 
 set -euo pipefail
 
-PLUGIN_ID="xiaowei.keycade"
+PLUGIN_ID="luneth90.keycade"
+LEGACY_PLUGIN_ID="xiaowei.keycade"
 DEFAULT_CHORD="SUPER CTRL + G"
 MARKER_BEGIN="-- keycade:begin"
 MARKER_END="-- keycade:end"
@@ -65,7 +66,27 @@ omarchy plugin validate "$repo_root"
 
 plugins_dir="$HOME/.config/omarchy/plugins"
 target="$plugins_dir/$PLUGIN_ID"
+legacy_target="$plugins_dir/$LEGACY_PLUGIN_ID"
+migrated_legacy=0
 mkdir -p -- "$plugins_dir"
+
+if [[ ! -e $target && ! -L $target && ( -e $legacy_target || -L $legacy_target ) ]]; then
+  legacy_id=""
+  [[ -f $legacy_target/manifest.json ]] \
+    && legacy_id=$(jq -r '.id // empty' "$legacy_target/manifest.json" 2>/dev/null || true)
+  [[ $legacy_id == "$LEGACY_PLUGIN_ID" ]] \
+    || fail "$legacy_target exists but is not the legacy Keycade installation"
+  [[ -d $legacy_target/.git ]] \
+    || fail "$legacy_target is not a Git checkout; remove it before reinstalling"
+  note "Migrating $LEGACY_PLUGIN_ID to $PLUGIN_ID"
+  git -C "$legacy_target" pull --quiet --ff-only \
+    || fail "legacy plugin copy has local changes or cannot be fast-forwarded"
+  updated_id=$(jq -r '.id // empty' "$legacy_target/manifest.json" 2>/dev/null || true)
+  [[ $updated_id == "$PLUGIN_ID" ]] \
+    || fail "updated legacy copy does not declare $PLUGIN_ID"
+  mv -- "$legacy_target" "$target"
+  migrated_legacy=1
+fi
 
 if [[ -e $target || -L $target ]]; then
   installed_id=""
@@ -111,6 +132,11 @@ ensure_shell() {
 ensure_shell || fail "Omarchy shell did not become ready"
 omarchy-shell shell rescanPlugins >/dev/null
 
+if (( migrated_legacy )); then
+  omarchy plugin disable "$LEGACY_PLUGIN_ID" >/dev/null 2>&1 || true
+  omarchy-shell shell rescanPlugins >/dev/null
+fi
+
 note "Enabling $PLUGIN_ID"
 omarchy plugin enable "$PLUGIN_ID" >/dev/null
 
@@ -154,7 +180,30 @@ install_binding() {
   touch -- "$binding_file"
 
   if grep -Fq -- "$MARKER_BEGIN" "$binding_file"; then
-    note "Keycade Hyprland binding is already present"
+    if grep -Fq -- "$LEGACY_PLUGIN_ID" "$binding_file"; then
+      timestamp=$(date -u +%Y%m%dT%H%M%SZ)
+      backup="$backup_dir/bindings.lua.$timestamp"
+      cp -p -- "$binding_file" "$backup"
+      temp_file=$(mktemp "${binding_file}.keycade.XXXXXX")
+      awk -v begin="$MARKER_BEGIN" -v end="$MARKER_END" '
+        $0 == begin { managed = 1 }
+        managed { gsub(/xiaowei[.]keycade/, "luneth90.keycade") }
+        { print }
+        $0 == end { managed = 0 }
+      ' "$binding_file" >"$temp_file"
+      chmod --reference="$binding_file" "$temp_file"
+      mv -- "$temp_file" "$binding_file"
+      hyprctl reload >/dev/null
+      config_errors=$(hyprctl configerrors 2>/dev/null || true)
+      if [[ -n $config_errors ]]; then
+        cp -p -- "$backup" "$binding_file"
+        hyprctl reload >/dev/null || true
+        fail "binding migration caused a Hyprland config error and was rolled back: $config_errors"
+      fi
+      note "Migrated Keycade binding to $PLUGIN_ID (backup: $backup)"
+    else
+      note "Keycade Hyprland binding is already present"
+    fi
     return 0
   fi
 
@@ -175,7 +224,7 @@ install_binding() {
   cp -p -- "$binding_file" "$backup"
 
   printf '\n%s\n' "$MARKER_BEGIN" >>"$binding_file"
-  printf '%s\n' 'o.bind("SUPER + CTRL + G", "Keycade", "omarchy-shell shell summon xiaowei.keycade '\''{}'\''")' >>"$binding_file"
+  printf '%s\n' 'o.bind("SUPER + CTRL + G", "Keycade", "omarchy-shell shell summon luneth90.keycade '\''{}'\''")' >>"$binding_file"
   printf '%s\n' "$MARKER_END" >>"$binding_file"
 
   hyprctl reload >/dev/null
