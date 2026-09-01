@@ -1001,13 +1001,6 @@ Item {
                                 / Math.max(1, root.progressCounts.total))
                 color: root.successColor
               }
-              Rectangle {
-                anchors.left: masteredProgressSegment.right; anchors.top: parent.top; anchors.bottom: parent.bottom
-                anchors.topMargin: 1; anchors.bottomMargin: 1
-                width: Math.max(0, (parent.width - 2) * root.progressCounts.learning
-                                / Math.max(1, root.progressCounts.total))
-                color: root.secondaryColor
-              }
             }
             Text {
               id: totalProgressValue
