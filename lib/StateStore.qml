@@ -28,12 +28,12 @@ Item {
 
   function defaultSettings() {
     return {
-      schemaVersion: 2,
+      schemaVersion: 3,
       locale: "en",
       reducedMotion: false,
       feedbackSound: true,
       countdownSound: true,
-      soundVolume: 0.3
+      soundVolume: 0.6
     }
   }
 
@@ -68,17 +68,18 @@ Item {
   function loadSettings(raw) {
     try {
       var value = JSON.parse(String(raw || ""))
-      if (value.schemaVersion === 1 || value.schemaVersion === 2) {
+      if (value.schemaVersion === 1 || value.schemaVersion === 2 || value.schemaVersion === 3) {
         var previousSchema = Number(value.schemaVersion)
         var merged = root.defaultSettings()
         Object.keys(value).forEach(function(key) { merged[key] = value[key] })
-        merged.schemaVersion = 2
+        merged.schemaVersion = 3
         if (value.feedbackSound === undefined)
           merged.feedbackSound = value.soundEnabled === undefined ? true : Boolean(value.soundEnabled)
         else merged.feedbackSound = Boolean(value.feedbackSound)
         merged.countdownSound = Boolean(merged.countdownSound)
         merged.soundVolume = Math.max(0, Math.min(1, Number(merged.soundVolume)))
-        if (previousSchema === 1) merged.soundVolume = Math.min(0.3, merged.soundVolume)
+        if (previousSchema === 2 && Math.abs(merged.soundVolume - 0.3) < 0.001)
+          merged.soundVolume = 0.6
         root.settings = merged
         root.settingsCorrupt = false
         if (previousSchema !== merged.schemaVersion)

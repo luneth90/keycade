@@ -183,7 +183,7 @@ Item {
   }
 
   function adjustSoundVolume(delta) {
-    var value = Math.round(Number(store.settings.soundVolume || 0.3) * 10) / 10
+    var value = Math.round(Number(store.settings.soundVolume || 0.6) * 10) / 10
     store.settings.soundVolume = Math.max(0.1, Math.min(1.0, value + Number(delta || 0)))
     store.settings = Object.assign({}, store.settings)
     store.saveSettings()
@@ -511,7 +511,7 @@ Item {
     id: sounds
     feedbackEnabled: Boolean(store.settings.feedbackSound)
     countdownEnabled: Boolean(store.settings.countdownSound)
-    volume: Number(store.settings.soundVolume || 0.3)
+    volume: Number(store.settings.soundVolume || 0.6)
   }
   StateStore {
     id: store
@@ -725,7 +725,7 @@ Item {
             Text {
               anchors.centerIn: parent
               text: store.settings.feedbackSound || store.settings.countdownSound
-                    ? i18n.t("soundVolume", { volume: Math.round(Number(store.settings.soundVolume || 0.3) * 100) })
+                    ? i18n.t("soundVolume", { volume: Math.round(Number(store.settings.soundVolume || 0.6) * 100) })
                     : i18n.t("soundOff")
               color: store.settings.feedbackSound || store.settings.countdownSound ? root.successColor : root.mutedColor
               font.family: "monospace"; font.bold: true; font.pixelSize: 10
@@ -735,49 +735,6 @@ Item {
               onClicked: {
                 root.soundMenuOpen = !root.soundMenuOpen
                 root.languageMenuOpen = false
-              }
-            }
-            Rectangle {
-              width: 250; height: 150
-              anchors.top: parent.bottom; anchors.topMargin: 8
-              anchors.right: parent.right
-              visible: root.soundMenuOpen
-              z: 200
-              color: root.cabinetColor; border.width: 3; border.color: root.primaryColor
-              Column {
-                anchors.fill: parent; anchors.margins: 10; spacing: 8
-                Text { text: i18n.t("soundSettings"); color: root.inkColor; font.family: "monospace"; font.bold: true; font.pixelSize: 11 }
-                Row {
-                  spacing: 8
-                  Rectangle {
-                    width: 38; height: 30; color: root.screenColor; border.width: 2; border.color: root.mutedColor
-                    Text { anchors.centerIn: parent; text: "−"; color: root.inkColor; font.pixelSize: 18; font.bold: true }
-                    MouseArea { anchors.fill: parent; onClicked: root.adjustSoundVolume(-0.1) }
-                  }
-                  Text {
-                    width: 130; height: 30; verticalAlignment: Text.AlignVCenter; horizontalAlignment: Text.AlignHCenter
-                    text: i18n.t("volumePercent", { volume: Math.round(Number(store.settings.soundVolume || 0.3) * 100) })
-                    color: root.inkColor; font.family: "monospace"; font.pixelSize: 11; font.bold: true
-                  }
-                  Rectangle {
-                    width: 38; height: 30; color: root.screenColor; border.width: 2; border.color: root.mutedColor
-                    Text { anchors.centerIn: parent; text: "+"; color: root.inkColor; font.pixelSize: 18; font.bold: true }
-                    MouseArea { anchors.fill: parent; onClicked: root.adjustSoundVolume(0.1) }
-                  }
-                }
-                Row {
-                  spacing: 8
-                  Rectangle {
-                    width: 108; height: 32; color: store.settings.feedbackSound ? root.successColor : root.screenColor; border.width: 2; border.color: root.mutedColor
-                    Text { anchors.centerIn: parent; text: i18n.t(store.settings.feedbackSound ? "feedbackOn" : "feedbackOff"); color: store.settings.feedbackSound ? root.voidColor : root.mutedColor; font.family: "monospace"; font.pixelSize: 9; font.bold: true }
-                    MouseArea { anchors.fill: parent; onClicked: root.toggleSound() }
-                  }
-                  Rectangle {
-                    width: 108; height: 32; color: store.settings.countdownSound ? root.coinColor : root.screenColor; border.width: 2; border.color: root.mutedColor
-                    Text { anchors.centerIn: parent; text: i18n.t(store.settings.countdownSound ? "countdownOn" : "countdownOff"); color: store.settings.countdownSound ? root.voidColor : root.mutedColor; font.family: "monospace"; font.pixelSize: 9; font.bold: true }
-                    MouseArea { anchors.fill: parent; onClicked: root.toggleCountdownSound() }
-                  }
-                }
               }
             }
           }
@@ -792,33 +749,80 @@ Item {
                 root.soundMenuOpen = false
               }
             }
-            Rectangle {
-              width: 164; height: i18n.supported.length * 36 + 8
-              anchors.top: parent.bottom; anchors.topMargin: 8
-              anchors.horizontalCenter: parent.horizontalCenter
-              visible: root.languageMenuOpen
-              z: 200
-              color: root.cabinetColor; border.width: 3; border.color: root.primaryColor
-              Column {
-                anchors.fill: parent; anchors.margins: 4
-                Repeater {
-                  model: i18n.supported
-                  delegate: Rectangle {
-                    id: languageOption
-                    required property string modelData
-                    width: parent.width; height: 36
-                    color: languageOption.modelData === i18n.locale ? root.primaryColor : root.screenColor
-                    Text { anchors.centerIn: parent; text: root.localeLabel(languageOption.modelData); color: languageOption.modelData === i18n.locale ? root.voidColor : root.inkColor; font.family: "monospace"; font.pixelSize: 11; font.bold: true }
-                    MouseArea { anchors.fill: parent; onClicked: root.selectLocale(languageOption.modelData) }
-                  }
-                }
-              }
-            }
           }
           Rectangle {
             width: 112; height: 36; color: root.screenColor; border.width: 3; border.color: root.voidColor
             Text { anchors.centerIn: parent; text: root.themeName.toUpperCase(); color: root.inkColor; font.family: "monospace"; font.bold: true; font.pixelSize: 11 }
             MouseArea { anchors.fill: parent; onClicked: root.cycleTheme() }
+          }
+        }
+      }
+
+      Rectangle {
+        id: soundMenu
+        x: topbar.x + topControls.x + soundButton.x + soundButton.width - width
+        y: topbar.y + topbar.height + 8
+        width: 250; height: 150
+        visible: root.soundMenuOpen
+        z: 100
+        color: root.cabinetColor; border.width: 3; border.color: root.primaryColor
+        Column {
+          anchors.fill: parent; anchors.margins: 10; spacing: 8
+          Text { text: i18n.t("soundSettings"); color: root.inkColor; font.family: "monospace"; font.bold: true; font.pixelSize: 11 }
+          Row {
+            spacing: 8
+            Rectangle {
+              width: 38; height: 30; color: root.screenColor; border.width: 2; border.color: root.mutedColor
+              Text { anchors.centerIn: parent; text: "−"; color: root.inkColor; font.pixelSize: 18; font.bold: true }
+              MouseArea { anchors.fill: parent; onClicked: root.adjustSoundVolume(-0.1) }
+            }
+            Text {
+              width: 130; height: 30; verticalAlignment: Text.AlignVCenter; horizontalAlignment: Text.AlignHCenter
+              text: i18n.t("volumePercent", { volume: Math.round(Number(store.settings.soundVolume || 0.6) * 100) })
+              color: root.inkColor; font.family: "monospace"; font.pixelSize: 11; font.bold: true
+            }
+            Rectangle {
+              width: 38; height: 30; color: root.screenColor; border.width: 2; border.color: root.mutedColor
+              Text { anchors.centerIn: parent; text: "+"; color: root.inkColor; font.pixelSize: 18; font.bold: true }
+              MouseArea { anchors.fill: parent; onClicked: root.adjustSoundVolume(0.1) }
+            }
+          }
+          Row {
+            spacing: 8
+            Rectangle {
+              width: 108; height: 32; color: store.settings.feedbackSound ? root.successColor : root.screenColor; border.width: 2; border.color: root.mutedColor
+              Text { anchors.centerIn: parent; text: i18n.t(store.settings.feedbackSound ? "feedbackOn" : "feedbackOff"); color: store.settings.feedbackSound ? root.voidColor : root.mutedColor; font.family: "monospace"; font.pixelSize: 9; font.bold: true }
+              MouseArea { anchors.fill: parent; onClicked: root.toggleSound() }
+            }
+            Rectangle {
+              width: 108; height: 32; color: store.settings.countdownSound ? root.coinColor : root.screenColor; border.width: 2; border.color: root.mutedColor
+              Text { anchors.centerIn: parent; text: i18n.t(store.settings.countdownSound ? "countdownOn" : "countdownOff"); color: store.settings.countdownSound ? root.voidColor : root.mutedColor; font.family: "monospace"; font.pixelSize: 9; font.bold: true }
+              MouseArea { anchors.fill: parent; onClicked: root.toggleCountdownSound() }
+            }
+          }
+        }
+      }
+
+      Rectangle {
+        id: languageMenu
+        x: topbar.x + topControls.x + languageButton.x + (languageButton.width - width) / 2
+        y: topbar.y + topbar.height + 8
+        width: 164; height: i18n.supported.length * 36 + 8
+        visible: root.languageMenuOpen
+        z: 100
+        color: root.cabinetColor; border.width: 3; border.color: root.primaryColor
+        Column {
+          anchors.fill: parent; anchors.margins: 4
+          Repeater {
+            model: i18n.supported
+            delegate: Rectangle {
+              id: languageOption
+              required property string modelData
+              width: parent.width; height: 36
+              color: languageOption.modelData === i18n.locale ? root.primaryColor : root.screenColor
+              Text { anchors.centerIn: parent; text: root.localeLabel(languageOption.modelData); color: languageOption.modelData === i18n.locale ? root.voidColor : root.inkColor; font.family: "monospace"; font.pixelSize: 11; font.bold: true }
+              MouseArea { anchors.fill: parent; onClicked: root.selectLocale(languageOption.modelData) }
+            }
           }
         }
       }
