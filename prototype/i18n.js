@@ -2,8 +2,6 @@ window.KeycadeI18n = {
   locales: {
     en: { htmlLang: "en", label: "English" },
     "zh-CN": { htmlLang: "zh-CN", label: "简体中文" },
-    ja: { htmlLang: "ja", label: "日本語" },
-    es: { htmlLang: "es", label: "Español" },
   },
 
   messages: {

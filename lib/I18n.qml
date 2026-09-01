@@ -5,7 +5,7 @@ Item {
   id: root
   property string locale: "en"
   property var messages: ({})
-  readonly property var supported: ["en", "zh-CN", "ja", "es"]
+  readonly property var supported: ["en", "zh-CN"]
   readonly property string localePath: String(Qt.resolvedUrl("../assets/locales/" + locale + ".json")).replace("file://", "")
 
   function t(key, variables) {
@@ -36,4 +36,3 @@ Item {
     }
   }
 }
-

@@ -23,6 +23,7 @@ Item {
   property bool guardReady: false
   property bool escapeDown: false
   property bool startRequested: false
+  property string requestedLocale: ""
 
   property var eligibleBindings: []
   property var deck: []
@@ -83,12 +84,15 @@ Item {
     root.errorMessage = ""
     root.guardReady = false
     root.startRequested = false
+    root.requestedLocale = payload.locale && i18n.supported.indexOf(payload.locale) !== -1
+        ? String(payload.locale) : ""
     root.activeSegmentStartedAt = 0
     root.languageMenuOpen = false
     root.soundMenuOpen = false
     root.themeName = String(store.settings.theme || payload.theme || "tokyo")
-    if (payload.locale && i18n.supported.indexOf(payload.locale) !== -1) i18n.locale = payload.locale
-    else i18n.locale = String(store.settings.locale || "en")
+    var savedLocale = String(store.settings.locale || "en")
+    i18n.locale = root.requestedLocale
+        || (i18n.supported.indexOf(savedLocale) !== -1 ? savedLocale : "en")
     guard.begin()
     keybinds.refresh()
     Qt.callLater(function() { keyCatcher.forceActiveFocus() })
@@ -126,6 +130,14 @@ Item {
 
   function maybeShowHome() {
     if (!root.opened || root.view !== "loading" || !root.guardReady || keybinds.loading || !store.ready) return
+    var savedLocale = String(store.settings.locale || "en")
+    if (i18n.supported.indexOf(savedLocale) === -1) {
+      store.settings.locale = "en"
+      store.settings = Object.assign({}, store.settings)
+      store.saveSettings()
+      savedLocale = "en"
+    }
+    if (!root.requestedLocale) i18n.locale = savedLocale
     var result = Eligibility.filter(keybinds.bindings, { appleKeyboard: keybinds.appleKeyboard })
     root.eligibleBindings = result.eligible
     if (!root.eligibleBindings.length) {
@@ -170,8 +182,6 @@ Item {
 
   function localeLabel(code) {
     if (code === "zh-CN") return "简体中文"
-    if (code === "ja") return "日本語"
-    if (code === "es") return "Español"
     return "English"
   }
 

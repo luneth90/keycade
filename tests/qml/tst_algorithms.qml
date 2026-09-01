@@ -242,14 +242,18 @@ TestCase {
     compare(Stats.tier(stats.bindings.one), "guided")
   }
 
-  function test_masteryRequiresFiveCorrectAcrossThreeRunsAndLapses() {
+  function test_masteryRequiresThreeRecentCorrectAcrossThreeRunsAndLapses() {
+    var sameRun = Stats.defaults()
+    Stats.recordGuided(sameRun, "same-run", 1, 1000)
+    Stats.recordFirstTry(sameRun, "same-run", true, 900, 1, 2000)
+    Stats.recordFirstTry(sameRun, "same-run", true, 850, 1, 3000)
+    Stats.recordFirstTry(sameRun, "same-run", true, 800, 1, 4000)
+    compare(sameRun.bindings["same-run"].state, "learning")
+
     var stats = Stats.defaults()
     Stats.recordGuided(stats, "one", 1, 1000)
     Stats.recordFirstTry(stats, "one", true, 900, 1, 2000)
-    Stats.recordFirstTry(stats, "one", true, 850, 1, 3000)
     Stats.recordFirstTry(stats, "one", true, 800, 2, 4000)
-    Stats.recordFirstTry(stats, "one", true, 780, 2, 5000)
-    Stats.recordFirstTry(stats, "one", true, 760, 3, 6000)
     compare(stats.bindings.one.state, "learning")
     var result = Stats.recordFirstTry(stats, "one", true, 740, 3, 7000)
     verify(result.masteredGained)
@@ -260,6 +264,31 @@ TestCase {
     verify(result.lapsed)
     compare(stats.bindings.one.state, "learning")
     compare(stats.bindings.one.lapseCount, 1)
+
+    Stats.recordFirstTry(stats, "one", true, 700, 5, 9000)
+    Stats.recordFirstTry(stats, "one", true, 680, 6, 10000)
+    compare(stats.bindings.one.state, "learning")
+    result = Stats.recordFirstTry(stats, "one", true, 660, 7, 11000)
+    verify(result.masteredGained)
+    compare(stats.bindings.one.state, "mastered")
+  }
+
+  function test_migrationPromotesLearningProgressUnderTheEasierRule() {
+    var stats = Stats.migrate({
+      schemaVersion: 3,
+      runs: 3,
+      bindings: {
+        one: {
+          state: "learning",
+          guidedCompleted: true,
+          firstTryAttempts: 3,
+          firstTryCorrect: 3,
+          recentFirstTry: [true, true, true],
+          successfulRuns: [1, 2, 3]
+        }
+      }
+    })
+    compare(stats.bindings.one.state, "mastered")
   }
 
   function test_reactionHistoryKeepsOnlyTheLatestTenSamples() {

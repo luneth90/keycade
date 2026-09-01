@@ -2,7 +2,7 @@
 
 Keycade = Key + Arcade. It is a native Omarchy overlay that turns the
 shortcuts active in the current Hyprland session into a short adaptive arcade
-run. Version 0.2.7 implements the v0.5.7 continuous-mastery design. Correct input
+run. Version 0.2.8 implements the v0.5.8 continuous-mastery design. Correct input
 is recognized locally and is never dispatched as the bound action.
 
 This repository implements Stage 0 and the MVP described in [DESIGN.md](DESIGN.md):
@@ -31,8 +31,8 @@ This repository implements Stage 0 and the MVP described in [DESIGN.md](DESIGN.m
   response, and the achievement date before continuing to the run summary;
 - no lives or score: a mistake keeps the answer visible until corrected, then
   schedules another unassisted attempt 3–5 cards later;
-- first-try accuracy, spaced review, lapse handling, and mastery based on five
-  unassisted successes across at least three runs;
+- first-try accuracy, spaced review, lapse handling, and mastery based on three
+  consecutive unassisted successes across at least three runs;
 - local correct, wrong, and 3/2/1 countdown sounds with independent
   sound/countdown controls;
 - resumable runs: Esc stores the remaining deck and correction state, while a
@@ -41,7 +41,7 @@ This repository implements Stage 0 and the MVP described in [DESIGN.md](DESIGN.m
   actions; custom descriptions remain untouched;
 - pointer-safe language and sound popovers, with a 60% default sound volume;
 - local atomic stats and settings under `$XDG_STATE_HOME/omarchy/keycade/`;
-- English, Simplified Chinese, Japanese, and Spanish interface text;
+- English and Simplified Chinese interface text, with English as the default;
 - Tokyo Night, Gruvbox, and Catppuccin arcade palettes;
 - a standalone native input probe for machine-specific verification.
 

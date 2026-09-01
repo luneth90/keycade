@@ -12,7 +12,7 @@ class AssetTests(unittest.TestCase):
     def test_locales_have_the_same_message_keys(self):
         locale_dir = ROOT / "assets" / "locales"
         locale_files = sorted(locale_dir.glob("*.json"))
-        self.assertGreaterEqual(len(locale_files), 4)
+        self.assertEqual({path.name for path in locale_files}, {"en.json", "zh-CN.json"})
         messages = {
             path.name: json.loads(path.read_text(encoding="utf-8"))
             for path in locale_files
