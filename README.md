@@ -19,8 +19,8 @@ shortcut action.
 - Builds one continuous 24-card run from new, due, weak, and mastered
   shortcuts without artificial waves.
 - Guarantees coverage over continued play and schedules spaced reviews.
-- Marks a shortcut mastered after three consecutive first-try successes across
-  at least three different runs.
+- Marks a shortcut mastered after two consecutive first-try successes across
+  at least two different runs.
 - Keeps the correct answer visible after a mistake, requires a correction, and
   reviews the shortcut again later in the run.
 - Saves progress locally, resumes interrupted runs, tracks total mastery, and
