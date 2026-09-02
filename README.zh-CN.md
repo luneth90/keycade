@@ -6,6 +6,8 @@
 
 ![Keycade 简体中文学习界面](docs/screenshots/keycade-zh-CN.png)
 
+![全部快捷键已掌握庆祝画面](docs/screenshots/keycade-mastery-zh-CN.png)
+
 Keycade 是一个面向 Hyprland 的原生 Omarchy 快捷键训练器。它读取当前电脑上
 真正生效的快捷键，并将它们编成简短的自适应回忆练习。正确输入只在本地识别，
 不会派发或执行原快捷键动作。

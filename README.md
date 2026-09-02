@@ -6,6 +6,8 @@
 
 ![Keycade English learning screen](docs/screenshots/keycade-en.png)
 
+![All shortcuts mastered celebration](docs/screenshots/keycade-mastery-en.png)
+
 Keycade is a native Omarchy shortcut trainer for Hyprland. It reads the
 shortcuts active on your machine and turns them into short, adaptive recall
 runs. Correct input is recognized locally and never dispatches the original
