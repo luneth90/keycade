@@ -2,6 +2,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Wayland
 import Quickshell.Wayland._ShortcutsInhibitor
+import "../lib"
 import "../lib/InputNormalizer.js" as Normalizer
 
 ShellRoot {
@@ -67,21 +68,20 @@ ShellRoot {
         anchors.fill: parent
         anchors.margins: 32
         spacing: 15
-        Text { text: "KEYCADE · INPUT PROBE"; color: "#7aa2f7"; font.family: "monospace"; font.pixelSize: 25; font.bold: true }
-        Text { text: "Exclusive focus: " + catcher.activeFocus; color: "#f1f4ff"; font.family: "monospace"; font.pixelSize: 16 }
-        Text { text: "Inhibitor enabled: " + inhibitor.enabled; color: "#f1f4ff"; font.family: "monospace"; font.pixelSize: 16 }
-        Text { text: "Inhibitor active: " + inhibitor.active; color: inhibitor.active ? "#9ece6a" : "#f7768e"; font.family: "monospace"; font.pixelSize: 16; font.bold: true }
+        SafeText { text: "KEYCADE · INPUT PROBE"; color: "#7aa2f7"; font.family: "monospace"; font.pixelSize: 25; font.bold: true }
+        SafeText { text: "Exclusive focus: " + catcher.activeFocus; color: "#f1f4ff"; font.family: "monospace"; font.pixelSize: 16 }
+        SafeText { text: "Inhibitor enabled: " + inhibitor.enabled; color: "#f1f4ff"; font.family: "monospace"; font.pixelSize: 16 }
+        SafeText { text: "Inhibitor active: " + inhibitor.active; color: inhibitor.active ? "#9ece6a" : "#f7768e"; font.family: "monospace"; font.pixelSize: 16; font.bold: true }
         Rectangle { width: parent.width; height: 3; color: "#3d59a1" }
-        Text { text: "event.key          " + shellRoot.eventKey; color: "#f1f4ff"; font.family: "monospace"; font.pixelSize: 16 }
-        Text { text: "event.text         " + shellRoot.eventText; color: "#f1f4ff"; font.family: "monospace"; font.pixelSize: 16 }
-        Text { text: "nativeScanCode     " + shellRoot.scanCode; color: "#f1f4ff"; font.family: "monospace"; font.pixelSize: 16 }
-        Text { text: "event.modifiers    " + shellRoot.qtModifiers; color: "#f1f4ff"; font.family: "monospace"; font.pixelSize: 16 }
-        Text { text: "normalized         mask=" + shellRoot.normalizedModifiers + " key=" + shellRoot.normalizedKey; color: "#e0af68"; font.family: "monospace"; font.pixelSize: 16; font.bold: true }
-        Text { text: "held modifiers     " + shellRoot.heldModifiers; color: "#bb9af7"; font.family: "monospace"; font.pixelSize: 16 }
+        SafeText { text: "event.key          " + shellRoot.eventKey; color: "#f1f4ff"; font.family: "monospace"; font.pixelSize: 16 }
+        SafeText { text: "event.text         " + shellRoot.eventText; color: "#f1f4ff"; font.family: "monospace"; font.pixelSize: 16 }
+        SafeText { text: "nativeScanCode     " + shellRoot.scanCode; color: "#f1f4ff"; font.family: "monospace"; font.pixelSize: 16 }
+        SafeText { text: "event.modifiers    " + shellRoot.qtModifiers; color: "#f1f4ff"; font.family: "monospace"; font.pixelSize: 16 }
+        SafeText { text: "normalized         mask=" + shellRoot.normalizedModifiers + " key=" + shellRoot.normalizedKey; color: "#e0af68"; font.family: "monospace"; font.pixelSize: 16; font.bold: true }
+        SafeText { text: "held modifiers     " + shellRoot.heldModifiers; color: "#bb9af7"; font.family: "monospace"; font.pixelSize: 16 }
         Item { width: 1; height: 8 }
-        Text { text: "Press chords to inspect · release Esc to exit"; color: "#9aa5d1"; font.pixelSize: 14 }
+        SafeText { text: "Press chords to inspect · release Esc to exit"; color: "#9aa5d1"; font.pixelSize: 14 }
       }
     }
   }
 }
-

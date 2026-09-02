@@ -390,6 +390,15 @@ TestCase {
     verify(!migrated.firstMasteryCelebrated)
   }
 
+  function test_persistedStatsRejectPrototypeKeysAndClampNumbers() {
+    var source = JSON.parse('{"schemaVersion":3,"runs":1e100,"bindings":{"__proto__":{"state":"mastered"},"safe":{"firstTryAttempts":1e100,"firstTryCorrect":1e100}}}')
+    var migrated = Stats.migrate(source)
+    compare(migrated.bindings["__proto__"], undefined)
+    compare(migrated.runs, 1000000000)
+    compare(migrated.bindings.safe.firstTryAttempts, 1000000000)
+    compare(migrated.bindings.safe.firstTryCorrect, 1000000000)
+  }
+
   function test_schedulerSpreadsRepeatedBindingsAndAvoidsAdjacentRepeats() {
     var bindings = []
     for (var index = 0; index < 8; index++) {
@@ -593,6 +602,19 @@ TestCase {
     compare(restored.length, 1)
     compare(restored[0].binding.id, "second")
     verify(restored[0].remedial)
+  }
+
+  function test_sessionSanitizerBoundsCollectionsAndDynamicKeys() {
+    var cards = []
+    for (var index = 0; index < 40; index++)
+      cards.push({ bindingId: "binding-" + index, tier: "invalid", queue: "invalid" })
+    var saved = JSON.parse('{"schemaVersion":1,"runId":2,"cards":[],"runResults":{"__proto__":{"misses":99}}}')
+    saved.cards = cards
+    var sanitized = Session.sanitize(saved)
+    compare(sanitized.cards.length, 24)
+    compare(sanitized.cards[0].tier, "learning")
+    compare(sanitized.cards[0].queue, "weak")
+    compare(sanitized.runResults["__proto__"], undefined)
   }
 
   function test_builtinActionsHaveLocaleKeysAndCustomTextStaysRaw() {

@@ -47,25 +47,11 @@ not fall back to an unsafe focus-only mode.
 ## Install
 
 ```bash
-git clone https://github.com/luneth90/keycade.git
-cd keycade
-./install.sh
-```
-
-The installer validates and enables the plugin, then adds `Super + Shift + K`
-only when that shortcut is free. To leave Hyprland bindings unchanged:
-
-```bash
-./install.sh --no-bind
-```
-
-You can also install the plugin without the helper script:
-
-```bash
 omarchy plugin add https://github.com/luneth90/keycade.git --enable
 ```
 
-Then add a shortcut to `~/.config/hypr/bindings.lua`, for example:
+This is Omarchy's standard plugin installation path. Then add a shortcut to
+`~/.config/hypr/bindings.lua`, for example:
 
 ```bash
 echo 'o.bind("SUPER + SHIFT + K", "Keycade", "omarchy-shell shell summon luneth90.keycade '\''{}'\''")' >> ~/.config/hypr/bindings.lua
@@ -78,9 +64,7 @@ omarchy plugin update luneth90.keycade
 omarchy restart shell
 ```
 
-Or from your own clone: `git pull && ./install.sh`, then `omarchy restart
-shell`. Either way, the restart is required — updating alone does not
-reliably reload Keycade.
+The restart is required — updating alone does not reliably reload Keycade.
 
 ## Use
 
@@ -93,22 +77,21 @@ reliably reload Keycade.
   uses Esc (like a Super + Esc menu) while you're answering a card for it.
 - Use the top menus to switch language, sound, volume, and palette.
 
-Progress is stored under `$XDG_STATE_HOME/omarchy/keycade/` and is preserved
-across updates.
+Progress is stored under
+`${XDG_STATE_HOME:-$HOME/.local/state}/omarchy/keycade/` and is preserved across
+updates.
 
 ## Uninstall
 
-Keep progress:
+Remove the plugin while preserving progress:
 
 ```bash
-./uninstall.sh
+omarchy plugin remove luneth90.keycade
 ```
 
-Also delete all local settings and progress:
-
-```bash
-./uninstall.sh --purge-state
-```
+Progress remains in `${XDG_STATE_HOME:-$HOME/.local/state}/omarchy/keycade/`.
+Keycade intentionally does not provide a script that deletes user state or
+edits Hyprland configuration during removal.
 
 ## Development
 
@@ -116,7 +99,7 @@ Also delete all local settings and progress:
 python3 -m unittest discover -s tests -v
 env -u WAYLAND_DISPLAY -u DISPLAY QT_QPA_PLATFORM=offscreen QT_QPA_PLATFORMTHEME= \
   QT_QUICK_BACKEND=software /usr/lib/qt6/bin/qmltestrunner -input tests/qml
-./tests/test_installers.sh
+./tests/test_state_store_qml.sh
 /usr/lib/qt6/bin/qmllint -I /usr/lib/qt6/qml Keycade.qml lib/*.qml dev/InputProbe.qml
 ```
 

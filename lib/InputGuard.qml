@@ -6,6 +6,7 @@ Item {
   id: root
 
   required property var window
+  readonly property string helperPath: String(Qt.resolvedUrl("../bin/keybinds-json")).replace("file://", "")
   property string phase: "closed"
   property bool keyboardFocused: false
   property int modifiers: 0
@@ -25,6 +26,7 @@ Item {
     root.modifiers = 0
     root.phase = "preflight"
     preflightOutput.value = ""
+    preflightTimeout.restart()
     preflight.running = true
   }
 
@@ -58,6 +60,8 @@ Item {
     if (root.phase === "closed") return
     readyDelay.stop()
     acquireTimeout.stop()
+    preflightTimeout.stop()
+    if (preflight.running) preflight.signal(9)
     root.phase = "closing"
     if (root.modifiers === 0) finishClose()
   }
@@ -81,25 +85,38 @@ Item {
 
   Process {
     id: preflight
-    command: ["hyprctl", "-j", "getoption", "binds:disable_keybind_grabbing"]
+    command: [root.helperPath, "--guard-status"]
     stdout: StdioCollector {
       waitForEnd: true
       onStreamFinished: preflightOutput.value = text
     }
     onExited: function(exitCode) {
+      preflightTimeout.stop()
       if (root.phase !== "preflight") return
       if (exitCode !== 0) {
         root.fail("Cannot verify Hyprland shortcut grabbing.")
         return
       }
       try {
+        if (preflightOutput.value.length > 4096) throw new Error("oversized preflight")
         var option = JSON.parse(preflightOutput.value)
-        var disabled = option.bool === true || Number(option.int || 0) !== 0 || String(option.str || "").toLowerCase() === "true"
-        if (disabled) root.fail("Hyprland has binds:disable_keybind_grabbing enabled.")
+        if (!option || option.schemaVersion !== 1 || typeof option.disabled !== "boolean")
+          throw new Error("invalid preflight schema")
+        if (option.disabled) root.fail("Hyprland has binds:disable_keybind_grabbing enabled.")
         else root.acquire()
       } catch (error) {
         root.fail("Hyprland preflight returned invalid data.")
       }
+    }
+  }
+
+  Timer {
+    id: preflightTimeout
+    interval: 5000
+    repeat: false
+    onTriggered: {
+      if (preflight.running) preflight.signal(9)
+      if (root.phase === "preflight") root.fail("Hyprland preflight exceeded its deadline.")
     }
   }
 
@@ -134,5 +151,10 @@ Item {
       if (root.active && root.keyboardFocused && root.modifiers === 0) root.ready()
       else root.evaluateReady()
     }
+  }
+
+  Component.onDestruction: {
+    preflightTimeout.stop()
+    if (preflight.running) preflight.signal(9)
   }
 }

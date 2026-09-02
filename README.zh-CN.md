@@ -43,25 +43,11 @@ F 功能键、XF86 媒体/设备键、Print/Pause/SysRq、独立的 Home/End/Ins
 ## 安装
 
 ```bash
-git clone https://github.com/luneth90/keycade.git
-cd keycade
-./install.sh
-```
-
-安装器会验证并启用插件，并且只在没有冲突时添加 `Super + Shift + K`。如果不希望
-修改 Hyprland 快捷键：
-
-```bash
-./install.sh --no-bind
-```
-
-也可以不使用安装脚本，直接安装插件：
-
-```bash
 omarchy plugin add https://github.com/luneth90/keycade.git --enable
 ```
 
-然后向 `~/.config/hypr/bindings.lua` 添加快捷键，例如：
+这是 Omarchy 的标准插件安装路径。然后向 `~/.config/hypr/bindings.lua`
+添加快捷键，例如：
 
 ```bash
 echo 'o.bind("SUPER + SHIFT + K", "Keycade", "omarchy-shell shell summon luneth90.keycade '\''{}'\''")' >> ~/.config/hypr/bindings.lua
@@ -74,9 +60,7 @@ omarchy plugin update luneth90.keycade
 omarchy restart shell
 ```
 
-或者在自己 clone 的目录里：`git pull && ./install.sh`，然后同样执行
-`omarchy restart shell`。两条路都一样，重启这一步必须做——只更新不重启，
-Keycade 不一定会刷新。
+重启这一步必须做——只更新不重启，Keycade 不一定会刷新。
 
 ## 使用
 
@@ -89,21 +73,18 @@ Keycade 不一定会刷新。
   练习到这个组合时也能正常答题。
 - 使用顶部菜单切换语言、声音、音量和配色。
 
-学习进度保存在 `$XDG_STATE_HOME/omarchy/keycade/`，更新插件不会丢失。
+学习进度保存在 `${XDG_STATE_HOME:-$HOME/.local/state}/omarchy/keycade/`，更新插件不会丢失。
 
 ## 卸载
 
-保留学习进度：
+卸载插件并保留学习进度：
 
 ```bash
-./uninstall.sh
+omarchy plugin remove luneth90.keycade
 ```
 
-同时删除全部本地设置和学习进度：
-
-```bash
-./uninstall.sh --purge-state
-```
+学习进度仍保存在 `${XDG_STATE_HOME:-$HOME/.local/state}/omarchy/keycade/`。Keycade
+有意不提供在卸载时删除用户状态或修改 Hyprland 配置的脚本。
 
 ## 开发与测试
 
@@ -111,7 +92,7 @@ Keycade 不一定会刷新。
 python3 -m unittest discover -s tests -v
 env -u WAYLAND_DISPLAY -u DISPLAY QT_QPA_PLATFORM=offscreen QT_QPA_PLATFORMTHEME= \
   QT_QUICK_BACKEND=software /usr/lib/qt6/bin/qmltestrunner -input tests/qml
-./tests/test_installers.sh
+./tests/test_state_store_qml.sh
 /usr/lib/qt6/bin/qmllint -I /usr/lib/qt6/qml Keycade.qml lib/*.qml dev/InputProbe.qml
 ```
 

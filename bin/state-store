@@ -1,0 +1,240 @@
+#!/usr/bin/env python3
+"""Bounded, descriptor-relative persistence for Keycade state."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import secrets
+import stat
+import sys
+import time
+from pathlib import Path
+from typing import Any
+
+SCHEMA_VERSION = 1
+FILE_LIMITS = {
+    "stats": 2 * 1024 * 1024,
+    "settings": 64 * 1024,
+    "session": 512 * 1024,
+}
+FILE_NAMES = {name: f"{name}.json" for name in FILE_LIMITS}
+MAX_RESPONSE_BYTES = 6 * 1024 * 1024
+PRIVATE_MODE = 0o700
+FILE_MODE = 0o600
+
+
+class StateError(RuntimeError):
+    pass
+
+
+def _open_directory(path: Path) -> int:
+    return os.open(path, os.O_RDONLY | os.O_DIRECTORY | os.O_CLOEXEC)
+
+
+def _open_child_directory(parent_fd: int, name: str, *, private: bool) -> int:
+    flags = os.O_RDONLY | os.O_DIRECTORY | os.O_CLOEXEC | os.O_NOFOLLOW
+    try:
+        fd = os.open(name, flags, dir_fd=parent_fd)
+    except FileNotFoundError:
+        os.mkdir(name, PRIVATE_MODE, dir_fd=parent_fd)
+        fd = os.open(name, flags, dir_fd=parent_fd)
+    info = os.fstat(fd)
+    if not stat.S_ISDIR(info.st_mode) or info.st_uid != os.getuid():
+        os.close(fd)
+        raise StateError(f"state component {name!r} is not an owned directory")
+    if private and stat.S_IMODE(info.st_mode) != PRIVATE_MODE:
+        os.fchmod(fd, PRIVATE_MODE)
+    return fd
+
+
+def open_state_directory() -> int:
+    configured = os.environ.get("XDG_STATE_HOME", "")
+    if configured and os.path.isabs(configured):
+        root = Path(configured)
+    else:
+        root = Path.home() / ".local" / "state"
+    root.mkdir(mode=PRIVATE_MODE, parents=True, exist_ok=True)
+    root_fd = _open_directory(root)
+    try:
+        omarchy_fd = _open_child_directory(root_fd, "omarchy", private=False)
+    finally:
+        os.close(root_fd)
+    try:
+        return _open_child_directory(omarchy_fd, "keycade", private=True)
+    finally:
+        os.close(omarchy_fd)
+
+
+def _quarantine(fd: int, name: str) -> str:
+    suffix = f"corrupt-{int(time.time() * 1000)}-{secrets.token_hex(4)}"
+    destination = f"{name}.{suffix}"
+    os.rename(name, destination, src_dir_fd=fd, dst_dir_fd=fd)
+    os.fsync(fd)
+    return destination
+
+
+def read_file(fd: int, kind: str) -> dict[str, Any]:
+    name = FILE_NAMES[kind]
+    limit = FILE_LIMITS[kind]
+    flags = os.O_RDONLY | os.O_CLOEXEC | os.O_NOFOLLOW | os.O_NONBLOCK
+    try:
+        file_fd = os.open(name, flags, dir_fd=fd)
+    except FileNotFoundError:
+        return {"status": "missing", "text": ""}
+    except OSError:
+        quarantined = _quarantine(fd, name)
+        return {"status": "quarantined", "text": "", "quarantinedAs": quarantined}
+
+    try:
+        info = os.fstat(file_fd)
+        if (not stat.S_ISREG(info.st_mode) or info.st_uid != os.getuid()
+                or info.st_nlink != 1 or info.st_size > limit):
+            os.close(file_fd)
+            file_fd = -1
+            quarantined = _quarantine(fd, name)
+            return {"status": "quarantined", "text": "", "quarantinedAs": quarantined}
+        chunks: list[bytes] = []
+        size = 0
+        while True:
+            chunk = os.read(file_fd, min(65536, limit + 1 - size))
+            if not chunk:
+                break
+            chunks.append(chunk)
+            size += len(chunk)
+            if size > limit:
+                quarantined = _quarantine(fd, name)
+                return {"status": "quarantined", "text": "", "quarantinedAs": quarantined}
+        try:
+            text = b"".join(chunks).decode("utf-8", errors="strict")
+        except UnicodeDecodeError:
+            quarantined = _quarantine(fd, name)
+            return {"status": "quarantined", "text": "", "quarantinedAs": quarantined}
+        return {"status": "ok", "text": text}
+    finally:
+        if file_fd >= 0:
+            os.close(file_fd)
+
+
+def _read_payload(kind: str) -> bytes:
+    limit = FILE_LIMITS[kind]
+    payload = sys.stdin.buffer.readline(limit + 2)
+    if len(payload) > limit or not payload.endswith(b"\n"):
+        raise StateError(f"{kind} payload exceeds its byte limit or is incomplete")
+    payload = payload[:-1]
+    try:
+        value = json.loads(
+            payload,
+            parse_constant=lambda value: (_ for _ in ()).throw(ValueError(value)),
+        )
+    except (UnicodeDecodeError, json.JSONDecodeError, RecursionError, ValueError) as error:
+        raise StateError(f"{kind} payload is not valid JSON") from error
+    try:
+        encoded = json.dumps(
+            value, ensure_ascii=False, allow_nan=False, separators=(",", ":")
+        ).encode("utf-8") + b"\n"
+    except (RecursionError, ValueError) as error:
+        raise StateError(f"{kind} payload is not serializable") from error
+    if len(encoded) > limit:
+        raise StateError(f"{kind} payload exceeds its byte limit")
+    return encoded
+
+
+def atomic_write(fd: int, kind: str, payload: bytes, quarantine: bool) -> None:
+    name = FILE_NAMES[kind]
+    temporary = f".{name}.tmp-{os.getpid()}-{secrets.token_hex(8)}"
+    temp_fd = os.open(
+        temporary,
+        os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_CLOEXEC | os.O_NOFOLLOW,
+        FILE_MODE,
+        dir_fd=fd,
+    )
+    try:
+        view = memoryview(payload)
+        while view:
+            written = os.write(temp_fd, view)
+            view = view[written:]
+        os.fsync(temp_fd)
+    except BaseException:
+        os.close(temp_fd)
+        os.unlink(temporary, dir_fd=fd)
+        raise
+    else:
+        os.close(temp_fd)
+
+    try:
+        if quarantine:
+            try:
+                _quarantine(fd, name)
+            except FileNotFoundError:
+                pass
+        os.replace(temporary, name, src_dir_fd=fd, dst_dir_fd=fd)
+        os.fsync(fd)
+    except BaseException:
+        try:
+            os.unlink(temporary, dir_fd=fd)
+        except FileNotFoundError:
+            pass
+        raise
+
+
+def delete_file(fd: int, kind: str) -> None:
+    try:
+        os.unlink(FILE_NAMES[kind], dir_fd=fd)
+    except FileNotFoundError:
+        return
+    os.fsync(fd)
+
+
+def emit(value: dict[str, Any]) -> None:
+    encoded = json.dumps(value, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+    if len(encoded) > MAX_RESPONSE_BYTES:
+        raise StateError("state response exceeds its byte limit")
+    sys.stdout.buffer.write(encoded + b"\n")
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    subparsers = parser.add_subparsers(dest="action", required=True)
+    subparsers.add_parser("load")
+    write_parser = subparsers.add_parser("write")
+    write_parser.add_argument("kind", choices=FILE_NAMES)
+    write_parser.add_argument("--quarantine", action="store_true")
+    delete_parser = subparsers.add_parser("delete")
+    delete_parser.add_argument("kind", choices=FILE_NAMES)
+    quarantine_parser = subparsers.add_parser("quarantine")
+    quarantine_parser.add_argument("kind", choices=FILE_NAMES)
+    args = parser.parse_args()
+
+    try:
+        state_fd = open_state_directory()
+        try:
+            if args.action == "load":
+                emit({
+                    "schemaVersion": SCHEMA_VERSION,
+                    "files": {kind: read_file(state_fd, kind) for kind in FILE_NAMES},
+                })
+            elif args.action == "write":
+                atomic_write(state_fd, args.kind, _read_payload(args.kind), args.quarantine)
+                emit({"schemaVersion": SCHEMA_VERSION, "ok": True})
+            elif args.action == "quarantine":
+                try:
+                    _quarantine(state_fd, FILE_NAMES[args.kind])
+                except FileNotFoundError:
+                    pass
+                emit({"schemaVersion": SCHEMA_VERSION, "ok": True})
+            else:
+                delete_file(state_fd, args.kind)
+                emit({"schemaVersion": SCHEMA_VERSION, "ok": True})
+        finally:
+            os.close(state_fd)
+    except (OSError, StateError) as error:
+        message = str(error).replace("\n", " ")[:512]
+        print(json.dumps({"schemaVersion": SCHEMA_VERSION, "error": message}))
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

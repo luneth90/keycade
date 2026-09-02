@@ -11,24 +11,34 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import re
+import selectors
+import signal
 import subprocess
 import sys
+import time
+import unicodedata
 from pathlib import Path
 from typing import Any
 
 SCHEMA_VERSION = 1
-BOOLEAN_FIELDS = {
-    "locked",
-    "mouse",
-    "release",
-    "repeat",
-    "longPress",
-    "nonConsuming",
-    "has_description",
-    "dontInhibit",
-    "catchAll",
+COMMAND_TIMEOUT_SECONDS = 3.0
+MAX_COMMAND_STDOUT_BYTES = 4 * 1024 * 1024
+MAX_COMMAND_STDERR_BYTES = 64 * 1024
+MAX_FIXTURE_BYTES = 4 * 1024 * 1024
+MAX_PAYLOAD_BYTES = 8 * 1024 * 1024
+MAX_BINDINGS = 2000
+FIELD_LIMITS = {
+    "key": 128,
+    "dispatcher": 128,
+    "arg": 2048,
+    "description": 512,
+    "submap": 128,
 }
+MAX_FLAGS = 16
+MAX_KEYCODE = 65535
+MAX_MODMASK = 2**31 - 1
 
 HEADER_FLAGS = {
     "l": "locked",
@@ -65,172 +75,116 @@ PHYSICAL_FALLBACKS = {
     20: "-", 21: "=", 59: ",", 60: ".", 61: "/",
 }
 
-MODIFIER_KEYS = {
-    "SHIFT",
-    "CTRL",
-    "CONTROL",
-    "ALT",
-    "SUPER",
-    "META",
-    "WIN",
-    "MOD1",
-    "MOD4",
-}
-
-LUA_BIND_SCANNER = r'''
-local modifiers = { SHIFT = 1, CTRL = 4, CONTROL = 4, ALT = 8, SUPER = 64 }
-
-local function split_keys(keys)
-  local modmask, key = 0, ""
-  for part in string.gmatch(tostring(keys or ""), "[^+]+") do
-    local value = part:gsub("^%s+", ""):gsub("%s+$", "")
-    local modifier = modifiers[string.upper(value)]
-    if modifier then modmask = modmask + modifier else key = value end
-  end
-  return modmask, key
-end
-
-local function literal(value)
-  local kind = type(value)
-  if kind == "string" then return string.format("%q", value) end
-  if kind == "number" or kind == "boolean" then return tostring(value) end
-  if kind ~= "table" then return "nil" end
-  local parts = {}
-  for i = 1, #value do parts[#parts + 1] = literal(value[i]) end
-  return "{ " .. table.concat(parts, ", ") .. " }"
-end
-
-local function call_expression(path, ...)
-  local args = {}
-  for i = 1, select("#", ...) do args[i] = literal(select(i, ...)) end
-  return path .. "(" .. table.concat(args, ", ") .. ")"
-end
-
-local function dispatcher(kind, arg, expression)
-  return { __keycade_dispatcher = true, kind = kind or "", arg = arg or "", expression = expression or "" }
-end
-
-local function dsp_proxy(path)
-  return setmetatable({ path = path }, {
-    __index = function(self, key) return dsp_proxy(self.path .. "." .. tostring(key)) end,
-    __call = function(self, ...)
-      local first = ...
-      local expression = call_expression(self.path, ...)
-      if self.path == "hl.dsp.exec_cmd" and type(first) == "string" then
-        return dispatcher("exec", first, expression)
-      end
-      return dispatcher("lua", expression, expression)
-    end,
-  })
-end
-
-local noop
-noop = setmetatable({}, {
-  __index = function() return noop end,
-  __call = function() return noop end,
-})
-
-hl = setmetatable({
-  dsp = dsp_proxy("hl.dsp"),
-  bind = function(keys, bind_dispatcher, opts)
-    opts = opts or {}
-    if opts.description and opts.description ~= "" then
-      local modmask, key = split_keys(keys)
-      local kind, arg = "", ""
-      if type(bind_dispatcher) == "table" and bind_dispatcher.__keycade_dispatcher then
-        kind, arg = bind_dispatcher.kind or "", bind_dispatcher.arg or bind_dispatcher.expression or ""
-      elseif type(bind_dispatcher) == "string" and bind_dispatcher ~= "" then
-        kind, arg = "exec", bind_dispatcher
-      end
-      io.write(tostring(modmask), "\t", tostring(opts.description), "\t", tostring(key), "\t", kind, "\t", arg, "\n")
-    end
-    return noop
-  end,
-  get_config = function() return nil end,
-}, { __index = function() return noop end })
-
-local home = os.getenv("HOME") or ""
-local file = io.open(home .. "/.config/hypr/hyprland.lua", "r")
-if file then
-  file:close()
-  local ok, error = pcall(dofile, home .. "/.config/hypr/hyprland.lua")
-  if not ok then io.stderr:write("Keycade Lua bind scan failed: " .. tostring(error) .. "\n") end
-end
-'''
-
-
 class HelperError(RuntimeError):
     pass
 
 
-def command_output(command: list[str]) -> str:
+def _kill_process_group(process: subprocess.Popen[bytes]) -> None:
     try:
-        result = subprocess.run(
+        os.killpg(process.pid, signal.SIGKILL)
+    except ProcessLookupError:
+        pass
+    try:
+        process.wait(timeout=1)
+    except subprocess.TimeoutExpired:
+        process.kill()
+        process.wait()
+
+
+def command_output(
+    command: list[str],
+    *,
+    max_stdout: int = MAX_COMMAND_STDOUT_BYTES,
+    max_stderr: int = MAX_COMMAND_STDERR_BYTES,
+    timeout: float = COMMAND_TIMEOUT_SECONDS,
+) -> str:
+    try:
+        process = subprocess.Popen(
             command,
-            check=True,
-            capture_output=True,
-            text=True,
-            timeout=3,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            start_new_session=True,
         )
-    except (FileNotFoundError, subprocess.CalledProcessError, subprocess.TimeoutExpired) as error:
+    except OSError as error:
         raise HelperError(f"{' '.join(command)} failed: {error}") from error
-    return result.stdout
 
-
-def lua_bind_cache() -> dict[tuple[int, str], list[str]]:
+    streams = selectors.DefaultSelector()
+    assert process.stdout is not None and process.stderr is not None
+    streams.register(process.stdout, selectors.EVENT_READ, ("stdout", max_stdout))
+    streams.register(process.stderr, selectors.EVENT_READ, ("stderr", max_stderr))
+    buffers = {"stdout": bytearray(), "stderr": bytearray()}
+    deadline = time.monotonic() + timeout
     try:
-        result = subprocess.run(
-            ["lua", "-"],
-            input=LUA_BIND_SCANNER,
-            check=True,
-            capture_output=True,
-            text=True,
-            timeout=3,
-        )
-    except (FileNotFoundError, subprocess.CalledProcessError, subprocess.TimeoutExpired):
-        return {}
-    cache: dict[tuple[int, str], list[str]] = {}
-    for line in result.stdout.splitlines():
-        fields = line.split("\t", 4)
-        if len(fields) < 3:
-            continue
-        try:
-            modmask = int(fields[0])
-        except ValueError:
-            continue
-        cache.setdefault((modmask, fields[1]), []).append(fields[2])
-    return cache
+        while streams.get_map():
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise HelperError(f"{' '.join(command)} exceeded its deadline")
+            events = streams.select(min(remaining, 0.1))
+            if not events and process.poll() is not None:
+                events = [(key, 0) for key in list(streams.get_map().values())]
+            for key, _mask in events:
+                chunk = os.read(key.fd, 65536)
+                if not chunk:
+                    streams.unregister(key.fileobj)
+                    continue
+                name, limit = key.data
+                buffers[name].extend(chunk)
+                if len(buffers[name]) > limit:
+                    raise HelperError(f"{' '.join(command)} exceeded its {name} byte limit")
+        return_code = process.wait(timeout=max(0.01, deadline - time.monotonic()))
+    except subprocess.TimeoutExpired as error:
+        _kill_process_group(process)
+        raise HelperError(f"{' '.join(command)} exceeded its deadline") from error
+    except HelperError:
+        _kill_process_group(process)
+        raise
+    finally:
+        streams.close()
+        process.stdout.close()
+        process.stderr.close()
 
-
-def resolve_lua_keys(bindings: list[dict[str, Any]]) -> None:
-    missing = [
-        binding for binding in bindings
-        if binding.get("dispatcher") == "__lua"
-        and not binding.get("key")
-        and not binding.get("keycode")
-        and binding.get("description")
-    ]
-    if not missing:
-        return
-    cache = lua_bind_cache()
-    used: dict[tuple[int, str], int] = {}
-    for binding in missing:
-        cache_key = (int(binding["modMask"]), str(binding["description"]))
-        position = used.get(cache_key, 0)
-        candidates = cache.get(cache_key, [])
-        if position >= len(candidates):
-            continue
-        key, keycode, match_mode = canonical_key(candidates[position])
-        binding["key"] = key
-        binding["keycode"] = keycode
-        binding["matchMode"] = match_mode
-        used[cache_key] = position + 1
+    if return_code != 0:
+        detail = buffers["stderr"].decode("utf-8", errors="replace").strip()
+        detail = sanitize_text(detail, 512) if detail else f"exit status {return_code}"
+        raise HelperError(f"{' '.join(command)} failed: {detail}")
+    return buffers["stdout"].decode("utf-8", errors="strict")
 
 
 def read_text(path: str | None, command: list[str]) -> str:
     if path:
-        return Path(path).read_text(encoding="utf-8")
+        raw = Path(path).read_bytes()
+        if len(raw) > MAX_FIXTURE_BYTES:
+            raise HelperError(f"fixture exceeds {MAX_FIXTURE_BYTES} bytes")
+        return raw.decode("utf-8", errors="strict")
     return command_output(command)
+
+
+def sanitize_text(value: Any, limit: int) -> str:
+    text = unicodedata.normalize("NFC", str(value or ""))
+    cleaned = "".join(" " if unicodedata.category(char).startswith("C") else char for char in text)
+    if len(cleaned) > limit:
+        raise HelperError(f"field exceeds {limit} characters")
+    return cleaned
+
+
+def schema_text(value: Any, field: str) -> str:
+    if value is None:
+        return ""
+    if not isinstance(value, str):
+        raise HelperError(f"{field} must be a string")
+    return sanitize_text(value, FIELD_LIMITS[field])
+
+
+def bounded_int(value: Any, minimum: int, maximum: int, field: str) -> int:
+    if isinstance(value, bool):
+        raise HelperError(f"{field} must be an integer")
+    try:
+        result = int(value)
+    except (TypeError, ValueError) as error:
+        raise HelperError(f"{field} must be an integer") from error
+    if result < minimum or result > maximum:
+        raise HelperError(f"{field} is out of range")
+    return result
 
 
 def parse_bool(value: str) -> bool:
@@ -246,6 +200,8 @@ def split_blocks(raw: str) -> list[dict[str, str]]:
         if header:
             if current:
                 blocks.append(current)
+                if len(blocks) > MAX_BINDINGS:
+                    raise HelperError(f"binding count exceeds {MAX_BINDINGS}")
             current = {"_header": header.group(1).lower()}
             continue
         if current is None:
@@ -256,11 +212,13 @@ def split_blocks(raw: str) -> list[dict[str, str]]:
 
     if current:
         blocks.append(current)
+    if len(blocks) > MAX_BINDINGS:
+        raise HelperError(f"binding count exceeds {MAX_BINDINGS}")
     return blocks
 
 
 def canonical_key(value: str) -> tuple[str, int, str]:
-    key = value.strip()
+    key = sanitize_text(value, FIELD_LIMITS["key"]).strip()
     if " + " in key:
         key = key.rsplit(" + ", 1)[-1].strip()
     if key.lower().startswith("code:"):
@@ -268,6 +226,7 @@ def canonical_key(value: str) -> tuple[str, int, str]:
             code = int(key.split(":", 1)[1])
         except ValueError:
             code = 0
+        code = bounded_int(code, 0, MAX_KEYCODE, "keycode")
         return PHYSICAL_FALLBACKS.get(code, ""), code, "physical"
     alias = KEY_ALIASES.get(key.lower(), key)
     return alias.upper() if len(alias) > 1 else alias, 0, "logical"
@@ -298,30 +257,33 @@ def binding_from_block(block: dict[str, str]) -> dict[str, Any]:
     reported_code = block.get("keycode", "").strip()
     if not keycode and reported_code not in {"", "0"}:
         try:
-            keycode = int(reported_code)
-        except ValueError:
+            keycode = bounded_int(reported_code, 0, MAX_KEYCODE, "keycode")
+        except HelperError:
             keycode = 0
     if not raw_key and keycode:
         match_mode = "physical"
 
     try:
-        mod_mask = int(block.get("modmask", "0") or 0)
-    except ValueError:
+        mod_mask = bounded_int(block.get("modmask", "0") or 0, 0, MAX_MODMASK, "modMask")
+    except HelperError:
         mod_mask = 0
 
+    flags = flags_for(block)
+    if len(flags) > MAX_FLAGS:
+        raise HelperError(f"flag count exceeds {MAX_FLAGS}")
     return {
         "modMask": mod_mask,
-        "key": key,
+        "key": sanitize_text(key, FIELD_LIMITS["key"]),
         "keycode": keycode,
         "matchMode": match_mode,
-        "flags": flags_for(block),
+        "flags": [sanitize_text(flag, 32) for flag in flags],
         "dontInhibit": parse_bool(block.get("dontInhibit", block.get("dont_inhibit", "false")))
         or "p" in block.get("_header", "")[4:],
         "allowInputCapture": parse_bool(block.get("allow_input_capture", "false")),
-        "dispatcher": block.get("dispatcher", "").strip(),
-        "arg": block.get("arg", "").strip(),
-        "description": block.get("description", "").strip(),
-        "submap": block.get("submap", "").strip(),
+        "dispatcher": sanitize_text(block.get("dispatcher", ""), FIELD_LIMITS["dispatcher"]).strip(),
+        "arg": sanitize_text(block.get("arg", ""), FIELD_LIMITS["arg"]).strip(),
+        "description": sanitize_text(block.get("description", ""), FIELD_LIMITS["description"]).strip(),
+        "submap": sanitize_text(block.get("submap", ""), FIELD_LIMITS["submap"]).strip(),
     }
 
 
@@ -351,13 +313,12 @@ def snapshot(raw_binds: str, raw_devices: str = "") -> dict[str, Any]:
 
 
 def binding_from_json(value: dict[str, Any]) -> dict[str, Any]:
-    if not isinstance(value.get("modmask", 0), int):
-        raise HelperError("hyprctl JSON has misaligned binding fields")
-    raw_key = str(value.get("key", "") or "")
+    if not isinstance(value, dict):
+        raise HelperError("hyprctl JSON binding is not an object")
+    modmask = bounded_int(value.get("modmask", 0), 0, MAX_MODMASK, "modMask")
+    raw_key = schema_text(value.get("key", ""), "key")
     key, keycode, match_mode = canonical_key(raw_key)
-    reported_code = value.get("keycode", 0)
-    if not isinstance(reported_code, int):
-        raise HelperError("hyprctl JSON contains a non-numeric keycode")
+    reported_code = bounded_int(value.get("keycode", 0), 0, MAX_KEYCODE, "keycode")
     if not keycode:
         keycode = reported_code
     if not raw_key and keycode:
@@ -378,20 +339,36 @@ def binding_from_json(value: dict[str, Any]) -> dict[str, Any]:
         "click": "click",
         "drag": "drag",
     }
+    for name in set(bool_flags) | {"dontInhibit", "dont_inhibit", "allowInputCapture", "allow_input_capture"}:
+        if name in value and not isinstance(value[name], bool):
+            raise HelperError(f"{name} must be a boolean")
     flags = [label for name, label in bool_flags.items() if value.get(name) is True]
+    if len(flags) > MAX_FLAGS:
+        raise HelperError(f"flag count exceeds {MAX_FLAGS}")
     return {
-        "modMask": value.get("modmask", 0),
-        "key": key,
+        "modMask": modmask,
+        "key": sanitize_text(key, FIELD_LIMITS["key"]),
         "keycode": keycode,
         "matchMode": match_mode,
         "flags": sorted(set(flags)),
         "dontInhibit": value.get("dontInhibit") is True or value.get("dont_inhibit") is True,
         "allowInputCapture": value.get("allowInputCapture") is True or value.get("allow_input_capture") is True,
-        "dispatcher": str(value.get("dispatcher", "") or "").strip(),
-        "arg": str(value.get("arg", "") or "").strip(),
-        "description": str(value.get("description", "") or "").strip(),
-        "submap": str(value.get("submap", "") or "").strip(),
+        "dispatcher": schema_text(value.get("dispatcher", ""), "dispatcher").strip(),
+        "arg": schema_text(value.get("arg", ""), "arg").strip(),
+        "description": schema_text(value.get("description", ""), "description").strip(),
+        "submap": schema_text(value.get("submap", ""), "submap").strip(),
     }
+
+
+def records_align(json_binding: dict[str, Any], plain_binding: dict[str, Any]) -> bool:
+    if json_binding["modMask"] != plain_binding["modMask"]:
+        return False
+    if json_binding["description"] != plain_binding["description"]:
+        return False
+    for field in ("dispatcher", "arg", "submap"):
+        if json_binding[field] and plain_binding[field] and json_binding[field] != plain_binding[field]:
+            return False
+    return True
 
 
 def snapshot_json(raw_json: str, raw_plain: str, raw_devices: str = "") -> dict[str, Any]:
@@ -401,6 +378,8 @@ def snapshot_json(raw_json: str, raw_plain: str, raw_devices: str = "") -> dict[
         raise HelperError(f"invalid hyprctl JSON: {error}") from error
     if not isinstance(values, list):
         raise HelperError("hyprctl JSON root is not an array")
+    if len(values) > MAX_BINDINGS:
+        raise HelperError(f"binding count exceeds {MAX_BINDINGS}")
     bindings = [binding_from_json(value) for value in values]
 
     # Current JSON exposes most named flags, but some releases omit
@@ -408,9 +387,14 @@ def snapshot_json(raw_json: str, raw_plain: str, raw_devices: str = "") -> dict[
     plain = [binding_from_block(block) for block in split_blocks(raw_plain)]
     if len(plain) == len(bindings):
         for index, binding in enumerate(bindings):
+            if not records_align(binding, plain[index]):
+                continue
             binding["dontInhibit"] = binding["dontInhibit"] or plain[index]["dontInhibit"]
-
-    resolve_lua_keys(bindings)
+            if (not binding["key"] and not binding["keycode"]
+                    and (plain[index]["key"] or plain[index]["keycode"])):
+                binding["key"] = plain[index]["key"]
+                binding["keycode"] = plain[index]["keycode"]
+                binding["matchMode"] = plain[index]["matchMode"]
 
     return {
         "schemaVersion": SCHEMA_VERSION,
@@ -424,10 +408,31 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--input", help="read hyprctl binds output from a fixture")
     parser.add_argument("--devices-input", help="read hyprctl devices output from a fixture")
+    parser.add_argument("--guard-status", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument("--pretty", action="store_true")
     args = parser.parse_args()
 
     try:
+        if args.guard_status:
+            raw_option = command_output(
+                ["hyprctl", "-j", "getoption", "binds:disable_keybind_grabbing"],
+                max_stdout=64 * 1024,
+            )
+            option = json.loads(raw_option)
+            if not isinstance(option, dict):
+                raise HelperError("Hyprland preflight returned a non-object")
+            if not any(name in option for name in ("bool", "int", "str")):
+                raise HelperError("Hyprland preflight omitted its value")
+            integer = option.get("int")
+            disabled = option.get("bool") is True
+            if isinstance(integer, int) and not isinstance(integer, bool) and integer != 0:
+                disabled = True
+            if isinstance(option.get("str"), str) and option["str"].lower() == "true":
+                disabled = True
+            result = {"schemaVersion": SCHEMA_VERSION, "disabled": disabled}
+            encoded = json.dumps(result, ensure_ascii=False).encode("utf-8")
+            sys.stdout.buffer.write(encoded + b"\n")
+            return 0
         devices = read_text(args.devices_input, ["hyprctl", "devices"])
         if args.input:
             binds = read_text(args.input, ["hyprctl", "binds"])
@@ -438,12 +443,15 @@ def main() -> int:
                 result = snapshot_json(command_output(["hyprctl", "-j", "binds"]), plain, devices)
             except HelperError:
                 result = snapshot(plain, devices)
-    except (OSError, HelperError) as error:
+    except (OSError, UnicodeError, json.JSONDecodeError, HelperError) as error:
         print(json.dumps({"schemaVersion": SCHEMA_VERSION, "error": str(error)}))
         return 1
 
-    json.dump(result, sys.stdout, indent=2 if args.pretty else None, ensure_ascii=False)
-    sys.stdout.write("\n")
+    encoded = json.dumps(result, indent=2 if args.pretty else None, ensure_ascii=False).encode("utf-8")
+    if len(encoded) > MAX_PAYLOAD_BYTES:
+        print(json.dumps({"schemaVersion": SCHEMA_VERSION, "error": "keybind payload exceeds byte limit"}))
+        return 1
+    sys.stdout.buffer.write(encoded + b"\n")
     return 0
 
 

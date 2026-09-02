@@ -631,6 +631,10 @@ Item {
   StateStore {
     id: store
     onReadyChanged: root.maybeShowHome()
+    onFailed: function(message) {
+      root.errorMessage = message
+      guard.fail(message)
+    }
   }
   KeybindSource {
     id: keybinds
@@ -825,7 +829,7 @@ Item {
           anchors.verticalCenter: parent.verticalCenter
           color: root.voidColor
           border.width: 4; border.color: root.voidColor
-          Text {
+          SafeText {
             anchors.centerIn: parent
             text: "K"
             color: root.primaryColor
@@ -839,8 +843,8 @@ Item {
           anchors.left: parent.left; anchors.leftMargin: 92
           anchors.verticalCenter: parent.verticalCenter
           spacing: 0
-          Text { text: "KEYCADE"; color: root.voidColor; font.family: "monospace"; font.pixelSize: 32; font.bold: true; font.letterSpacing: 4 }
-          Text { text: i18n.t("brandSubtitle"); color: root.voidColor; font.family: "monospace"; font.pixelSize: 11; font.bold: true }
+          SafeText { text: "KEYCADE"; color: root.voidColor; font.family: "monospace"; font.pixelSize: 32; font.bold: true; font.letterSpacing: 4 }
+          SafeText { text: i18n.t("brandSubtitle"); color: root.voidColor; font.family: "monospace"; font.pixelSize: 11; font.bold: true }
         }
 
         Row {
@@ -852,7 +856,7 @@ Item {
           Rectangle {
             id: soundButton
             width: 116; height: 36; color: root.screenColor; border.width: 3; border.color: root.voidColor
-            Text {
+            SafeText {
               anchors.centerIn: parent
               text: store.settings.feedbackSound || store.settings.countdownSound
                     ? i18n.t("soundVolume", { volume: Math.round(Number(store.settings.soundVolume || 0.6) * 100) })
@@ -871,7 +875,7 @@ Item {
           Rectangle {
             id: languageButton
             width: 124; height: 36; color: root.screenColor; border.width: 3; border.color: root.voidColor
-            Text { anchors.centerIn: parent; text: root.localeLabel(i18n.locale) + " ▾"; color: root.inkColor; font.family: "monospace"; font.bold: true; font.pixelSize: 10 }
+            SafeText { anchors.centerIn: parent; text: root.localeLabel(i18n.locale) + " ▾"; color: root.inkColor; font.family: "monospace"; font.bold: true; font.pixelSize: 10 }
             MouseArea {
               anchors.fill: parent
               onClicked: {
@@ -882,7 +886,7 @@ Item {
           }
           Rectangle {
             width: 112; height: 36; color: root.screenColor; border.width: 3; border.color: root.voidColor
-            Text { anchors.centerIn: parent; text: root.themeName.toUpperCase(); color: root.inkColor; font.family: "monospace"; font.bold: true; font.pixelSize: 11 }
+            SafeText { anchors.centerIn: parent; text: root.themeName.toUpperCase(); color: root.inkColor; font.family: "monospace"; font.bold: true; font.pixelSize: 11 }
             MouseArea { anchors.fill: parent; onClicked: root.cycleTheme() }
           }
         }
@@ -898,22 +902,22 @@ Item {
         color: root.cabinetColor; border.width: 3; border.color: root.primaryColor
         Column {
           anchors.fill: parent; anchors.margins: 10; spacing: 8
-          Text { text: i18n.t("soundSettings"); color: root.inkColor; font.family: "monospace"; font.bold: true; font.pixelSize: 11 }
+          SafeText { text: i18n.t("soundSettings"); color: root.inkColor; font.family: "monospace"; font.bold: true; font.pixelSize: 11 }
           Row {
             spacing: 8
             Rectangle {
               width: 38; height: 30; color: root.screenColor; border.width: 2; border.color: root.mutedColor
-              Text { anchors.centerIn: parent; text: "−"; color: root.inkColor; font.pixelSize: 18; font.bold: true }
+              SafeText { anchors.centerIn: parent; text: "−"; color: root.inkColor; font.pixelSize: 18; font.bold: true }
               MouseArea { anchors.fill: parent; onClicked: root.adjustSoundVolume(-0.1) }
             }
-            Text {
+            SafeText {
               width: 130; height: 30; verticalAlignment: Text.AlignVCenter; horizontalAlignment: Text.AlignHCenter
               text: i18n.t("volumePercent", { volume: Math.round(Number(store.settings.soundVolume || 0.6) * 100) })
               color: root.inkColor; font.family: "monospace"; font.pixelSize: 11; font.bold: true
             }
             Rectangle {
               width: 38; height: 30; color: root.screenColor; border.width: 2; border.color: root.mutedColor
-              Text { anchors.centerIn: parent; text: "+"; color: root.inkColor; font.pixelSize: 18; font.bold: true }
+              SafeText { anchors.centerIn: parent; text: "+"; color: root.inkColor; font.pixelSize: 18; font.bold: true }
               MouseArea { anchors.fill: parent; onClicked: root.adjustSoundVolume(0.1) }
             }
           }
@@ -921,12 +925,12 @@ Item {
             spacing: 8
             Rectangle {
               width: 108; height: 32; color: store.settings.feedbackSound ? root.successColor : root.screenColor; border.width: 2; border.color: root.mutedColor
-              Text { anchors.centerIn: parent; text: i18n.t(store.settings.feedbackSound ? "feedbackOn" : "feedbackOff"); color: store.settings.feedbackSound ? root.voidColor : root.mutedColor; font.family: "monospace"; font.pixelSize: 9; font.bold: true }
+              SafeText { anchors.centerIn: parent; text: i18n.t(store.settings.feedbackSound ? "feedbackOn" : "feedbackOff"); color: store.settings.feedbackSound ? root.voidColor : root.mutedColor; font.family: "monospace"; font.pixelSize: 9; font.bold: true }
               MouseArea { anchors.fill: parent; onClicked: root.toggleSound() }
             }
             Rectangle {
               width: 108; height: 32; color: store.settings.countdownSound ? root.coinColor : root.screenColor; border.width: 2; border.color: root.mutedColor
-              Text { anchors.centerIn: parent; text: i18n.t(store.settings.countdownSound ? "countdownOn" : "countdownOff"); color: store.settings.countdownSound ? root.voidColor : root.mutedColor; font.family: "monospace"; font.pixelSize: 9; font.bold: true }
+              SafeText { anchors.centerIn: parent; text: i18n.t(store.settings.countdownSound ? "countdownOn" : "countdownOff"); color: store.settings.countdownSound ? root.voidColor : root.mutedColor; font.family: "monospace"; font.pixelSize: 9; font.bold: true }
               MouseArea { anchors.fill: parent; onClicked: root.toggleCountdownSound() }
             }
           }
@@ -950,7 +954,7 @@ Item {
               required property string modelData
               width: parent.width; height: 36
               color: languageOption.modelData === i18n.locale ? root.primaryColor : root.screenColor
-              Text { anchors.centerIn: parent; text: root.localeLabel(languageOption.modelData); color: languageOption.modelData === i18n.locale ? root.voidColor : root.inkColor; font.family: "monospace"; font.pixelSize: 11; font.bold: true }
+              SafeText { anchors.centerIn: parent; text: root.localeLabel(languageOption.modelData); color: languageOption.modelData === i18n.locale ? root.voidColor : root.inkColor; font.family: "monospace"; font.pixelSize: 11; font.bold: true }
               MouseArea { anchors.fill: parent; onClicked: root.selectLocale(languageOption.modelData) }
             }
           }
@@ -989,8 +993,8 @@ Item {
                 Column {
                   width: parent.width
                   anchors.centerIn: parent
-                  Text { width: parent.width; horizontalAlignment: Text.AlignHCenter; elide: Text.ElideRight; text: hudDatum.modelData.label; color: root.mutedColor; font.family: "monospace"; font.pixelSize: 9; font.bold: true }
-                  Text { width: parent.width; horizontalAlignment: Text.AlignHCenter; text: hudDatum.modelData.value; color: root.inkColor; font.family: "monospace"; font.pixelSize: 20; font.bold: true }
+                  SafeText { width: parent.width; horizontalAlignment: Text.AlignHCenter; elide: Text.ElideRight; text: hudDatum.modelData.label; color: root.mutedColor; font.family: "monospace"; font.pixelSize: 9; font.bold: true }
+                  SafeText { width: parent.width; horizontalAlignment: Text.AlignHCenter; text: hudDatum.modelData.value; color: root.inkColor; font.family: "monospace"; font.pixelSize: 20; font.bold: true }
                 }
               }
             }
@@ -998,7 +1002,7 @@ Item {
 
           Item {
             width: parent.width; height: 24
-            Text {
+            SafeText {
               id: totalProgressLabel
               width: 118; anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter
               text: i18n.t("totalProgress")
@@ -1018,7 +1022,7 @@ Item {
                 color: root.successColor
               }
             }
-            Text {
+            SafeText {
               id: totalProgressValue
               width: 154; anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
               horizontalAlignment: Text.AlignRight
@@ -1038,8 +1042,8 @@ Item {
               anchors.left: parent.left
               anchors.verticalCenter: parent.verticalCenter
               spacing: 8
-              Text { anchors.horizontalCenter: parent.horizontalCenter; text: i18n.t("newLearned"); color: root.mutedColor; font.family: "monospace"; font.pixelSize: 10; font.bold: true }
-              Text { anchors.horizontalCenter: parent.horizontalCenter; text: "+" + root.newLearned; color: root.successColor; font.family: "monospace"; font.pixelSize: 28; font.bold: true }
+              SafeText { anchors.horizontalCenter: parent.horizontalCenter; text: i18n.t("newLearned"); color: root.mutedColor; font.family: "monospace"; font.pixelSize: 10; font.bold: true }
+              SafeText { anchors.horizontalCenter: parent.horizontalCenter; text: "+" + root.newLearned; color: root.successColor; font.family: "monospace"; font.pixelSize: 28; font.bold: true }
             }
 
             Column {
@@ -1047,8 +1051,8 @@ Item {
               anchors.right: parent.right
               anchors.verticalCenter: parent.verticalCenter
               spacing: 8
-              Text { anchors.horizontalCenter: parent.horizontalCenter; text: i18n.t("due"); color: root.mutedColor; font.family: "monospace"; font.pixelSize: 10; font.bold: true }
-              Text { anchors.horizontalCenter: parent.horizontalCenter; text: root.progressCounts.due; color: root.coinColor; font.family: "monospace"; font.pixelSize: 28; font.bold: true }
+              SafeText { anchors.horizontalCenter: parent.horizontalCenter; text: i18n.t("due"); color: root.mutedColor; font.family: "monospace"; font.pixelSize: 10; font.bold: true }
+              SafeText { anchors.horizontalCenter: parent.horizontalCenter; text: root.progressCounts.due; color: root.coinColor; font.family: "monospace"; font.pixelSize: 28; font.bold: true }
             }
 
             Item {
@@ -1099,7 +1103,7 @@ Item {
           spacing: 28
           Repeater {
             model: [i18n.t("localOnly"), i18n.t("inputSafe"), i18n.t("noDispatch")]
-            Text { required property var modelData; text: modelData; color: root.mutedColor; font.family: "monospace"; font.pixelSize: 10; font.bold: true; font.letterSpacing: 2 }
+            SafeText { required property var modelData; text: modelData; color: root.mutedColor; font.family: "monospace"; font.pixelSize: 10; font.bold: true; font.letterSpacing: 2 }
           }
         }
       }
@@ -1113,18 +1117,18 @@ Item {
         anchors.centerIn: parent
         width: parent.width - 70
         spacing: 18
-        Text {
+        SafeText {
           width: parent.width; horizontalAlignment: Text.AlignHCenter
           text: root.view === "home" ? i18n.t("ready") : (keybinds.loading ? i18n.t("loading") : i18n.t("acquiring"))
           color: root.successColor; font.family: "monospace"; font.bold: true; font.pixelSize: 13; font.letterSpacing: 2
         }
-        Text {
+        SafeText {
           width: parent.width; horizontalAlignment: Text.AlignHCenter
           text: root.view === "home" ? i18n.t(root.resumeAvailable ? "resumeTitle" : "start") : "···"
           color: root.inkColor; font.family: "monospace"; font.bold: true; font.pixelSize: 28; wrapMode: Text.WordWrap
         }
-        Text { width: parent.width; horizontalAlignment: Text.AlignHCenter; text: i18n.t(root.resumeAvailable ? "resumeHint" : "startHint"); color: root.mutedColor; font.pixelSize: 15 }
-        Text {
+        SafeText { width: parent.width; horizontalAlignment: Text.AlignHCenter; text: i18n.t(root.resumeAvailable ? "resumeHint" : "startHint"); color: root.mutedColor; font.pixelSize: 15 }
+        SafeText {
           width: parent.width; horizontalAlignment: Text.AlignHCenter
           text: root.categorySummary(); color: root.secondaryColor
           font.family: "monospace"; font.pixelSize: 11; font.bold: true
@@ -1134,14 +1138,14 @@ Item {
           width: 240; height: 48; anchors.horizontalCenter: parent.horizontalCenter
           visible: root.view === "home"
           color: root.primaryColor; border.width: 4; border.color: root.voidColor
-          Text { anchors.centerIn: parent; text: "▶  " + i18n.t(root.resumeAvailable ? "resumeRun" : "startRun"); color: root.voidColor; font.family: "monospace"; font.bold: true; font.pixelSize: 15 }
+          SafeText { anchors.centerIn: parent; text: "▶  " + i18n.t(root.resumeAvailable ? "resumeRun" : "startRun"); color: root.voidColor; font.family: "monospace"; font.bold: true; font.pixelSize: 15 }
           MouseArea { anchors.fill: parent; onClicked: root.startPrimary() }
         }
         Rectangle {
           width: 240; height: 38; anchors.horizontalCenter: parent.horizontalCenter
           visible: root.view === "home" && root.resumeAvailable
           color: root.screenColor; border.width: 2; border.color: root.mutedColor
-          Text { anchors.centerIn: parent; text: i18n.t("startFresh"); color: root.mutedColor; font.family: "monospace"; font.bold: true; font.pixelSize: 11 }
+          SafeText { anchors.centerIn: parent; text: i18n.t("startFresh"); color: root.mutedColor; font.family: "monospace"; font.bold: true; font.pixelSize: 11 }
           MouseArea { anchors.fill: parent; onClicked: root.startRun() }
         }
       }
@@ -1155,19 +1159,20 @@ Item {
         anchors.fill: parent
         anchors.margins: 28
         spacing: 10
-        Text {
+        SafeText {
           width: parent.width; horizontalAlignment: Text.AlignHCenter
           text: (root.currentBinding ? i18n.t("category_" + root.currentBinding.category) + " · " : "")
                 + i18n.t(root.correctionRequired ? "correction" : root.currentCard && root.currentCard.remedial ? "remedial" : root.currentCard && root.currentCard.tier === "guided" ? "guided" : root.currentCard && root.currentCard.tier === "maintenance" ? "maintenance" : "learning")
           color: root.currentCard && root.currentCard.tier === "maintenance" ? root.coinColor : root.secondaryColor
           font.family: "monospace"; font.pixelSize: 12; font.bold: true; font.letterSpacing: 2
         }
-        Text {
+        SafeText {
           width: parent.width; height: 82; verticalAlignment: Text.AlignVCenter; horizontalAlignment: Text.AlignHCenter
           text: root.currentBinding ? Actions.actionName(root.currentBinding, i18n) : ""
-          color: root.inkColor; font.pixelSize: 27; font.bold: true; wrapMode: Text.WordWrap; maximumLineCount: 2
+          color: root.inkColor; font.pixelSize: 27; font.bold: true; wrapMode: Text.WordWrap
+          maximumLineCount: 2; elide: Text.ElideRight; clip: true
         }
-        Text {
+        SafeText {
           width: parent.width; horizontalAlignment: Text.AlignHCenter
           text: i18n.t(root.correctionRequired ? "correctionInstruction" : root.currentCard && root.currentCard.remedial ? "remedialInstruction" : root.currentCard && root.currentCard.tier === "guided" ? "guidedInstruction" : root.currentCard && root.currentCard.tier === "maintenance" ? "maintenanceInstruction" : "learningInstruction")
           color: root.mutedColor; font.pixelSize: 14; wrapMode: Text.WordWrap
@@ -1189,9 +1194,9 @@ Item {
                   width: Math.max(54, keyText.implicitWidth + 24); height: 46
                   color: root.screenColor; border.width: 3; border.color: root.inkColor
                   Rectangle { anchors.left: parent.left; anchors.right: parent.right; anchors.bottom: parent.bottom; height: 5; color: "#05070e" }
-                  Text { id: keyText; anchors.centerIn: parent; text: keyDatum.modelData; color: root.inkColor; font.family: "monospace"; font.pixelSize: 14; font.bold: true }
+                  SafeText { id: keyText; anchors.centerIn: parent; width: parent.width - 8; horizontalAlignment: Text.AlignHCenter; elide: Text.ElideRight; maximumLineCount: 1; text: keyDatum.modelData; color: root.inkColor; font.family: "monospace"; font.pixelSize: 14; font.bold: true }
                 }
-                Text { visible: keyDatum.index < (root.currentBinding ? Normalizer.display(root.currentBinding).split(" + ").length - 1 : 0); text: "+"; color: root.mutedColor; font.family: "monospace"; font.pixelSize: 20; font.bold: true; anchors.verticalCenter: parent.verticalCenter }
+                SafeText { visible: keyDatum.index < (root.currentBinding ? Normalizer.display(root.currentBinding).split(" + ").length - 1 : 0); text: "+"; color: root.mutedColor; font.family: "monospace"; font.pixelSize: 20; font.bold: true; anchors.verticalCenter: parent.verticalCenter }
               }
             }
           }
@@ -1208,11 +1213,11 @@ Item {
             }
           }
         }
-        Text {
+        SafeText {
           width: parent.width; horizontalAlignment: Text.AlignHCenter
           text: root.feedbackText
           color: root.feedbackKind === "hit" ? root.successColor : root.feedbackKind === "miss" ? root.dangerColor : root.mutedColor
-          font.family: "monospace"; font.pixelSize: 13; font.bold: true
+          font.family: "monospace"; font.pixelSize: 13; font.bold: true; elide: Text.ElideRight; maximumLineCount: 1
         }
       }
     }
@@ -1223,12 +1228,12 @@ Item {
     Item {
       Column {
         anchors.centerIn: parent; width: parent.width - 44; spacing: 10
-        Text {
+        SafeText {
           width: parent.width; horizontalAlignment: Text.AlignHCenter
           text: "★  " + i18n.t("masteryCelebration") + "  ★"
           color: root.coinColor; font.family: "monospace"; font.bold: true; font.pixelSize: 24
         }
-        Text {
+        SafeText {
           width: parent.width; horizontalAlignment: Text.AlignHCenter; wrapMode: Text.WordWrap
           text: i18n.t("masteryBody", { count: root.progressCounts.total })
           color: root.inkColor; font.pixelSize: 13
@@ -1251,13 +1256,13 @@ Item {
               color: root.screenColor; border.width: 2; border.color: root.successColor
               Column {
                 width: parent.width - 10; anchors.centerIn: parent; spacing: 3
-                Text { width: parent.width; horizontalAlignment: Text.AlignHCenter; elide: Text.ElideRight; text: masteryDatum.modelData.label; color: root.mutedColor; font.family: "monospace"; font.pixelSize: 9; font.bold: true }
-                Text { width: parent.width; horizontalAlignment: Text.AlignHCenter; elide: Text.ElideRight; text: masteryDatum.modelData.value; color: root.inkColor; font.family: "monospace"; font.pixelSize: 17; font.bold: true }
+                SafeText { width: parent.width; horizontalAlignment: Text.AlignHCenter; elide: Text.ElideRight; text: masteryDatum.modelData.label; color: root.mutedColor; font.family: "monospace"; font.pixelSize: 9; font.bold: true }
+                SafeText { width: parent.width; horizontalAlignment: Text.AlignHCenter; elide: Text.ElideRight; text: masteryDatum.modelData.value; color: root.inkColor; font.family: "monospace"; font.pixelSize: 17; font.bold: true }
               }
             }
           }
         }
-        Text {
+        SafeText {
           width: parent.width; horizontalAlignment: Text.AlignHCenter; wrapMode: Text.WordWrap
           text: i18n.t("maintenanceUnlocked")
           color: root.secondaryColor; font.pixelSize: 12; font.bold: true
@@ -1265,7 +1270,7 @@ Item {
         Rectangle {
           width: 220; height: 36; anchors.horizontalCenter: parent.horizontalCenter
           color: root.successColor; border.width: 3; border.color: root.voidColor
-          Text { anchors.centerIn: parent; text: i18n.t("continueSummary"); color: root.voidColor; font.family: "monospace"; font.pixelSize: 11; font.bold: true }
+          SafeText { anchors.centerIn: parent; text: i18n.t("continueSummary"); color: root.voidColor; font.family: "monospace"; font.pixelSize: 11; font.bold: true }
           MouseArea { anchors.fill: parent; onClicked: root.continueFromMastery() }
         }
       }
@@ -1277,7 +1282,7 @@ Item {
     Item {
       Column {
         anchors.centerIn: parent; width: parent.width - 60; spacing: 18
-        Text { width: parent.width; horizontalAlignment: Text.AlignHCenter; text: i18n.t("summary"); color: root.coinColor; font.family: "monospace"; font.bold: true; font.pixelSize: 28 }
+        SafeText { width: parent.width; horizontalAlignment: Text.AlignHCenter; text: i18n.t("summary"); color: root.coinColor; font.family: "monospace"; font.bold: true; font.pixelSize: 28 }
         Row {
           width: parent.width; spacing: 8
           Repeater {
@@ -1292,14 +1297,14 @@ Item {
               required property var modelData
               width: (parent.width - 24) / 4; height: 94; color: root.screenColor; border.width: 2; border.color: root.primaryColor
               Column { anchors.centerIn: parent; spacing: 5
-                Text { anchors.horizontalCenter: parent.horizontalCenter; text: summaryDatum.modelData.label; color: root.mutedColor; font.family: "monospace"; font.pixelSize: 10; font.bold: true }
-                Text { anchors.horizontalCenter: parent.horizontalCenter; text: summaryDatum.modelData.value; color: root.inkColor; font.family: "monospace"; font.pixelSize: 22; font.bold: true }
+                SafeText { anchors.horizontalCenter: parent.horizontalCenter; text: summaryDatum.modelData.label; color: root.mutedColor; font.family: "monospace"; font.pixelSize: 10; font.bold: true }
+                SafeText { anchors.horizontalCenter: parent.horizontalCenter; text: summaryDatum.modelData.value; color: root.inkColor; font.family: "monospace"; font.pixelSize: 22; font.bold: true }
               }
             }
           }
         }
-        Text { width: parent.width; horizontalAlignment: Text.AlignHCenter; text: i18n.t("again"); color: root.successColor; font.family: "monospace"; font.pixelSize: 14; font.bold: true }
-        Text { width: parent.width; horizontalAlignment: Text.AlignHCenter; text: i18n.t("review") + " · " + i18n.t("reviewHint"); color: root.mutedColor; font.family: "monospace"; font.pixelSize: 10; font.bold: true; wrapMode: Text.WordWrap }
+        SafeText { width: parent.width; horizontalAlignment: Text.AlignHCenter; text: i18n.t("again"); color: root.successColor; font.family: "monospace"; font.pixelSize: 14; font.bold: true }
+        SafeText { width: parent.width; horizontalAlignment: Text.AlignHCenter; text: i18n.t("review") + " · " + i18n.t("reviewHint"); color: root.mutedColor; font.family: "monospace"; font.pixelSize: 10; font.bold: true; wrapMode: Text.WordWrap }
         Row {
           anchors.horizontalCenter: parent.horizontalCenter
           spacing: 8
@@ -1310,7 +1315,7 @@ Item {
               required property var modelData
               width: 154; height: 42
               color: root.screenColor; border.width: 2; border.color: root.secondaryColor
-              Text { anchors.centerIn: parent; width: parent.width - 12; horizontalAlignment: Text.AlignHCenter; elide: Text.ElideRight; text: Normalizer.display(reviewDatum.modelData.binding); color: root.inkColor; font.family: "monospace"; font.pixelSize: 11; font.bold: true }
+              SafeText { anchors.centerIn: parent; width: parent.width - 12; horizontalAlignment: Text.AlignHCenter; elide: Text.ElideRight; text: Normalizer.display(reviewDatum.modelData.binding); color: root.inkColor; font.family: "monospace"; font.pixelSize: 11; font.bold: true }
               MouseArea { anchors.fill: parent; onClicked: root.requestHint(reviewDatum.modelData.binding.id) }
             }
           }
@@ -1324,8 +1329,8 @@ Item {
     Item {
       Column {
         anchors.centerIn: parent; width: parent.width - 70; spacing: 18
-        Text { width: parent.width; horizontalAlignment: Text.AlignHCenter; text: "×  " + i18n.t("blocked"); color: root.dangerColor; font.family: "monospace"; font.bold: true; font.pixelSize: 24; wrapMode: Text.WordWrap }
-        Text { width: parent.width; horizontalAlignment: Text.AlignHCenter; text: root.errorMessage; color: root.inkColor; font.pixelSize: 15; wrapMode: Text.WordWrap }
+        SafeText { width: parent.width; horizontalAlignment: Text.AlignHCenter; text: "×  " + i18n.t("blocked"); color: root.dangerColor; font.family: "monospace"; font.bold: true; font.pixelSize: 24; wrapMode: Text.WordWrap }
+        SafeText { width: parent.width; height: 150; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter; text: root.errorMessage; color: root.inkColor; font.pixelSize: 15; wrapMode: Text.WordWrap; maximumLineCount: 5; elide: Text.ElideRight; clip: true }
       }
     }
   }
@@ -1333,7 +1338,7 @@ Item {
   Component {
     id: closingCard
     Item {
-      Text { anchors.centerIn: parent; width: parent.width - 70; horizontalAlignment: Text.AlignHCenter; text: i18n.t("closing"); color: root.coinColor; font.pixelSize: 18; wrapMode: Text.WordWrap }
+      SafeText { anchors.centerIn: parent; width: parent.width - 70; horizontalAlignment: Text.AlignHCenter; text: i18n.t("closing"); color: root.coinColor; font.pixelSize: 18; wrapMode: Text.WordWrap }
     }
   }
 }
