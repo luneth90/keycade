@@ -22,7 +22,6 @@ Item {
   property string errorMessage: ""
   property bool guardReady: false
   property bool escapeDown: false
-  property int heldModifierCount: 0
   property bool startRequested: false
   property string requestedLocale: ""
 
@@ -90,7 +89,6 @@ Item {
     root.activeSegmentStartedAt = 0
     root.languageMenuOpen = false
     root.soundMenuOpen = false
-    root.heldModifierCount = 0
     root.themeName = String(store.settings.theme || payload.theme || "tokyo")
     var savedLocale = String(store.settings.locale || "en")
     i18n.locale = root.requestedLocale
@@ -725,20 +723,13 @@ Item {
       Keys.onPressed: function(event) {
         guard.updateInput(Normalizer.modifierMask(event.modifiers))
         if (event.isAutoRepeat) { event.accepted = true; return }
-        if (Normalizer.isModifier(Normalizer.logicalKey(event))) {
-          root.heldModifierCount += 1
-          event.accepted = true
-          return
-        }
-        // Safe-exit is bound to a bare Escape only. Escape held with a modifier
-        // (e.g. Super + Esc) is a real shortcut chord and must reach
-        // handleGameInput() below instead of being swallowed as an exit request.
-        // heldModifierCount (tracked from the modifier keys' own press/release
-        // events, above) is used instead of event.modifiers: on a fast chord,
-        // Wayland can deliver the "modifiers" update for the still-held Super
-        // key slightly after the Escape key event itself, so event.modifiers
-        // briefly under-reports it right here.
-        if (event.key === Qt.Key_Escape && root.heldModifierCount === 0) {
+        // Whether this Escape is a bare safe-exit or part of a modifier chord
+        // (e.g. Super + Esc) is decided on release, not here: on a fast chord
+        // Wayland can deliver the "modifiers" update for a just-pressed Super
+        // slightly after this Escape press event, so event.modifiers briefly
+        // under-reports it at press time. The release event has consistently
+        // shown the correct modifiers by the time it arrives.
+        if (event.key === Qt.Key_Escape) {
           if (root.languageMenuOpen || root.soundMenuOpen) {
             root.languageMenuOpen = false
             root.soundMenuOpen = false
@@ -776,14 +767,13 @@ Item {
 
       Keys.onReleased: function(event) {
         guard.updateInput(Normalizer.modifierMask(event.modifiers))
-        if (Normalizer.isModifier(Normalizer.logicalKey(event))) {
-          root.heldModifierCount = Math.max(0, root.heldModifierCount - 1)
-          event.accepted = true
-          return
-        }
         if (event.key === Qt.Key_Escape && root.escapeDown) {
           root.escapeDown = false
-          root.requestSafeClose()
+          if (Normalizer.modifierMask(event.modifiers) === 0) {
+            root.requestSafeClose()
+          } else if (root.view === "playing") {
+            root.handleGameInput(event)
+          }
         }
         event.accepted = true
       }
