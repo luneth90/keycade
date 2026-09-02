@@ -65,6 +65,17 @@ omarchy plugin add https://github.com/luneth90/keycade.git --enable
 echo 'o.bind("SUPER + SHIFT + K", "Keycade", "omarchy-shell shell summon luneth90.keycade '\''{}'\''")' >> ~/.config/hypr/bindings.lua
 ```
 
+## 更新
+
+```bash
+omarchy plugin update luneth90.keycade
+omarchy restart shell
+```
+
+或者在自己 clone 的目录里：`git pull && ./install.sh`，然后同样执行
+`omarchy restart shell`。两条路都一样，重启这一步必须做——只更新不重启，
+Keycade 不一定会刷新。
+
 ## 使用
 
 - 按 `Super + Shift + K` 启动，或执行

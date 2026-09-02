@@ -69,6 +69,17 @@ Then add a shortcut to `~/.config/hypr/bindings.lua`, for example:
 echo 'o.bind("SUPER + SHIFT + K", "Keycade", "omarchy-shell shell summon luneth90.keycade '\''{}'\''")' >> ~/.config/hypr/bindings.lua
 ```
 
+## Update
+
+```bash
+omarchy plugin update luneth90.keycade
+omarchy restart shell
+```
+
+Or from your own clone: `git pull && ./install.sh`, then `omarchy restart
+shell`. Either way, the restart is required — updating alone does not
+reliably reload Keycade.
+
 ## Use
 
 - Launch with `Super + Shift + K`, or run
