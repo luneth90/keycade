@@ -21,8 +21,8 @@ Keycade 是一个面向 Hyprland 的原生 Omarchy 快捷键训练器。它读�
 - 答错后持续显示正确答案，必须正确跟按，并在本局稍后再次复测。
 - 本地保存学习进度、恢复中断对局、显示总掌握进度，并在首次达到 100% 时展示
   一次性恭喜结算。
-- 内置英语和简体中文、本地反馈/倒计时音效，以及 Tokyo Night、Gruvbox、
-  Catppuccin 三套配色。
+- 内置英语和简体中文、本地反馈/倒计时音效，以及 Tokyo Night、Gruvbox
+  两套配色。
 
 F 功能键、XF86 媒体/设备键、Print/Pause/SysRq、独立的 Home/End/Insert/Page、
 有歧义、危险或无法可靠识别的绑定会被排除。

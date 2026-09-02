@@ -64,16 +64,16 @@ Item {
   readonly property bool reducedMotion: Boolean(store.settings.reducedMotion)
   readonly property int activeRunId: Number(store.stats.runs || 0) + 1
 
-  readonly property color voidColor: themeName === "gruvbox" ? "#141412" : themeName === "catppuccin" ? "#090912" : "#080b14"
-  readonly property color cabinetColor: themeName === "gruvbox" ? "#3c3836" : themeName === "catppuccin" ? "#313244" : "#242a46"
-  readonly property color screenColor: themeName === "gruvbox" ? "#1b1b18" : themeName === "catppuccin" ? "#11111b" : "#0d1224"
-  readonly property color inkColor: themeName === "gruvbox" ? "#fbf1c7" : themeName === "catppuccin" ? "#cdd6f4" : "#f1f4ff"
-  readonly property color mutedColor: themeName === "gruvbox" ? "#bdae93" : themeName === "catppuccin" ? "#a6adc8" : "#9aa5d1"
-  readonly property color primaryColor: themeName === "gruvbox" ? "#fabd2f" : themeName === "catppuccin" ? "#89b4fa" : "#7aa2f7"
-  readonly property color secondaryColor: themeName === "gruvbox" ? "#d3869b" : themeName === "catppuccin" ? "#cba6f7" : "#bb9af7"
-  readonly property color successColor: themeName === "gruvbox" ? "#b8bb26" : themeName === "catppuccin" ? "#a6e3a1" : "#9ece6a"
-  readonly property color dangerColor: themeName === "gruvbox" ? "#fb4934" : themeName === "catppuccin" ? "#f38ba8" : "#f7768e"
-  readonly property color coinColor: themeName === "gruvbox" ? "#fe8019" : themeName === "catppuccin" ? "#f9e2af" : "#e0af68"
+  readonly property color voidColor: themeName === "gruvbox" ? "#141412" : "#080b14"
+  readonly property color cabinetColor: themeName === "gruvbox" ? "#3c3836" : "#242a46"
+  readonly property color screenColor: themeName === "gruvbox" ? "#1b1b18" : "#0d1224"
+  readonly property color inkColor: themeName === "gruvbox" ? "#fbf1c7" : "#f1f4ff"
+  readonly property color mutedColor: themeName === "gruvbox" ? "#bdae93" : "#9aa5d1"
+  readonly property color primaryColor: themeName === "gruvbox" ? "#fabd2f" : "#7aa2f7"
+  readonly property color secondaryColor: themeName === "gruvbox" ? "#d3869b" : "#bb9af7"
+  readonly property color successColor: themeName === "gruvbox" ? "#b8bb26" : "#9ece6a"
+  readonly property color dangerColor: themeName === "gruvbox" ? "#fb4934" : "#f7768e"
+  readonly property color coinColor: themeName === "gruvbox" ? "#fe8019" : "#e0af68"
 
   function open(payloadJson) {
     if (root.opened) return
@@ -195,7 +195,7 @@ Item {
   }
 
   function cycleTheme() {
-    var themes = ["tokyo", "gruvbox", "catppuccin"]
+    var themes = ["tokyo", "gruvbox"]
     root.themeName = themes[(themes.indexOf(root.themeName) + 1) % themes.length]
     store.settings.theme = root.themeName
     store.settings = Object.assign({}, store.settings)

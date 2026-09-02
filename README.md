@@ -26,7 +26,7 @@ shortcut action.
 - Saves progress locally, resumes interrupted runs, tracks total mastery, and
   shows a one-time celebration when every eligible shortcut first reaches 100%.
 - Includes English and Simplified Chinese, local feedback/countdown sounds,
-  and Tokyo Night, Gruvbox, and Catppuccin palettes.
+  and Tokyo Night and Gruvbox palettes.
 
 Function-row, XF86 media/device, Print/Pause/SysRq, dedicated
 Home/End/Insert/Page, ambiguous, unsafe, and unsupported bindings are excluded.
