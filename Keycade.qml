@@ -581,7 +581,13 @@ Item {
     commitActiveTraining()
     store.clearSession()
     root.resumeAvailable = false
-    store.stats.runs = Number(store.stats.runs || 0) + 1
+    // Reassign (not just mutate) store.stats: it's a property var, so a
+    // plain store.stats.runs = ... update never fires statsChanged, and
+    // root.activeRunId (a binding on store.stats.runs) would stay frozen
+    // at whatever it last was for the rest of this keepLoaded session —
+    // every following run would reuse the same stale run number instead
+    // of counting up.
+    store.stats = Object.assign({}, store.stats, { runs: Number(store.stats.runs || 0) + 1 })
     var resultRows = Object.keys(root.runResults).map(function(id) { return root.runResults[id] })
     resultRows.sort(function(left, right) {
       if (left.misses !== right.misses) return right.misses - left.misses
