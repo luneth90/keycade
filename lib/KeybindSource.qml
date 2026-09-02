@@ -7,11 +7,19 @@ Item {
   readonly property string helperPath: String(Qt.resolvedUrl("../bin/keybinds-json")).replace("file://", "")
   readonly property int maxPayloadChars: 8 * 1024 * 1024
   readonly property int maxBindings: 2000
+  readonly property var allowedFlags: [
+    "locked", "release", "click", "drag", "long-press", "repeat",
+    "non-consuming", "mouse", "transparent", "ignore-mods", "separate",
+    "description", "dont-inhibit", "catch-all"
+  ]
   property var bindings: []
   property string fingerprint: ""
   property bool appleKeyboard: false
   property bool loading: false
   property string error: ""
+  // Bindings the helper dropped for breaking a schema limit. Surfaced so a
+  // malformed binding is observable instead of silently missing from training.
+  property int rejected: 0
 
   signal loaded()
   signal failed(string message)
@@ -43,6 +51,8 @@ Item {
       var source = String(raw || "")
       if (source.length > root.maxPayloadChars) throw new Error("Keybind payload exceeded its limit")
       var payload = JSON.parse(source)
+      if (!payload || typeof payload !== "object" || Array.isArray(payload))
+        throw new Error("Invalid keybind payload")
       if (payload.schemaVersion !== 1) throw new Error("Unsupported keybind schema")
       if (payload.error) throw new Error(root.safeText(payload.error, 512, "error"))
       if (!Array.isArray(payload.bindings)) throw new Error("Missing bindings array")
@@ -57,7 +67,17 @@ Item {
           throw new Error("Invalid keybinding match mode")
         if (!Array.isArray(sourceBinding.flags) || sourceBinding.flags.length > 16)
           throw new Error("Invalid keybinding flags")
-        var flags = sourceBinding.flags.map(function(flag) { return root.safeText(flag, 32, "flag") })
+        var seenFlags = ({})
+        var flags = sourceBinding.flags.map(function(flag) {
+          var safeFlag = root.safeText(flag, 32, "flag")
+          if (root.allowedFlags.indexOf(safeFlag) === -1 || seenFlags[safeFlag])
+            throw new Error("Invalid keybinding flag")
+          seenFlags[safeFlag] = true
+          return safeFlag
+        })
+        if (typeof sourceBinding.dontInhibit !== "boolean"
+            || typeof sourceBinding.allowInputCapture !== "boolean")
+          throw new Error("Invalid keybinding safety flags")
         var binding = {
           modMask: root.safeInteger(sourceBinding.modMask, 0, 2147483647, "modifier mask"),
           key: root.safeText(sourceBinding.key, 128, "key"),
@@ -77,10 +97,23 @@ Item {
           throw new Error("Keybinding model exceeded its aggregate limit")
         bindings.push(binding)
       }
+      var rejected = payload.rejected === undefined
+          ? 0 : root.safeInteger(payload.rejected, 0, root.maxBindings, "rejected count")
+      if (bindings.length + rejected > root.maxBindings)
+        throw new Error("Invalid total keybinding count")
+      if (typeof payload.keymapFingerprint !== "string"
+          || !/^[0-9a-f]{64}$/.test(payload.keymapFingerprint))
+        throw new Error("Invalid keymap fingerprint")
+      if (typeof payload.appleKeyboard !== "boolean")
+        throw new Error("Invalid Apple keyboard flag")
+
+      // Adopt the fully validated model and metadata together.
       root.bindings = bindings
-      var fingerprint = String(payload.keymapFingerprint || "")
-      root.fingerprint = /^[0-9a-f]{64}$/.test(fingerprint) ? fingerprint : ""
+      root.rejected = rejected
+      root.fingerprint = payload.keymapFingerprint
       root.appleKeyboard = payload.appleKeyboard === true
+      if (root.rejected > 0)
+        console.warn("Keycade skipped " + root.rejected + " invalid keybinding record(s)")
       root.loaded()
     } catch (error) {
       root.error = String(error || "Invalid keybind data")

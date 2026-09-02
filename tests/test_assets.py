@@ -1,14 +1,34 @@
 import json
 import re
+import sys
 import unittest
 import wave
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "tools"))
+
+import build_locales  # noqa: E402
 
 
 class AssetTests(unittest.TestCase):
+    def test_generated_locale_module_matches_the_json_sources(self):
+        generated = (ROOT / "lib" / "Locales.js").read_text(encoding="utf-8")
+        self.assertEqual(
+            generated,
+            build_locales.render(),
+            "lib/Locales.js is stale; regenerate it with python3 tools/build_locales.py",
+        )
+
+    def test_generated_locale_module_has_no_runtime_io(self):
+        generated = (ROOT / "lib" / "Locales.js").read_text(encoding="utf-8")
+        self.assertTrue(generated.startswith(".pragma library"))
+        # The generated module may only expose its embedded catalogue; it must
+        # not import another source or perform runtime file/network reads.
+        for forbidden in ("FileView", "XMLHttpRequest", "Qt.include", "import "):
+            self.assertNotIn(forbidden, generated)
+
     def test_locales_have_the_same_message_keys(self):
         locale_dir = ROOT / "assets" / "locales"
         locale_files = sorted(locale_dir.glob("*.json"))

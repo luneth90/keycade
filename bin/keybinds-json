@@ -187,8 +187,13 @@ def bounded_int(value: Any, minimum: int, maximum: int, field: str) -> int:
     return result
 
 
-def parse_bool(value: str) -> bool:
-    return value.strip().lower() in {"1", "true", "yes", "on"}
+def parse_bool(value: str, field: str) -> bool:
+    normalized = value.strip().lower()
+    if normalized in {"1", "true", "yes", "on"}:
+        return True
+    if normalized in {"0", "false", "no", "off"}:
+        return False
+    raise HelperError(f"{field} must be a boolean")
 
 
 def split_blocks(raw: str) -> list[dict[str, str]]:
@@ -224,8 +229,8 @@ def canonical_key(value: str) -> tuple[str, int, str]:
     if key.lower().startswith("code:"):
         try:
             code = int(key.split(":", 1)[1])
-        except ValueError:
-            code = 0
+        except ValueError as error:
+            raise HelperError("keycode must be an integer") from error
         code = bounded_int(code, 0, MAX_KEYCODE, "keycode")
         return PHYSICAL_FALLBACKS.get(code, ""), code, "physical"
     alias = KEY_ALIASES.get(key.lower(), key)
@@ -242,11 +247,17 @@ def flags_for(block: dict[str, str]) -> list[str]:
         "nonConsuming": "non-consuming",
         "catchAll": "catch-all",
     }
-    flags = [label for key, label in aliases.items() if parse_bool(block.get(key, "false"))]
+    flags = [
+        label
+        for key, label in aliases.items()
+        if parse_bool(block.get(key, "false"), key)
+    ]
     suffix = block.get("_header", "")[4:]
     for code in suffix:
         label = HEADER_FLAGS.get(code)
-        if label and label not in flags:
+        if label is None:
+            raise HelperError(f"unknown bind flag: {code}")
+        if label not in flags:
             flags.append(label)
     return flags
 
@@ -255,18 +266,14 @@ def binding_from_block(block: dict[str, str]) -> dict[str, Any]:
     raw_key = block.get("key", "").strip()
     key, keycode, match_mode = canonical_key(raw_key)
     reported_code = block.get("keycode", "").strip()
-    if not keycode and reported_code not in {"", "0"}:
-        try:
-            keycode = bounded_int(reported_code, 0, MAX_KEYCODE, "keycode")
-        except HelperError:
-            keycode = 0
+    if reported_code:
+        validated_code = bounded_int(reported_code, 0, MAX_KEYCODE, "keycode")
+        if not keycode:
+            keycode = validated_code
     if not raw_key and keycode:
         match_mode = "physical"
 
-    try:
-        mod_mask = bounded_int(block.get("modmask", "0") or 0, 0, MAX_MODMASK, "modMask")
-    except HelperError:
-        mod_mask = 0
+    mod_mask = bounded_int(block.get("modmask", "0") or 0, 0, MAX_MODMASK, "modMask")
 
     flags = flags_for(block)
     if len(flags) > MAX_FLAGS:
@@ -277,9 +284,15 @@ def binding_from_block(block: dict[str, str]) -> dict[str, Any]:
         "keycode": keycode,
         "matchMode": match_mode,
         "flags": [sanitize_text(flag, 32) for flag in flags],
-        "dontInhibit": parse_bool(block.get("dontInhibit", block.get("dont_inhibit", "false")))
+        "dontInhibit": parse_bool(
+            block.get("dontInhibit", block.get("dont_inhibit", "false")),
+            "dontInhibit",
+        )
         or "p" in block.get("_header", "")[4:],
-        "allowInputCapture": parse_bool(block.get("allow_input_capture", "false")),
+        "allowInputCapture": parse_bool(
+            block.get("allow_input_capture", "false"),
+            "allowInputCapture",
+        ),
         "dispatcher": sanitize_text(block.get("dispatcher", ""), FIELD_LIMITS["dispatcher"]).strip(),
         "arg": sanitize_text(block.get("arg", ""), FIELD_LIMITS["arg"]).strip(),
         "description": sanitize_text(block.get("description", ""), FIELD_LIMITS["description"]).strip(),
@@ -302,13 +315,33 @@ def has_apple_keyboard(raw_devices: str) -> bool:
     return bool(section and "apple" in section.group(1).lower())
 
 
+def accept_records(values: list[Any], build: Any) -> tuple[list[dict[str, Any] | None], int]:
+    """Build one record per input, keeping index alignment.
+
+    A record that breaks a schema limit is rejected on its own instead of
+    failing the whole snapshot: an unusable binding is simply not trainable,
+    while the remaining bindings stay available. ``None`` holds the slot so
+    later positional merges keep lining up with the source list.
+    """
+    records: list[dict[str, Any] | None] = []
+    rejected = 0
+    for value in values:
+        try:
+            records.append(build(value))
+        except HelperError:
+            records.append(None)
+            rejected += 1
+    return records, rejected
+
+
 def snapshot(raw_binds: str, raw_devices: str = "") -> dict[str, Any]:
-    bindings = [binding_from_block(block) for block in split_blocks(raw_binds)]
+    records, rejected = accept_records(split_blocks(raw_binds), binding_from_block)
     return {
         "schemaVersion": SCHEMA_VERSION,
         "keymapFingerprint": fingerprint(raw_binds, raw_devices),
         "appleKeyboard": has_apple_keyboard(raw_devices),
-        "bindings": bindings,
+        "rejected": rejected,
+        "bindings": [record for record in records if record is not None],
     }
 
 
@@ -365,6 +398,17 @@ def records_align(json_binding: dict[str, Any], plain_binding: dict[str, Any]) -
         return False
     if json_binding["description"] != plain_binding["description"]:
         return False
+    json_has_key = bool(json_binding["key"] or json_binding["keycode"])
+    plain_has_key = bool(plain_binding["key"] or plain_binding["keycode"])
+    if json_has_key and plain_has_key:
+        if json_binding["matchMode"] != plain_binding["matchMode"]:
+            return False
+        if json_binding["key"] and plain_binding["key"] \
+                and json_binding["key"] != plain_binding["key"]:
+            return False
+        if json_binding["keycode"] and plain_binding["keycode"] \
+                and json_binding["keycode"] != plain_binding["keycode"]:
+            return False
     for field in ("dispatcher", "arg", "submap"):
         if json_binding[field] and plain_binding[field] and json_binding[field] != plain_binding[field]:
             return False
@@ -380,27 +424,40 @@ def snapshot_json(raw_json: str, raw_plain: str, raw_devices: str = "") -> dict[
         raise HelperError("hyprctl JSON root is not an array")
     if len(values) > MAX_BINDINGS:
         raise HelperError(f"binding count exceeds {MAX_BINDINGS}")
-    bindings = [binding_from_json(value) for value in values]
+    bindings, rejected = accept_records(values, binding_from_json)
 
     # Current JSON exposes most named flags, but some releases omit
     # dont_inhibit. Merge the text header's compact `p` flag by record order.
-    plain = [binding_from_block(block) for block in split_blocks(raw_plain)]
-    if len(plain) == len(bindings):
-        for index, binding in enumerate(bindings):
-            if not records_align(binding, plain[index]):
-                continue
-            binding["dontInhibit"] = binding["dontInhibit"] or plain[index]["dontInhibit"]
-            if (not binding["key"] and not binding["keycode"]
-                    and (plain[index]["key"] or plain[index]["keycode"])):
-                binding["key"] = plain[index]["key"]
-                binding["keycode"] = plain[index]["keycode"]
-                binding["matchMode"] = plain[index]["matchMode"]
+    plain, _ = accept_records(split_blocks(raw_plain), binding_from_block)
+    if len(plain) != len(bindings):
+        raise HelperError("hyprctl JSON and plain binding counts differ")
+    for index, binding in enumerate(bindings):
+        if binding is None:
+            continue
+        plain_binding = plain[index]
+        # The plain record supplies flags that some Hyprland JSON versions
+        # omit. If it cannot be validated and aligned, retaining the JSON
+        # record could misclassify a dont-inhibit binding as safe to train.
+        if plain_binding is None or not records_align(binding, plain_binding):
+            bindings[index] = None
+            rejected += 1
+            continue
+        binding["dontInhibit"] = binding["dontInhibit"] or plain_binding["dontInhibit"]
+        binding["allowInputCapture"] = (
+            binding["allowInputCapture"] or plain_binding["allowInputCapture"]
+        )
+        if (not binding["key"] and not binding["keycode"]
+                and (plain_binding["key"] or plain_binding["keycode"])):
+            binding["key"] = plain_binding["key"]
+            binding["keycode"] = plain_binding["keycode"]
+            binding["matchMode"] = plain_binding["matchMode"]
 
     return {
         "schemaVersion": SCHEMA_VERSION,
         "keymapFingerprint": fingerprint(raw_plain, raw_devices),
         "appleKeyboard": has_apple_keyboard(raw_devices),
-        "bindings": bindings,
+        "rejected": rejected,
+        "bindings": [binding for binding in bindings if binding is not None],
     }
 
 

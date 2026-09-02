@@ -26,13 +26,13 @@
 ### 实现
 
 删除 `LUA_BIND_SCANNER`、`lua_bind_cache()` 和 `resolve_lua_keys()`。当 JSON 记录缺少 key/keycode 时，
-只有在 JSON 与纯文本记录总数一致，并且同位置记录的 modmask、description 及非空 dispatcher/arg/submap
-一致时，才从纯文本记录补齐键。无法确认对应关系时保留缺键状态，后续 eligibility 层会安全排除。
+只有在 JSON 与纯文本记录总数一致，并且同位置记录的 modmask、description、双方均存在的按键身份及
+非空 dispatcher/arg/submap 一致时，才从纯文本记录补齐键和安全标志。无法确认对应关系时拒绝该条记录。
 
 ### 验收
 
 - fixture 覆盖正确对齐和错位拒绝。
-- 真机 239 条绑定全部恢复键名，缺键数为 0。
+- 真机 helper 成功解析当前活动绑定；无法安全恢复的缺键记录由 eligibility 层排除。
 - 源码中不存在 `dofile`、Lua scanner 或 Lua 子进程。
 
 ## 02 · 有界子进程和双层模型验证
@@ -48,6 +48,8 @@
 - key 128、dispatcher 128、arg 2048、description 512、submap 128 个字符。
 - flags 最多 16 项，每项 32 字符；keycode 为 0–65535；modmask 为 0–2³¹−1。
 - JSON 字段严格验证类型、枚举和范围；不把对象或数组隐式转换为字符串。
+- 单条 JSON/plain 记录违反上限、类型或枚举时只拒绝该记录并计数；为保留索引和安全标志，
+  对应 plain 记录无效或无法对齐时也拒绝 JSON 记录。快照级字节、总数和 deadline 超限仍整体失败。
 
 `InputGuard.qml` 不再直接运行和收集 `hyprctl`，而是调用同一 helper 的受限 `--guard-status` 接口。
 
@@ -64,7 +66,8 @@ QML 的长度检查不替代 producer 字节限制；`StdioCollector` 收到的�
 
 ### 验收
 
-- 测试覆盖 stdout 超限、deadline、字段超长、绑定超量、错位记录和控制字符。
+- 测试覆盖 stdout 超限、deadline、JSON/plain 单条拒绝、拒绝后的索引对齐、`dontInhibit`
+  fail-closed、非法数值/布尔/flag、绑定超量、错位记录和控制字符。
 - 真机 `--guard-status` 返回严格的 `{schemaVersion, disabled}` 小型对象。
 
 ## 03 · Descriptor-relative 状态存储
@@ -121,6 +124,8 @@ QML 的长度检查不替代 producer 字节限制；`StdioCollector` 收到的�
 - Hyprland 字段在 Python producer 和 QML consumer 两层处理 NUL、C0/C1、双向控制与 isolate 字符。
 - 动作描述、键帽、反馈和错误显示设置固定宽高、`maximumLineCount`、`elide` 或 `clip`。
 - 错误消息最多 512 字符，不显示原始无限输出。
+- locale JSON 在开发时确定性编译为 `lib/Locales.js`；运行时不再使用 `FileView` 或其他路径读取。
+  生成一致性和 QML 语言切换/未知 locale 回退均由测试覆盖。
 
 验收要求源码主界面不再直接实例化 `Text`，恶意 `<img>` 只作为普通字符显示，控制字符不会改变文本方向或布局。
 
@@ -142,6 +147,7 @@ python3 -m unittest discover -s tests -p 'test_*.py' -v
 QT_QPA_PLATFORM=offscreen QT_QPA_PLATFORMTHEME= QT_STYLE_OVERRIDE=Fusion \
   /usr/lib/qt6/bin/qmltestrunner -input tests/qml/tst_algorithms.qml -import /usr/lib/qt6/qml
 ./tests/test_state_store_qml.sh
+./tests/test_keybind_source_qml.sh
 /usr/lib/qt6/bin/qmllint -I /usr/lib/qt6/qml Keycade.qml lib/*.qml dev/InputProbe.qml
 omarchy plugin validate .
 ```

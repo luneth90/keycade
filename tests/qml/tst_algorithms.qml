@@ -1,5 +1,6 @@
 import QtQuick
 import QtTest
+import "../../lib"
 import "../../lib/InputNormalizer.js" as Normalizer
 import "../../lib/Eligibility.js" as Eligibility
 import "../../lib/Scheduler.js" as Scheduler
@@ -10,6 +11,17 @@ import "../../lib/Session.js" as Session
 
 TestCase {
   name: "KeycadeAlgorithms"
+
+  I18n { id: testI18n }
+
+  function test_compiledLocalesSwitchAndFailClosedToEnglish() {
+    testI18n.locale = "en"
+    compare(testI18n.t("start"), "PRESS ENTER TO START")
+    testI18n.locale = "zh-CN"
+    compare(testI18n.t("start"), "按回车开始对局")
+    testI18n.locale = "../../untrusted"
+    compare(testI18n.t("start"), "PRESS ENTER TO START")
+  }
 
   function binding(overrides) {
     var base = {

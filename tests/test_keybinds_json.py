@@ -103,7 +103,7 @@ class KeybindHelperTests(unittest.TestCase):
         self.assertEqual(result["bindings"][0]["keycode"], 10)
         self.assertEqual(result["bindings"][0]["matchMode"], "physical")
 
-    def test_misaligned_plain_record_does_not_fill_json_key(self):
+    def test_misaligned_plain_record_rejects_json_record(self):
         raw_json = json.dumps([{
             "modmask": 64,
             "key": "",
@@ -120,12 +120,102 @@ class KeybindHelperTests(unittest.TestCase):
 \tdescription: Second
 """
         result = self.helper.snapshot_json(raw_json, raw_plain)
-        self.assertEqual(result["bindings"][0]["key"], "")
-        self.assertEqual(result["bindings"][0]["keycode"], 0)
-        self.assertFalse(result["bindings"][0]["dontInhibit"])
+        self.assertEqual(result["bindings"], [])
+        self.assertEqual(result["rejected"], 1)
+
+    def test_conflicting_nonempty_keys_reject_json_record(self):
+        raw_json = json.dumps([{
+            "modmask": 64,
+            "key": "K",
+            "keycode": 0,
+            "dispatcher": "exec",
+            "arg": "terminal",
+            "description": "Open terminal",
+            "submap": "",
+        }])
+        raw_plain = """bindd
+\tmodmask: 64
+\tkey: J
+\tdispatcher: exec
+\targ: terminal
+\tdescription: Open terminal
+\tsubmap:
+"""
+        result = self.helper.snapshot_json(raw_json, raw_plain)
+        self.assertEqual(result["bindings"], [])
+        self.assertEqual(result["rejected"], 1)
 
     def test_control_characters_are_normalized(self):
         self.assertEqual(self.helper.sanitize_text("safe\u202eevil\n", 20), "safe evil ")
+
+    def test_oversized_record_is_dropped_without_losing_the_rest(self):
+        blocks = (
+            "bindd\n\tmodmask: 64\n\tkey: K\n\tdescription: " + "A" * 600 + "\n"
+            "bindd\n\tmodmask: 64\n\tkey: J\n\tdescription: Usable binding\n"
+        )
+        result = self.helper.snapshot(blocks)
+        self.assertEqual(result["rejected"], 1)
+        self.assertEqual([b["description"] for b in result["bindings"]], ["Usable binding"])
+
+    def test_json_oversized_record_is_dropped_without_losing_alignment(self):
+        raw_json = json.dumps([
+            {
+                "modmask": 64, "key": "K", "keycode": 0,
+                "dispatcher": "exec", "arg": "bad",
+                "description": "A" * 600, "submap": "",
+            },
+            {
+                "modmask": 64, "key": "J", "keycode": 0,
+                "dispatcher": "exec", "arg": "good",
+                "description": "Usable binding", "submap": "",
+            },
+        ])
+        raw_plain = (
+            "bindd\n\tmodmask: 64\n\tkey: K\n\tdispatcher: exec\n\targ: bad\n"
+            "\tdescription: " + "A" * 600 + "\n\tsubmap:\n"
+            "binddp\n\tmodmask: 64\n\tkey: J\n\tdispatcher: exec\n\targ: good\n"
+            "\tdescription: Usable binding\n\tsubmap:\n"
+        )
+        result = self.helper.snapshot_json(raw_json, raw_plain)
+        self.assertEqual(result["rejected"], 1)
+        self.assertEqual([binding["key"] for binding in result["bindings"]], ["J"])
+        self.assertTrue(result["bindings"][0]["dontInhibit"])
+
+    def test_invalid_plain_record_rejects_corresponding_json_safety_record(self):
+        raw_json = json.dumps([{
+            "modmask": 64, "key": "K", "keycode": 0,
+            "dispatcher": "exec", "arg": "safe",
+            "description": "Open terminal", "submap": "",
+        }])
+        raw_plain = (
+            "binddp\n\tmodmask: 64\n\tkey: " + "K" * 129
+            + "\n\tdispatcher: exec\n\targ: safe\n"
+            "\tdescription: Open terminal\n\tsubmap:\n"
+        )
+        result = self.helper.snapshot_json(raw_json, raw_plain)
+        self.assertEqual(result["bindings"], [])
+        self.assertEqual(result["rejected"], 1)
+
+    def test_invalid_plain_numbers_and_booleans_reject_only_their_records(self):
+        blocks = (
+            "bindd\n\tmodmask: 999999999999\n\tkey: K\n"
+            "\tdescription: Open terminal\n"
+            "bindd\n\tmodmask: 64\n\tkey: J\n\trelease: sometimes\n"
+            "\tdescription: Open editor\n"
+            "bindd\n\tmodmask: 64\n\tkey: L\n\tdescription: Lock system\n"
+        )
+        result = self.helper.snapshot(blocks)
+        self.assertEqual(result["rejected"], 2)
+        self.assertEqual([binding["key"] for binding in result["bindings"]], ["L"])
+
+    def test_unknown_plain_bind_flag_rejects_only_that_record(self):
+        blocks = (
+            "binddz\n\tmodmask: 64\n\tkey: K\n\tdescription: Open terminal\n"
+            "bindd\n\tmodmask: 64\n\tkey: L\n\tdescription: Lock system\n"
+        )
+        result = self.helper.snapshot(blocks)
+        self.assertEqual(result["rejected"], 1)
+        self.assertEqual([binding["key"] for binding in result["bindings"]], ["L"])
 
     def test_field_and_binding_limits_fail_closed(self):
         with self.assertRaises(self.helper.HelperError):

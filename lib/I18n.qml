@@ -1,38 +1,27 @@
 import QtQuick
-import Quickshell.Io
+import "Locales.js" as Locales
 
 Item {
   id: root
+
+  // The message catalogue is compiled into Locales.js by tools/build_locales.py,
+  // so switching locales never touches the filesystem.
   property string locale: "en"
-  property var messages: ({})
-  readonly property var supported: ["en", "zh-CN"]
-  readonly property string localePath: String(Qt.resolvedUrl("../assets/locales/" + locale + ".json")).replace("file://", "")
+  readonly property var supported: Locales.supported()
+  readonly property var messages: Locales.messages(root.locale)
 
   function t(key, variables) {
-    var template = String(root.messages[key] || key)
+    var name = String(key || "")
+    var template = Object.prototype.hasOwnProperty.call(root.messages, name)
+        ? String(root.messages[name]) : name
     var values = variables || {}
-    return template.replace(/\{(\w+)\}/g, function(_, name) {
-      return values[name] === undefined ? "{" + name + "}" : String(values[name])
+    return template.replace(/\{(\w+)\}/g, function(_, field) {
+      return values[field] === undefined ? "{" + field + "}" : String(values[field])
     })
   }
 
   function cycle() {
-    var index = supported.indexOf(locale)
-    locale = supported[(index + 1) % supported.length]
-  }
-
-  onLocaleChanged: localeFile.reload()
-
-  FileView {
-    id: localeFile
-    path: root.localePath
-    onLoaded: {
-      try {
-        var value = JSON.parse(text())
-        if (value.schemaVersion === 1) root.messages = value
-      } catch (error) {
-        console.warn("Keycade locale parse failed:", error)
-      }
-    }
+    var index = root.supported.indexOf(root.locale)
+    root.locale = root.supported[(index + 1) % root.supported.length]
   }
 }
