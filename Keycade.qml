@@ -22,6 +22,7 @@ Item {
   property string errorMessage: ""
   property bool guardReady: false
   property bool escapeDown: false
+  property int heldModifierCount: 0
   property bool startRequested: false
   property string requestedLocale: ""
 
@@ -89,6 +90,7 @@ Item {
     root.activeSegmentStartedAt = 0
     root.languageMenuOpen = false
     root.soundMenuOpen = false
+    root.heldModifierCount = 0
     root.themeName = String(store.settings.theme || payload.theme || "tokyo")
     var savedLocale = String(store.settings.locale || "en")
     i18n.locale = root.requestedLocale
@@ -723,10 +725,20 @@ Item {
       Keys.onPressed: function(event) {
         guard.updateInput(Normalizer.modifierMask(event.modifiers))
         if (event.isAutoRepeat) { event.accepted = true; return }
+        if (Normalizer.isModifier(Normalizer.logicalKey(event))) {
+          root.heldModifierCount += 1
+          event.accepted = true
+          return
+        }
         // Safe-exit is bound to a bare Escape only. Escape held with a modifier
         // (e.g. Super + Esc) is a real shortcut chord and must reach
         // handleGameInput() below instead of being swallowed as an exit request.
-        if (event.key === Qt.Key_Escape && event.modifiers === Qt.NoModifier) {
+        // heldModifierCount (tracked from the modifier keys' own press/release
+        // events, above) is used instead of event.modifiers: on a fast chord,
+        // Wayland can deliver the "modifiers" update for the still-held Super
+        // key slightly after the Escape key event itself, so event.modifiers
+        // briefly under-reports it right here.
+        if (event.key === Qt.Key_Escape && root.heldModifierCount === 0) {
           if (root.languageMenuOpen || root.soundMenuOpen) {
             root.languageMenuOpen = false
             root.soundMenuOpen = false
@@ -764,6 +776,11 @@ Item {
 
       Keys.onReleased: function(event) {
         guard.updateInput(Normalizer.modifierMask(event.modifiers))
+        if (Normalizer.isModifier(Normalizer.logicalKey(event))) {
+          root.heldModifierCount = Math.max(0, root.heldModifierCount - 1)
+          event.accepted = true
+          return
+        }
         if (event.key === Qt.Key_Escape && root.escapeDown) {
           root.escapeDown = false
           root.requestSafeClose()
