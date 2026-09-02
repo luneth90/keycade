@@ -1,4 +1,5 @@
 import QtQuick
+import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland._ShortcutsInhibitor
 
@@ -6,6 +7,7 @@ Item {
   id: root
 
   required property var window
+  readonly property string interpreterPath: "/usr/bin/python3"
   readonly property string helperPath: String(Qt.resolvedUrl("../bin/keybinds-json")).replace("file://", "")
   property string phase: "closed"
   property bool keyboardFocused: false
@@ -72,6 +74,15 @@ Item {
     root.closed()
   }
 
+  // Only what the helper needs; nothing else is inherited.
+  function childEnvironment() {
+    return {
+      "PATH": "/usr/bin",
+      "HYPRLAND_INSTANCE_SIGNATURE": Quickshell.env("HYPRLAND_INSTANCE_SIGNATURE") || "",
+      "XDG_RUNTIME_DIR": Quickshell.env("XDG_RUNTIME_DIR") || ""
+    }
+  }
+
   function fail(message) {
     readyDelay.stop()
     acquireTimeout.stop()
@@ -81,14 +92,26 @@ Item {
     root.blocked(message)
   }
 
-  QtObject { id: preflightOutput; property string value: "" }
+  QtObject { id: preflightOutput; property string value: ""; property bool overflowed: false }
 
   Process {
     id: preflight
-    command: [root.helperPath, "--guard-status"]
-    stdout: StdioCollector {
-      waitForEnd: true
-      onStreamFinished: preflightOutput.value = text
+    // Absolute interpreter path and a rebuilt environment: nothing here is
+    // resolved through the ambient PATH of the host shell process.
+    command: [root.interpreterPath, root.helperPath, "--guard-status"]
+    clearEnvironment: true
+    Component.onCompleted: preflight.environment = root.childEnvironment()
+    stdout: SplitParser {
+      splitMarker: "\n"
+      onRead: function(line) {
+        // A single small record; cap it while reading rather than after.
+        if (preflightOutput.value.length + String(line).length > 4096) {
+          preflightOutput.value = ""
+          preflightOutput.overflowed = true
+          return
+        }
+        preflightOutput.value += String(line)
+      }
     }
     onExited: function(exitCode) {
       preflightTimeout.stop()
@@ -98,7 +121,7 @@ Item {
         return
       }
       try {
-        if (preflightOutput.value.length > 4096) throw new Error("oversized preflight")
+        if (preflightOutput.overflowed) throw new Error("oversized preflight")
         var option = JSON.parse(preflightOutput.value)
         if (!option || option.schemaVersion !== 1 || typeof option.disabled !== "boolean")
           throw new Error("invalid preflight schema")

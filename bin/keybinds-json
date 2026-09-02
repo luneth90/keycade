@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/python3
 """Emit a versioned, machine-readable snapshot of trainable Hyprland binds.
 
 The helper intentionally parses ``hyprctl binds``' plain output. Hyprland
@@ -9,12 +9,14 @@ arguments, while the plain block format remains stable and preserves flags.
 from __future__ import annotations
 
 import argparse
+import ctypes
 import hashlib
 import json
 import os
 import re
 import selectors
 import signal
+import stat
 import subprocess
 import sys
 import time
@@ -79,6 +81,58 @@ class HelperError(RuntimeError):
     pass
 
 
+HYPRCTL_PATH = "/usr/bin/hyprctl"
+# hyprctl only needs to locate the compositor socket. Everything else is
+# dropped so a child never inherits an attacker-influenced environment.
+CHILD_ENVIRONMENT_KEYS = ("HYPRLAND_INSTANCE_SIGNATURE", "XDG_RUNTIME_DIR")
+PR_SET_PDEATHSIG = 1
+
+
+def trusted_command(path: str) -> str:
+    """Return ``path`` only when it is a root-owned, non-writable executable.
+
+    Commands are addressed by absolute path so nothing is resolved through the
+    ambient ``PATH`` of the long-lived shell process that hosts the plugin.
+    """
+    try:
+        info = os.stat(path)
+    except OSError as error:
+        raise HelperError(f"{path} is unavailable") from error
+    if not stat.S_ISREG(info.st_mode):
+        raise HelperError(f"{path} is not a regular file")
+    if info.st_uid != 0:
+        raise HelperError(f"{path} is not owned by root")
+    if info.st_mode & (stat.S_IWGRP | stat.S_IWOTH):
+        raise HelperError(f"{path} is group or world writable")
+    if not info.st_mode & stat.S_IXUSR:
+        raise HelperError(f"{path} is not executable")
+    return path
+
+
+def child_environment() -> dict[str, str]:
+    environment = {"PATH": "/usr/bin"}
+    for name in CHILD_ENVIRONMENT_KEYS:
+        value = os.environ.get(name)
+        if value:
+            environment[name] = value
+    return environment
+
+
+def _prepare_child() -> None:
+    # Start a new session so the helper can signal the child's whole group, and
+    # ask the kernel to kill the child if this helper dies first. Without the
+    # death signal a SIGKILL of the helper would orphan a running hyprctl
+    # before any cleanup code could reap it.
+    os.setsid()
+    parent = os.getppid()
+    try:
+        ctypes.CDLL("libc.so.6", use_errno=True).prctl(PR_SET_PDEATHSIG, signal.SIGKILL)
+    except OSError:
+        return
+    if os.getppid() != parent:
+        os._exit(1)
+
+
 def _kill_process_group(process: subprocess.Popen[bytes]) -> None:
     try:
         os.killpg(process.pid, signal.SIGKILL)
@@ -89,6 +143,23 @@ def _kill_process_group(process: subprocess.Popen[bytes]) -> None:
     except subprocess.TimeoutExpired:
         process.kill()
         process.wait()
+
+
+_ACTIVE_CHILD: subprocess.Popen[bytes] | None = None
+
+
+def _terminate(_signum: int, _frame: Any) -> None:
+    # A consumer that wants this helper gone sends SIGTERM first. Reap the
+    # child process group here so the tree cannot outlive the helper; the
+    # kernel death signal set in _prepare_child covers an immediate SIGKILL.
+    if _ACTIVE_CHILD is not None:
+        _kill_process_group(_ACTIVE_CHILD)
+    os._exit(143)
+
+
+def install_signal_handlers() -> None:
+    signal.signal(signal.SIGTERM, _terminate)
+    signal.signal(signal.SIGHUP, _terminate)
 
 
 def command_output(
@@ -103,11 +174,15 @@ def command_output(
             command,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            start_new_session=True,
+            env=child_environment(),
+            preexec_fn=_prepare_child,
+            close_fds=True,
         )
     except OSError as error:
         raise HelperError(f"{' '.join(command)} failed: {error}") from error
 
+    global _ACTIVE_CHILD
+    _ACTIVE_CHILD = process
     streams = selectors.DefaultSelector()
     assert process.stdout is not None and process.stderr is not None
     streams.register(process.stdout, selectors.EVENT_READ, ("stdout", max_stdout))
@@ -139,6 +214,7 @@ def command_output(
         _kill_process_group(process)
         raise
     finally:
+        _ACTIVE_CHILD = None
         streams.close()
         process.stdout.close()
         process.stderr.close()
@@ -461,7 +537,43 @@ def snapshot_json(raw_json: str, raw_plain: str, raw_devices: str = "") -> dict[
     }
 
 
+MAX_RECORD_BYTES = 8 * 1024
+
+
+def write_stream(result: dict[str, Any]) -> int:
+    """Emit the snapshot as newline-delimited records.
+
+    One record per line keeps every line small by construction, so the QML
+    consumer can enforce its own byte and record budget while reading instead
+    of after the whole stream has been retained.
+    """
+    bindings = result["bindings"]
+    header = {
+        "schemaVersion": SCHEMA_VERSION,
+        "type": "header",
+        "keymapFingerprint": result["keymapFingerprint"],
+        "appleKeyboard": result["appleKeyboard"],
+        "rejected": result["rejected"],
+        "count": len(bindings),
+    }
+    lines = [header] + [dict(binding, type="binding") for binding in bindings]
+    total = 0
+    for line in lines:
+        encoded = json.dumps(line, ensure_ascii=False).encode("utf-8")
+        if len(encoded) > MAX_RECORD_BYTES:
+            print(json.dumps({"schemaVersion": SCHEMA_VERSION, "type": "error", "error": "keybind record exceeds byte limit"}))
+            return 1
+        total += len(encoded) + 1
+        if total > MAX_PAYLOAD_BYTES:
+            print(json.dumps({"schemaVersion": SCHEMA_VERSION, "type": "error", "error": "keybind payload exceeds byte limit"}))
+            return 1
+        sys.stdout.buffer.write(encoded + b"\n")
+    sys.stdout.buffer.flush()
+    return 0
+
+
 def main() -> int:
+    install_signal_handlers()
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--input", help="read hyprctl binds output from a fixture")
     parser.add_argument("--devices-input", help="read hyprctl devices output from a fixture")
@@ -472,7 +584,7 @@ def main() -> int:
     try:
         if args.guard_status:
             raw_option = command_output(
-                ["hyprctl", "-j", "getoption", "binds:disable_keybind_grabbing"],
+                [trusted_command(HYPRCTL_PATH), "-j", "getoption", "binds:disable_keybind_grabbing"],
                 max_stdout=64 * 1024,
             )
             option = json.loads(raw_option)
@@ -486,30 +598,33 @@ def main() -> int:
                 disabled = True
             if isinstance(option.get("str"), str) and option["str"].lower() == "true":
                 disabled = True
-            result = {"schemaVersion": SCHEMA_VERSION, "disabled": disabled}
+            result = {"schemaVersion": SCHEMA_VERSION, "type": "guard", "disabled": disabled}
             encoded = json.dumps(result, ensure_ascii=False).encode("utf-8")
             sys.stdout.buffer.write(encoded + b"\n")
             return 0
-        devices = read_text(args.devices_input, ["hyprctl", "devices"])
+        devices = read_text(args.devices_input, [trusted_command(HYPRCTL_PATH), "devices"])
         if args.input:
-            binds = read_text(args.input, ["hyprctl", "binds"])
+            binds = read_text(args.input, [trusted_command(HYPRCTL_PATH), "binds"])
             result = snapshot(binds, devices)
         else:
-            plain = command_output(["hyprctl", "binds"])
+            plain = command_output([trusted_command(HYPRCTL_PATH), "binds"])
             try:
-                result = snapshot_json(command_output(["hyprctl", "-j", "binds"]), plain, devices)
+                result = snapshot_json(command_output([trusted_command(HYPRCTL_PATH), "-j", "binds"]), plain, devices)
             except HelperError:
                 result = snapshot(plain, devices)
     except (OSError, UnicodeError, json.JSONDecodeError, HelperError) as error:
-        print(json.dumps({"schemaVersion": SCHEMA_VERSION, "error": str(error)}))
+        print(json.dumps({"schemaVersion": SCHEMA_VERSION, "type": "error", "error": str(error)}))
         return 1
 
-    encoded = json.dumps(result, indent=2 if args.pretty else None, ensure_ascii=False).encode("utf-8")
-    if len(encoded) > MAX_PAYLOAD_BYTES:
-        print(json.dumps({"schemaVersion": SCHEMA_VERSION, "error": "keybind payload exceeds byte limit"}))
-        return 1
-    sys.stdout.buffer.write(encoded + b"\n")
-    return 0
+    if args.pretty:
+        encoded = json.dumps(result, indent=2, ensure_ascii=False).encode("utf-8")
+        if len(encoded) > MAX_PAYLOAD_BYTES:
+            print(json.dumps({"schemaVersion": SCHEMA_VERSION, "type": "error", "error": "keybind payload exceeds byte limit"}))
+            return 1
+        sys.stdout.buffer.write(encoded + b"\n")
+        return 0
+
+    return write_stream(result)
 
 
 if __name__ == "__main__":

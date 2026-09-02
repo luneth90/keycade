@@ -2,11 +2,13 @@ import importlib.machinery
 import importlib.util
 import json
 import os
+import signal
 import sys
 import subprocess
 import tempfile
 import time
 import unittest
+from unittest import mock
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -57,7 +59,11 @@ class KeybindHelperTests(unittest.TestCase):
             capture_output=True,
             text=True,
         )
-        self.assertEqual(json.loads(result.stdout)["schemaVersion"], 1)
+        lines = [json.loads(line) for line in result.stdout.splitlines() if line.strip()]
+        self.assertEqual(lines[0]["schemaVersion"], 1)
+        self.assertEqual(lines[0]["type"], "header")
+        self.assertEqual(lines[0]["count"], len(lines) - 1)
+        self.assertTrue(all(record["type"] == "binding" for record in lines[1:]))
 
     def test_user_lua_configuration_is_never_executed(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -147,6 +153,86 @@ class KeybindHelperTests(unittest.TestCase):
 
     def test_control_characters_are_normalized(self):
         self.assertEqual(self.helper.sanitize_text("safe\u202eevil\n", 20), "safe evil ")
+
+    def test_commands_and_interpreter_are_absolute_and_trusted(self):
+        # Nothing the long-lived plugin executes may be resolved through PATH.
+        source = SCRIPT.read_text(encoding="utf-8")
+        self.assertTrue(source.startswith("#!/usr/bin/python3"))
+        self.assertNotIn("/usr/bin/env", source)
+        self.assertNotIn('"hyprctl"', source)
+        self.assertEqual(self.helper.HYPRCTL_PATH, "/usr/bin/hyprctl")
+        self.assertEqual(self.helper.trusted_command("/usr/bin/hyprctl"), "/usr/bin/hyprctl")
+
+    def test_trusted_command_rejects_untrusted_paths(self):
+        with tempfile.TemporaryDirectory() as directory:
+            planted = Path(directory) / "hyprctl"
+            planted.write_text("#!/bin/sh\necho pwned\n", encoding="utf-8")
+            planted.chmod(0o777)
+            # Owned by the user rather than root, and world writable.
+            with self.assertRaises(self.helper.HelperError):
+                self.helper.trusted_command(str(planted))
+            with self.assertRaises(self.helper.HelperError):
+                self.helper.trusted_command(str(Path(directory) / "missing"))
+
+    def test_child_environment_is_rebuilt_not_inherited(self):
+        with mock.patch.dict(
+            os.environ,
+            {"HYPRLAND_INSTANCE_SIGNATURE": "sig", "XDG_RUNTIME_DIR": "/run/user/1",
+             "LD_PRELOAD": "/tmp/evil.so", "PATH": "/tmp/evil"},
+            clear=True,
+        ):
+            environment = self.helper.child_environment()
+        self.assertEqual(
+            environment,
+            {"PATH": "/usr/bin", "HYPRLAND_INSTANCE_SIGNATURE": "sig", "XDG_RUNTIME_DIR": "/run/user/1"},
+        )
+
+    def test_child_dies_with_the_helper(self):
+        # A helper killed with SIGKILL cannot run cleanup code, so the kernel
+        # death signal has to take the child down instead.
+        script = (
+            "import subprocess, sys, time, importlib.machinery, importlib.util\n"
+            f"loader = importlib.machinery.SourceFileLoader('kb', {str(SCRIPT)!r})\n"
+            "kb = importlib.util.module_from_spec(importlib.util.spec_from_loader('kb', loader))\n"
+            "loader.exec_module(kb)\n"
+            "child = subprocess.Popen(['/usr/bin/sleep', '30'], preexec_fn=kb._prepare_child)\n"
+            "print(child.pid, flush=True)\n"
+            "time.sleep(30)\n"
+        )
+        helper = subprocess.Popen(
+            [sys.executable, "-c", script], stdout=subprocess.PIPE, text=True
+        )
+        try:
+            child_pid = int(helper.stdout.readline().strip())
+            helper.kill()
+            helper.wait(timeout=5)
+            deadline = time.monotonic() + 5
+            while time.monotonic() < deadline:
+                try:
+                    os.kill(child_pid, 0)
+                except ProcessLookupError:
+                    break
+                time.sleep(0.05)
+            else:
+                os.kill(child_pid, signal.SIGKILL)
+                self.fail("child survived the helper")
+        finally:
+            if helper.poll() is None:
+                helper.kill()
+                helper.wait()
+
+    def test_stream_records_stay_small_and_line_delimited(self):
+        # The QML consumer bounds the stream while reading, which only works
+        # if no single record can be large.
+        result = subprocess.run(
+            [str(SCRIPT), "--input", str(ROOT / "tests/fixtures/binds.txt"),
+             "--devices-input", str(ROOT / "tests/fixtures/devices.txt")],
+            check=True, capture_output=True, text=True,
+        )
+        lines = [line for line in result.stdout.splitlines() if line.strip()]
+        self.assertGreater(len(lines), 1)
+        for line in lines:
+            self.assertLessEqual(len(line.encode("utf-8")), self.helper.MAX_RECORD_BYTES)
 
     def test_oversized_record_is_dropped_without_losing_the_rest(self):
         blocks = (

@@ -1,4 +1,5 @@
 import QtQuick
+import Quickshell
 import Quickshell.Io
 import "Stats.js" as Stats
 import "Session.js" as Session
@@ -6,9 +7,23 @@ import "Session.js" as Session
 Item {
   id: root
 
+  // Absolute interpreter and helper paths plus a rebuilt child environment
+  // keep this long-lived component from resolving anything through PATH.
+  readonly property string interpreterPath: "/usr/bin/python3"
   readonly property string helperPath: String(Qt.resolvedUrl("../bin/state-store")).replace("file://", "")
   readonly property int maxResponseChars: 6 * 1024 * 1024
+  readonly property int maxRecordChars: 128 * 1024
+  readonly property int maxRecords: 4096
   readonly property int maxQueuedOperations: 16
+  readonly property var fileLimits: ({ stats: 2 * 1024 * 1024, settings: 64 * 1024, session: 512 * 1024 })
+
+  // Incremental load state; the budget is enforced per record while reading.
+  property var loadFiles: null
+  property string loadKind: ""
+  property int loadChunksLeft: 0
+  property int streamChars: 0
+  property int streamRecords: 0
+  property bool streamComplete: false
 
   property var stats: Stats.defaults()
   property var settings: defaultSettings()
@@ -138,6 +153,15 @@ Item {
     root.updateReady()
   }
 
+  // Only what the helper needs; nothing else is inherited.
+  function childEnvironment() {
+    return {
+      "PATH": "/usr/bin",
+      "HOME": Quickshell.env("HOME") || "",
+      "XDG_STATE_HOME": Quickshell.env("XDG_STATE_HOME") || ""
+    }
+  }
+
   function fail(message) {
     if (root.error) return
     root.error = String(message || "State storage failed").slice(0, 512)
@@ -186,8 +210,14 @@ Item {
     root.operations = queue
     root.operationOutput = ""
     root.operationTimedOut = false
+    root.loadFiles = null
+    root.loadKind = ""
+    root.loadChunksLeft = 0
+    root.streamChars = 0
+    root.streamRecords = 0
+    root.streamComplete = false
     var operation = root.currentOperation
-    var command = [root.helperPath, operation.action]
+    var command = [root.interpreterPath, root.helperPath, operation.action]
     if (operation.kind) command.push(operation.kind)
     if (operation.quarantine) command.push("--quarantine")
     stateProcess.command = command
@@ -239,29 +269,92 @@ Item {
     root.enqueue({ action: "delete", kind: "session" })
   }
 
-  function consumeLoad(raw) {
-    if (String(raw || "").length > root.maxResponseChars)
-      throw new Error("state response exceeded its limit")
-    var payload = JSON.parse(String(raw || ""))
-    if (!payload || payload.schemaVersion !== 1 || !payload.files)
-      throw new Error("invalid state response")
-    var names = ["stats", "settings", "session"]
-    var limits = { stats: 2 * 1024 * 1024, settings: 64 * 1024, session: 512 * 1024 }
-    for (var index = 0; index < names.length; index++) {
-      var entry = payload.files[names[index]]
-      if (!entry || ["ok", "missing", "quarantined"].indexOf(entry.status) === -1
-          || typeof entry.text !== "string" || entry.text.length > limits[names[index]])
-        throw new Error("invalid state file response")
+  // One record at a time while the helper is still running, so an oversized
+  // response is abandoned rather than retained and measured afterwards.
+  // Write, delete and quarantine reply with a single small acknowledgement.
+  function acceptAcknowledgement(line) {
+    var text = String(line || "")
+    if (!text.trim().length) return
+    if (text.length > 4096) throw new Error("oversized state acknowledgement")
+    var acknowledgement = JSON.parse(text)
+    if (!acknowledgement || acknowledgement.schemaVersion !== 1 || acknowledgement.ok !== true)
+      throw new Error("invalid state acknowledgement")
+    root.streamComplete = true
+  }
+
+  // Give the helper a chance to exit on its own before forcing it down.
+  function stopHelper() {
+    if (!stateProcess.running) return
+    stateProcess.signal(15)
+    forceStop.restart()
+  }
+
+  function acceptLine(line) {
+    if (root.streamComplete) return
+    var text = String(line || "")
+    if (text.length > root.maxRecordChars) throw new Error("state record exceeded its limit")
+    root.streamChars += text.length + 1
+    if (root.streamChars > root.maxResponseChars) throw new Error("state response exceeded its limit")
+    root.streamRecords += 1
+    if (root.streamRecords > root.maxRecords) throw new Error("too many state records")
+    if (!text.trim().length) return
+
+    var record = JSON.parse(text)
+    if (!record || typeof record !== "object" || Array.isArray(record))
+      throw new Error("invalid state record")
+
+    if (record.type === "header") {
+      if (record.schemaVersion !== 1) throw new Error("invalid state response")
+      root.loadFiles = ({ stats: "", settings: "", session: "" })
+      root.loadKind = ""
+      root.loadChunksLeft = 0
+      return
     }
-    root.loadStats(payload.files.stats.text)
-    root.loadSettings(payload.files.settings.text)
-    root.loadSession(payload.files.session.text)
+
+    if (record.type === "file") {
+      if (!root.loadFiles) throw new Error("state record before header")
+      if (["stats", "settings", "session"].indexOf(record.kind) === -1)
+        throw new Error("invalid state file response")
+      if (["ok", "missing", "quarantined"].indexOf(record.status) === -1)
+        throw new Error("invalid state file response")
+      if (typeof record.chunks !== "number" || !isFinite(record.chunks)
+          || Math.floor(record.chunks) !== record.chunks || record.chunks < 0)
+        throw new Error("invalid state chunk count")
+      root.loadKind = record.kind
+      root.loadChunksLeft = record.chunks
+      return
+    }
+
+    if (record.type === "chunk") {
+      if (!root.loadFiles || record.kind !== root.loadKind || root.loadChunksLeft <= 0)
+        throw new Error("unexpected state chunk")
+      if (typeof record.data !== "string") throw new Error("invalid state chunk")
+      var existing = String(root.loadFiles[record.kind])
+      var addition = String(record.data)
+      if (existing.length + addition.length > root.fileLimits[record.kind])
+        throw new Error("state file exceeded its limit")
+      root.loadFiles[record.kind] = existing + addition
+      root.loadChunksLeft -= 1
+      return
+    }
+
+    if (record.type !== "end") throw new Error("unknown state record type")
+    if (!root.loadFiles || root.loadChunksLeft !== 0) throw new Error("incomplete state response")
+    root.streamComplete = true
+    root.loadStats(root.loadFiles.stats)
+    root.loadSettings(root.loadFiles.settings)
+    root.loadSession(root.loadFiles.session)
+    root.loadFiles = null
   }
 
   Component.onCompleted: root.enqueue({ action: "load" })
   Component.onDestruction: {
     operationTimeout.stop()
-    if (stateProcess.running) stateProcess.signal(9)
+    forceStop.stop()
+    if (stateProcess.running) {
+      stateProcess.signal(15)
+      stateProcess.signal(9)
+    }
   }
 
   Timer {
@@ -270,15 +363,33 @@ Item {
     repeat: false
     onTriggered: {
       root.operationTimedOut = true
-      if (stateProcess.running) stateProcess.signal(9)
+      root.stopHelper()
     }
+  }
+
+  Timer {
+    id: forceStop
+    interval: 500
+    repeat: false
+    onTriggered: if (stateProcess.running) stateProcess.signal(9)
   }
 
   Process {
     id: stateProcess
-    stdout: StdioCollector {
-      waitForEnd: true
-      onStreamFinished: root.operationOutput = text
+    clearEnvironment: true
+    Component.onCompleted: stateProcess.environment = root.childEnvironment()
+    stdout: SplitParser {
+      splitMarker: "\n"
+      onRead: function(line) {
+        if (root.error) return
+        try {
+          if (root.currentOperation && root.currentOperation.action === "load") root.acceptLine(line)
+          else root.acceptAcknowledgement(line)
+        } catch (lineError) {
+          root.fail("State helper returned invalid data")
+          root.stopHelper()
+        }
+      }
     }
     onStarted: {
       if (root.currentOperation && root.currentOperation.payload !== undefined)
@@ -286,6 +397,7 @@ Item {
     }
     onExited: function(exitCode) {
       operationTimeout.stop()
+      forceStop.stop()
       var operation = root.currentOperation
       root.currentOperation = null
       if (root.operationTimedOut) {
@@ -296,16 +408,8 @@ Item {
         root.fail("State helper failed")
         return
       }
-      try {
-        if (operation && operation.action === "load") root.consumeLoad(root.operationOutput)
-        else {
-          if (String(root.operationOutput || "").length > 4096)
-            throw new Error("oversized state acknowledgement")
-          var acknowledgement = JSON.parse(String(root.operationOutput || ""))
-          if (!acknowledgement || acknowledgement.schemaVersion !== 1 || acknowledgement.ok !== true)
-            throw new Error("invalid state acknowledgement")
-        }
-      } catch (responseError) {
+      if (root.error) return
+      if (!root.streamComplete) {
         root.fail("State helper returned invalid data")
         return
       }

@@ -9,6 +9,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
+CHUNK_CHARACTERS = 8 * 1024
 SCRIPT = ROOT / "bin" / "state-store"
 
 
@@ -38,7 +39,31 @@ class StateStoreHelperTests(unittest.TestCase):
         )
 
     def load(self):
-        return json.loads(self.run_helper("load").stdout)
+        """Reassemble the newline-delimited load stream into the old shape.
+
+        The helper streams a header, one record per file and its chunks so the
+        QML consumer can bound the response while reading it; the tests assert
+        against the reassembled result.
+        """
+        records = [json.loads(line) for line in self.run_helper("load").stdout.splitlines() if line.strip()]
+        self.assertEqual(records[0]["type"], "header")
+        self.assertEqual(records[-1]["type"], "end")
+        payload = {"schemaVersion": records[0]["schemaVersion"], "files": {}}
+        current = None
+        for record in records[1:-1]:
+            if record["type"] == "file":
+                current = {"status": record["status"], "text": "", "chunks": record["chunks"]}
+                if "quarantinedAs" in record:
+                    current["quarantinedAs"] = record["quarantinedAs"]
+                payload["files"][record["kind"]] = current
+            else:
+                self.assertEqual(record["type"], "chunk")
+                payload["files"][record["kind"]]["text"] += record["data"]
+        for entry in payload["files"].values():
+            declared = entry.pop("chunks")
+            expected = -(-len(entry["text"]) // CHUNK_CHARACTERS)
+            self.assertEqual(declared, expected, "chunk count did not match the streamed text")
+        return payload
 
     def test_load_creates_private_directory(self):
         payload = self.load()

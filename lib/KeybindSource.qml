@@ -1,11 +1,17 @@
 import QtQuick
+import Quickshell
 import Quickshell.Io
 
 Item {
   id: root
 
+  // The interpreter and the helper are addressed by absolute path, and the
+  // child environment is rebuilt from scratch, so nothing this long-lived
+  // component executes is resolved through the ambient PATH.
+  readonly property string interpreterPath: "/usr/bin/python3"
   readonly property string helperPath: String(Qt.resolvedUrl("../bin/keybinds-json")).replace("file://", "")
   readonly property int maxPayloadChars: 8 * 1024 * 1024
+  readonly property int maxRecordChars: 8 * 1024
   readonly property int maxBindings: 2000
   readonly property var allowedFlags: [
     "locked", "release", "click", "drag", "long-press", "repeat",
@@ -21,6 +27,14 @@ Item {
   // malformed binding is observable instead of silently missing from training.
   property int rejected: 0
 
+  // Incremental stream state. The budget is enforced while reading, so an
+  // oversized stream is abandoned before it can be retained in full.
+  property var pendingBindings: []
+  property var pendingHeader: null
+  property int streamChars: 0
+  property int streamRecords: 0
+  property bool streamSettled: false
+
   signal loaded()
   signal failed(string message)
 
@@ -28,8 +42,22 @@ Item {
     if (loader.running) return
     root.error = ""
     root.loading = true
+    root.pendingBindings = []
+    root.pendingHeader = null
+    root.streamChars = 0
+    root.streamRecords = 0
+    root.streamSettled = false
     loadTimeout.restart()
     loader.running = true
+  }
+
+  // Only what the helper needs to reach the compositor socket.
+  function childEnvironment() {
+    return {
+      "PATH": "/usr/bin",
+      "HYPRLAND_INSTANCE_SIGNATURE": Quickshell.env("HYPRLAND_INSTANCE_SIGNATURE") || "",
+      "XDG_RUNTIME_DIR": Quickshell.env("XDG_RUNTIME_DIR") || ""
+    }
   }
 
   function safeText(value, limit, field) {
@@ -45,98 +73,148 @@ Item {
     return value
   }
 
-  function consume(raw) {
+  function fail(message) {
+    if (root.streamSettled) return
+    root.streamSettled = true
     root.loading = false
-    try {
-      var source = String(raw || "")
-      if (source.length > root.maxPayloadChars) throw new Error("Keybind payload exceeded its limit")
-      var payload = JSON.parse(source)
-      if (!payload || typeof payload !== "object" || Array.isArray(payload))
-        throw new Error("Invalid keybind payload")
-      if (payload.schemaVersion !== 1) throw new Error("Unsupported keybind schema")
-      if (payload.error) throw new Error(root.safeText(payload.error, 512, "error"))
-      if (!Array.isArray(payload.bindings)) throw new Error("Missing bindings array")
-      if (payload.bindings.length > root.maxBindings) throw new Error("Too many keybindings")
-      var bindings = []
-      var aggregateCharacters = 0
-      for (var index = 0; index < payload.bindings.length; index++) {
-        var sourceBinding = payload.bindings[index]
-        if (!sourceBinding || typeof sourceBinding !== "object" || Array.isArray(sourceBinding))
-          throw new Error("Invalid keybinding record")
-        if (["logical", "physical"].indexOf(sourceBinding.matchMode) === -1)
-          throw new Error("Invalid keybinding match mode")
-        if (!Array.isArray(sourceBinding.flags) || sourceBinding.flags.length > 16)
-          throw new Error("Invalid keybinding flags")
-        var seenFlags = ({})
-        var flags = sourceBinding.flags.map(function(flag) {
-          var safeFlag = root.safeText(flag, 32, "flag")
-          if (root.allowedFlags.indexOf(safeFlag) === -1 || seenFlags[safeFlag])
-            throw new Error("Invalid keybinding flag")
-          seenFlags[safeFlag] = true
-          return safeFlag
-        })
-        if (typeof sourceBinding.dontInhibit !== "boolean"
-            || typeof sourceBinding.allowInputCapture !== "boolean")
-          throw new Error("Invalid keybinding safety flags")
-        var binding = {
-          modMask: root.safeInteger(sourceBinding.modMask, 0, 2147483647, "modifier mask"),
-          key: root.safeText(sourceBinding.key, 128, "key"),
-          keycode: root.safeInteger(sourceBinding.keycode, 0, 65535, "keycode"),
-          matchMode: sourceBinding.matchMode,
-          flags: flags,
-          dontInhibit: sourceBinding.dontInhibit === true,
-          allowInputCapture: sourceBinding.allowInputCapture === true,
-          dispatcher: root.safeText(sourceBinding.dispatcher, 128, "dispatcher"),
-          arg: root.safeText(sourceBinding.arg, 2048, "argument"),
-          description: root.safeText(sourceBinding.description, 512, "description"),
-          submap: root.safeText(sourceBinding.submap, 128, "submap")
-        }
-        aggregateCharacters += binding.key.length + binding.dispatcher.length + binding.arg.length
-            + binding.description.length + binding.submap.length + flags.join("").length
-        if (aggregateCharacters > 4 * 1024 * 1024)
-          throw new Error("Keybinding model exceeded its aggregate limit")
-        bindings.push(binding)
-      }
-      var rejected = payload.rejected === undefined
-          ? 0 : root.safeInteger(payload.rejected, 0, root.maxBindings, "rejected count")
-      if (bindings.length + rejected > root.maxBindings)
-        throw new Error("Invalid total keybinding count")
-      if (typeof payload.keymapFingerprint !== "string"
-          || !/^[0-9a-f]{64}$/.test(payload.keymapFingerprint))
-        throw new Error("Invalid keymap fingerprint")
-      if (typeof payload.appleKeyboard !== "boolean")
-        throw new Error("Invalid Apple keyboard flag")
+    root.pendingBindings = []
+    root.pendingHeader = null
+    root.error = String(message || "Invalid keybind data")
+        .replace(/[\u0000-\u001f\u007f-\u009f\u200e\u200f\u202a-\u202e\u2066-\u2069]/g, " ")
+        .slice(0, 512)
+    root.stop()
+    root.failed(root.error)
+  }
 
-      // Adopt the fully validated model and metadata together.
-      root.bindings = bindings
-      root.rejected = rejected
-      root.fingerprint = payload.keymapFingerprint
-      root.appleKeyboard = payload.appleKeyboard === true
-      if (root.rejected > 0)
-        console.warn("Keycade skipped " + root.rejected + " invalid keybinding record(s)")
-      root.loaded()
-    } catch (error) {
-      root.error = String(error || "Invalid keybind data")
-          .replace(/[\u0000-\u001f\u007f-\u009f\u200e\u200f\u202a-\u202e\u2066-\u2069]/g, " ")
-          .slice(0, 512)
-      root.failed(root.error)
+  function validatedBinding(record) {
+    if (["logical", "physical"].indexOf(record.matchMode) === -1)
+      throw new Error("Invalid keybinding match mode")
+    if (!Array.isArray(record.flags) || record.flags.length > 16)
+      throw new Error("Invalid keybinding flags")
+    var seenFlags = ({})
+    var flags = record.flags.map(function(flag) {
+      var safeFlag = root.safeText(flag, 32, "flag")
+      if (root.allowedFlags.indexOf(safeFlag) === -1 || seenFlags[safeFlag])
+        throw new Error("Invalid keybinding flag")
+      seenFlags[safeFlag] = true
+      return safeFlag
+    })
+    if (typeof record.dontInhibit !== "boolean" || typeof record.allowInputCapture !== "boolean")
+      throw new Error("Invalid keybinding safety flags")
+    return {
+      modMask: root.safeInteger(record.modMask, 0, 2147483647, "modifier mask"),
+      key: root.safeText(record.key, 128, "key"),
+      keycode: root.safeInteger(record.keycode, 0, 65535, "keycode"),
+      matchMode: record.matchMode,
+      flags: flags,
+      dontInhibit: record.dontInhibit === true,
+      allowInputCapture: record.allowInputCapture === true,
+      dispatcher: root.safeText(record.dispatcher, 128, "dispatcher"),
+      arg: root.safeText(record.arg, 2048, "argument"),
+      description: root.safeText(record.description, 512, "description"),
+      submap: root.safeText(record.submap, 128, "submap")
     }
+  }
+
+  // Called once per newline-delimited record while the helper is still
+  // running, so the budget below is a pre-allocation bound rather than a
+  // check performed after the whole stream has been retained.
+  function acceptLine(line) {
+    if (root.streamSettled) return
+    try {
+      var text = String(line || "")
+      if (text.length > root.maxRecordChars) throw new Error("Keybind record exceeded its limit")
+      root.streamChars += text.length + 1
+      if (root.streamChars > root.maxPayloadChars)
+        throw new Error("Keybind payload exceeded its limit")
+      root.streamRecords += 1
+      if (root.streamRecords > root.maxBindings + 1)
+        throw new Error("Too many keybind records")
+      if (!text.trim().length) return
+
+      var record = JSON.parse(text)
+      if (!record || typeof record !== "object" || Array.isArray(record))
+        throw new Error("Invalid keybind record")
+      if (record.schemaVersion !== undefined && record.schemaVersion !== 1)
+        throw new Error("Unsupported keybind schema")
+
+      if (record.type === "error") throw new Error(root.safeText(record.error, 512, "error"))
+
+      if (record.type === "header") {
+        if (root.pendingHeader) throw new Error("Duplicate keybind header")
+        if (typeof record.keymapFingerprint !== "string"
+            || !/^[0-9a-f]{64}$/.test(record.keymapFingerprint))
+          throw new Error("Invalid keymap fingerprint")
+        if (typeof record.appleKeyboard !== "boolean")
+          throw new Error("Invalid Apple keyboard flag")
+        var count = root.safeInteger(record.count, 0, root.maxBindings, "binding count")
+        var rejected = root.safeInteger(record.rejected, 0, root.maxBindings, "rejected count")
+        if (count + rejected > root.maxBindings)
+          throw new Error("Invalid total keybinding count")
+        root.pendingHeader = {
+          count: count,
+          rejected: rejected,
+          fingerprint: record.keymapFingerprint,
+          appleKeyboard: record.appleKeyboard
+        }
+        if (count === 0) root.settle()
+        return
+      }
+
+      if (record.type !== "binding") throw new Error("Unknown keybind record type")
+      if (!root.pendingHeader) throw new Error("Keybind record before header")
+      if (root.pendingBindings.length >= root.pendingHeader.count)
+        throw new Error("More keybind records than the header declared")
+      root.pendingBindings.push(root.validatedBinding(record))
+      if (root.pendingBindings.length === root.pendingHeader.count) root.settle()
+    } catch (error) {
+      root.fail(error)
+    }
+  }
+
+  // Adopt the complete, fully validated model and its metadata together.
+  function settle() {
+    if (root.streamSettled || !root.pendingHeader) return
+    root.streamSettled = true
+    root.loading = false
+    root.bindings = root.pendingBindings
+    root.rejected = root.pendingHeader.rejected
+    root.fingerprint = root.pendingHeader.fingerprint
+    root.appleKeyboard = root.pendingHeader.appleKeyboard === true
+    root.pendingBindings = []
+    root.pendingHeader = null
+    loadTimeout.stop()
+    if (root.rejected > 0)
+      console.warn("Keycade skipped " + root.rejected + " invalid keybinding record(s)")
+    root.loaded()
+  }
+
+  // Ask the helper to clean up its own child process group before forcing it
+  // down. The helper also arms a kernel death signal on each child, so an
+  // immediate SIGKILL cannot leave a hyprctl behind either.
+  function stop() {
+    if (!loader.running) return
+    loader.signal(15)
+    forceStop.restart()
   }
 
   Process {
     id: loader
-    command: [root.helperPath]
-    stdout: StdioCollector {
-      waitForEnd: true
-      onStreamFinished: root.consume(text)
+    command: [root.interpreterPath, root.helperPath]
+    clearEnvironment: true
+    Component.onCompleted: loader.environment = root.childEnvironment()
+    stdout: SplitParser {
+      splitMarker: "\n"
+      onRead: function(line) { root.acceptLine(line) }
     }
     onExited: function(exitCode) {
       loadTimeout.stop()
+      forceStop.stop()
       root.loading = false
-      if (exitCode !== 0 && !root.error) {
-        root.error = "keybinds-json exited with code " + exitCode
-        root.failed(root.error)
-      }
+      if (root.streamSettled) return
+      root.fail(exitCode !== 0
+                ? "keybinds-json exited with code " + exitCode
+                : "keybinds-json ended before its records were complete")
     }
   }
 
@@ -146,15 +224,23 @@ Item {
     repeat: false
     onTriggered: {
       if (!loader.running) return
-      loader.signal(9)
-      root.loading = false
-      root.error = "Keybind collection exceeded its deadline"
-      root.failed(root.error)
+      root.fail("Keybind collection exceeded its deadline")
     }
+  }
+
+  Timer {
+    id: forceStop
+    interval: 500
+    repeat: false
+    onTriggered: if (loader.running) loader.signal(9)
   }
 
   Component.onDestruction: {
     loadTimeout.stop()
-    if (loader.running) loader.signal(9)
+    forceStop.stop()
+    if (loader.running) {
+      loader.signal(15)
+      loader.signal(9)
+    }
   }
 }
