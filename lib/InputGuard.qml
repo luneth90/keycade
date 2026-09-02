@@ -8,6 +8,14 @@ Item {
 
   required property var window
   readonly property string interpreterPath: "/usr/bin/python3"
+  // A relay spawned by this consumer caps what can reach the parser.
+  // Quickshell exposes no parser buffer limit, so a child that never
+  // emits the split marker would otherwise be retained in full before
+  // any budget here could run. The limit is chosen and enforced
+  // outside the process that produces the data.
+  readonly property string relayPath: String(Qt.resolvedUrl("../bin/bounded-relay")).replace("file://", "")
+  readonly property int relayMaxBytes: 64 * 1024
+  readonly property real relayDeadline: 2.5
   readonly property string helperPath: String(Qt.resolvedUrl("../bin/keybinds-json")).replace("file://", "")
   property string phase: "closed"
   property bool keyboardFocused: false
@@ -98,7 +106,12 @@ Item {
     id: preflight
     // Absolute interpreter path and a rebuilt environment: nothing here is
     // resolved through the ambient PATH of the host shell process.
-    command: [root.interpreterPath, root.helperPath, "--guard-status"]
+    command: [
+      root.interpreterPath, root.relayPath,
+      "--max-bytes", String(root.relayMaxBytes),
+      "--deadline", String(root.relayDeadline),
+      "--", root.interpreterPath, root.helperPath, "--guard-status"
+    ]
     clearEnvironment: true
     Component.onCompleted: preflight.environment = root.childEnvironment()
     stdout: SplitParser {

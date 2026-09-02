@@ -17,6 +17,7 @@ chmod 0700 "$test_root/runtime"
 cp -- "$repo_root/lib/KeybindSource.qml" "$test_root/config/lib/KeybindSource.qml"
 cp -- "$repo_root/bin/keybinds-json" "$test_root/config/bin/keybinds-json"
 cp -- "$repo_root/tests/qml/keybind_source_smoke.qml" "$test_root/config/shell.qml"
+cp -- "$repo_root/bin/bounded-relay" "$test_root/config/bin/bounded-relay"
 
 # Assert a real collection only when a compositor is actually reachable.
 if [[ -n ${HYPRLAND_INSTANCE_SIGNATURE:-} ]]; then

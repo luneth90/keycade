@@ -10,6 +10,14 @@ Item {
   // Absolute interpreter and helper paths plus a rebuilt child environment
   // keep this long-lived component from resolving anything through PATH.
   readonly property string interpreterPath: "/usr/bin/python3"
+  // A relay spawned by this consumer caps what can reach the parser.
+  // Quickshell exposes no parser buffer limit, so a child that never
+  // emits the split marker would otherwise be retained in full before
+  // any budget here could run. The limit is chosen and enforced
+  // outside the process that produces the data.
+  readonly property string relayPath: String(Qt.resolvedUrl("../bin/bounded-relay")).replace("file://", "")
+  readonly property int relayMaxBytes: 6 * 1024 * 1024
+  readonly property real relayDeadline: 4.0
   readonly property string helperPath: String(Qt.resolvedUrl("../bin/state-store")).replace("file://", "")
   readonly property int maxResponseChars: 6 * 1024 * 1024
   readonly property int maxRecordChars: 128 * 1024
@@ -217,7 +225,12 @@ Item {
     root.streamRecords = 0
     root.streamComplete = false
     var operation = root.currentOperation
-    var command = [root.interpreterPath, root.helperPath, operation.action]
+    var command = [
+      root.interpreterPath, root.relayPath,
+      "--max-bytes", String(root.relayMaxBytes),
+      "--deadline", String(root.relayDeadline),
+      "--", root.interpreterPath, root.helperPath, operation.action
+    ]
     if (operation.kind) command.push(operation.kind)
     if (operation.quarantine) command.push("--quarantine")
     stateProcess.command = command

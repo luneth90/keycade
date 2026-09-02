@@ -17,6 +17,7 @@ chmod 0700 "$test_root/runtime"
 cp -a -- "$repo_root/lib/." "$test_root/config/lib/"
 cp -- "$repo_root/bin/state-store" "$test_root/config/bin/state-store"
 cp -- "$repo_root/tests/qml/state_store_smoke.qml" "$test_root/config/shell.qml"
+cp -- "$repo_root/bin/bounded-relay" "$test_root/config/bin/bounded-relay"
 
 output=$(
   XDG_STATE_HOME="$test_root/state" \

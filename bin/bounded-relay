@@ -1,0 +1,153 @@
+#!/usr/bin/python3
+"""Copy a child's stdout under a byte and time budget chosen by the caller.
+
+The QML consumers cannot bound what reaches them on their own: Quickshell's
+stream parsers expose no buffer limit, so a child that never emits the split
+marker is retained in full before any QML code runs. This relay restores that
+bound outside the process that produces the data. It is spawned by the
+consumer, receives its limits as arguments, and never interprets the payload -
+it only counts bytes, enforces a deadline, and tears the child tree down.
+
+    bounded-relay --max-bytes N --deadline S -- COMMAND [ARG...]
+
+On overflow or timeout the child's process group is killed and a single JSON
+error record is emitted so the consumer still receives a well-formed line.
+"""
+
+from __future__ import annotations
+
+import argparse
+import ctypes
+import json
+import os
+import selectors
+import signal
+import subprocess
+import sys
+import time
+from typing import Any
+
+SCHEMA_VERSION = 1
+PR_SET_PDEATHSIG = 1
+READ_SIZE = 64 * 1024
+
+_CHILD: subprocess.Popen[bytes] | None = None
+
+
+def _prepare_child() -> None:
+    # Own session so the relay can signal the whole group, plus a kernel death
+    # signal so an immediately killed relay cannot leave the child running.
+    os.setsid()
+    parent = os.getppid()
+    try:
+        ctypes.CDLL("libc.so.6", use_errno=True).prctl(PR_SET_PDEATHSIG, signal.SIGKILL)
+    except OSError:
+        return
+    if os.getppid() != parent:
+        os._exit(1)
+
+
+def _kill_child() -> None:
+    if _CHILD is None:
+        return
+    try:
+        os.killpg(_CHILD.pid, signal.SIGKILL)
+    except (ProcessLookupError, PermissionError):
+        pass
+    try:
+        _CHILD.wait(timeout=1)
+    except subprocess.TimeoutExpired:
+        _CHILD.kill()
+        _CHILD.wait()
+
+
+def _terminate(_signum: int, _frame: Any) -> None:
+    _kill_child()
+    os._exit(143)
+
+
+def _report(message: str) -> None:
+    record = {"schemaVersion": SCHEMA_VERSION, "type": "error", "error": message}
+    sys.stdout.buffer.write(json.dumps(record, ensure_ascii=False).encode("utf-8") + b"\n")
+    sys.stdout.buffer.flush()
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--max-bytes", type=int, required=True)
+    parser.add_argument("--deadline", type=float, required=True)
+    parser.add_argument("command", nargs=argparse.REMAINDER)
+    arguments = parser.parse_args()
+
+    command = arguments.command
+    if command and command[0] == "--":
+        command = command[1:]
+    if not command:
+        _report("bounded-relay received no command")
+        return 2
+    if arguments.max_bytes <= 0 or arguments.deadline <= 0:
+        _report("bounded-relay received an invalid budget")
+        return 2
+
+    signal.signal(signal.SIGTERM, _terminate)
+    signal.signal(signal.SIGHUP, _terminate)
+
+    global _CHILD
+    try:
+        _CHILD = subprocess.Popen(
+            command,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            preexec_fn=_prepare_child,
+            close_fds=True,
+        )
+    except OSError as error:
+        _report(f"bounded-relay could not start its command: {error}")
+        return 2
+
+    # The child inherited stdin; drop the relay's own copy so the writer's EOF
+    # reaches the child instead of being held open here.
+    try:
+        os.dup2(os.open(os.devnull, os.O_RDONLY), 0)
+    except OSError:
+        pass
+
+    assert _CHILD.stdout is not None
+    streams = selectors.DefaultSelector()
+    streams.register(_CHILD.stdout, selectors.EVENT_READ)
+    deadline = time.monotonic() + arguments.deadline
+    forwarded = 0
+    output = sys.stdout.buffer
+    try:
+        while True:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                _kill_child()
+                _report("bounded-relay exceeded its deadline")
+                return 1
+            if not streams.select(min(remaining, 0.1)):
+                if _CHILD.poll() is not None:
+                    break
+                continue
+            chunk = os.read(_CHILD.stdout.fileno(), READ_SIZE)
+            if not chunk:
+                break
+            forwarded += len(chunk)
+            if forwarded > arguments.max_bytes:
+                _kill_child()
+                _report("bounded-relay exceeded its byte budget")
+                return 1
+            output.write(chunk)
+            output.flush()
+    except BrokenPipeError:
+        _kill_child()
+        return 1
+    finally:
+        streams.close()
+        _CHILD.stdout.close()
+
+    return _CHILD.wait(timeout=max(0.01, deadline - time.monotonic()))
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
