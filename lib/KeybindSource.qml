@@ -73,12 +73,26 @@ Item {
   // session Hyprland was started in names an XKB source of its own. Report it
   // as a flag rather than forwarding the variables: an overridden search path
   // means the helper cannot reproduce the compositor's keymap.
+  readonly property var xkbEnvironmentKeys: [
+    "XKB_CONFIG_ROOT", "XKB_CONFIG_EXTRA_PATH",
+    "XKB_CONFIG_VERSIONED_EXTENSIONS_PATH", "XKB_CONFIG_UNVERSIONED_EXTENSIONS_PATH"
+  ]
+
   function xkbEnvironmentOverridden() {
-    if (Quickshell.env("XKB_CONFIG_ROOT") || Quickshell.env("XKB_CONFIG_EXTRA_PATH")) return true
+    for (var i = 0; i < root.xkbEnvironmentKeys.length; i++) {
+      if (Quickshell.env(root.xkbEnvironmentKeys[i])) return true
+    }
     var home = String(Quickshell.env("HOME") || "")
     var configHome = String(Quickshell.env("XDG_CONFIG_HOME") || "")
     if (!configHome) return false
     return !home || configHome !== home + "/.config"
+  }
+
+  // Compared against the passwd home inside the helper, never used as a path:
+  // the helper looks for XKB overrides under the passwd home, so a session
+  // running with a different HOME would have them searched somewhere else.
+  function sessionHomeArguments() {
+    return ["--session-home", String(Quickshell.env("HOME") || "")]
   }
 
   // Only what the helper needs to reach the compositor socket.
@@ -274,7 +288,8 @@ Item {
       "--max-bytes", String(root.relayMaxBytes),
       "--deadline", String(root.relayDeadline),
       "--", root.interpreterPath, root.helperPath
-    ].concat(root.xkbEnvironmentOverridden() ? ["--xkb-environment-overridden"] : [])
+    ].concat(root.sessionHomeArguments())
+     .concat(root.xkbEnvironmentOverridden() ? ["--xkb-environment-overridden"] : [])
     clearEnvironment: true
     Component.onCompleted: loader.environment = root.childEnvironment()
     stdout: SplitParser {

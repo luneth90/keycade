@@ -215,23 +215,32 @@ Hyprland 的真实取值全部通过：`us`、`us,de`、`pc105`、`compose:caps,
 include path 需要三重处理，**`append_default()` 本身并不安全**：
 
 ```
-for name in ("XKB_CONFIG_ROOT", "XKB_CONFIG_EXTRA_PATH", "XDG_CONFIG_HOME", "HOME"):
-    os.environ.pop(name, None)                 # 1. 清除能操纵搜索路径的环境变量
+scrub_environment()          # 1. 环境降到白名单：PATH / HYPRLAND_INSTANCE_SIGNATURE / XDG_RUNTIME_DIR
 ctx = xkb_context_new(XKB_CONTEXT_NO_DEFAULT_INCLUDES)
 xkb_context_include_path_append_default(ctx)   # 2. 由库给出系统路径
 # 3. 枚举结果，每一项必须是 root 属主、组与其他用户不可写的目录，否则降级
 ```
 
 **`append_default()` 的结果由环境变量决定，不是常量。** 实测：`XDG_CONFIG_HOME`
-指向含 `xkb` 子目录的位置时，该目录会被**前置**进搜索路径；`XKB_CONFIG_ROOT=/tmp`
-会把系统路径**整个替换掉**。所以必须先清除、再枚举校验。
+指向含 `xkb` 子目录的位置时该目录被**前置**进搜索路径；`XKB_CONFIG_ROOT=/tmp`
+把系统路径**整个替换掉**；`XKB_CONFIG_VERSIONED_EXTENSIONS_PATH` 与
+`XKB_CONFIG_UNVERSIONED_EXTENSIONS_PATH` 也各自注入一个目录。
+
+**用白名单，不用黑名单。** libxkbcommon 当前有四个 `XKB_CONFIG_*` 路径变量
+（见 `/usr/include/xkbcommon/xkbcommon.h`），而这个集合会随库演进。
+helper 只需要三个变量，把环境降到白名单即可，无需持续追补。
 
 **系统路径同样不得硬编码。** 环境清除后 `append_default()` 加入的是
 `/usr/share/xkeyboard-config-2`，而非常被假定的 `/usr/share/X11/xkb`；写死会得到错误或空的 keymap。
 
-**还有一个 helper 看不见的来源。** helper 的环境由 `KeybindSource` 重建，因此它无法得知
-Hyprland 启动所处的会话是否设置了这些变量——那会让 Hyprland 用上与 helper 不同的系统 keymap。
-由启动方检查并通过 `--xkb-environment-overridden` 传入布尔标记，置位即降级。
+**还有两个 helper 看不见的来源，都由启动方补齐。** helper 的环境由 `KeybindSource` 重建，
+无法得知 Hyprland 启动所处的会话设置了什么：
+
+- 四个 `XKB_CONFIG_*` 变量或非默认 `XDG_CONFIG_HOME` → 传入
+  `--xkb-environment-overridden`，置位即降级。
+- 会话 `HOME` → 传入 `--session-home`，helper 与 `pwd` 的 home 比对，
+  不一致即降级。helper 在 passwd home 下查找 XKB 覆盖目录，会话 HOME 不同则查错了地方。
+  该值**只做比较，从不当作路径使用**；缺失同样降级。
 
 编译：优先 `xkb_keymap_new_from_names2(ctx, &names, XKB_KEYMAP_FORMAT_TEXT_V2, 0)` 以对齐
 Hyprland；该符号自 libxkbcommon **1.11.0** 起提供，`getattr` 探测失败时回退
@@ -244,7 +253,10 @@ libxkbcommon 会把编译错误写入 stderr。helper 由 `bounded-relay` 以
 
 ### 5.5 producer · 构建 keycode → base keysym
 
-遍历 `xkb_keymap_min_keycode()`..`max_keycode()`，取选定 group、level 0；
+先校验范围：`max < min` 或 `max > 65535`（消费端 keycode 上限）即抛错降级——
+截断会产出一张只覆盖部分 keymap、却仍自称权威的表。
+
+随后遍历 `min_keycode()`..`max_keycode()`，取选定 group、level 0；
 `xkb_keymap_key_get_syms_by_level()` 返回恰好 1 个 keysym 时记入。
 
 ### 5.6 producer · 按绑定实际用到的键名反向收集
@@ -272,17 +284,26 @@ libxkbcommon 会把编译错误写入 stderr。helper 由 `bounded-relay` 以
 "keycodeMap": { ",": [59], "TAB": [23], "DELETE": [119, 22] }
 ```
 
-- 同一规范化键名由多个原始键名贡献且 keycode 集合**不一致**时，丢弃该条目。
-- 解析为 `NoSymbol` 的键名视为无贡献，不构成冲突——实测
-  `xkb_keysym_from_name("enter", CASE_INSENSITIVE)` 为 NoSymbol，
-  而 `KEY_ALIASES` 中 `enter` 与 `return` 都规范化为 `RETURN`。
+表有三种结果，必须严格区分：
+
+| 结果 | 含义 | 处理 |
+| --- | --- | --- |
+| 条目存在 | 该键可达，且所有拼写一致 | 写入表 |
+| **条目缺席** | 该键在本布局上确定不可达（keysym 为 `NoSymbol`，或 base level 无对应 keycode）——Hyprland 同样不会触发 | 不写入；消费端据此排除该绑定 |
+| **无法表达** | 同一规范化名称下不同拼写给出不同结论 | **抛错，整表降级** |
+
+第三行是关键：`canonical_key()` 把 `enter` 与 `return` 都归一为 `RETURN`，而
+`xkb_keysym_from_name("enter", CASE_INSENSITIVE)` 实测为 `NoSymbol`。一个条目无法同时表达
+「`return` 可达」和「`enter` 不可达」，因此不能猜——整表降级。
+两个拼写解析出不同 keycode 集合时同理。
+
+**空表因此是结论而非失败**：要么没有绑定给出 keysym 名，要么给出的都确定不可达。
+无法判定的情况已经通过抛错降级，不再需要"有候选却全失败"这类启发式——
+那会让一条毫不相干的绑定改变另一批绑定的判定方式。
+
 - **Apple 并集**：`has_apple_keyboard()` 为真时，把 `BackSpace` 的 keycode 并入 `DELETE` 条目。
   苹果键盘上标着 delete 的键发送 `BackSpace`(kc22)，而 `DELETE` 解析到 kc119；
   现有等价规则以数据形式保留，不再依赖判定层的特例分支。
-- **同一规范化名称下只要有一种拼写解析不出 keycode，整条丢弃。**
-  `canonical_key()` 把 `enter` 与 `return` 都归一为 `RETURN`，而 `enter` 是 NoSymbol：
-  若只跳过不可解析的拼写，`return` 建立的条目会让 `SUPER, enter` 也显得可达，
-  而 Hyprland 根本不会触发它。
 - 上限：条目 ≤ 256、每项 keycode ≤ 16、序列化后 ≤ 4 KiB。
   **超限一律降级，不得截断**——截断会产出一张看似权威、却会拒绝合法 keycode 的表。
 
@@ -292,10 +313,9 @@ libxkbcommon 会把编译错误写入 stderr。helper 由 `bounded-relay` 以
 
 `write_stream()` 的 header 增加两个字段：
 
-- `keycodeMap`：上表；降级时为 `{}`。空表的含义取决于是否存在候选：
-  若没有任何绑定给出 keysym 名（全是 `code:` / mouse / switch），空表就是**权威结论**；
-  若存在候选却一个都没解析出来，则判为降级——消费端把「不在表中」读作「没有键能命中」，
-  发布这样一张表会让所有绑定都答不出来。
+- `keycodeMap`：上表；降级时为 `{}`。权威模式下的空表是有效结论（见 5.7），
+  不因此降级。这不会清空训练内容——`unreachable-on-layout` 只作用于
+  `matchMode !== "physical"`，而 Omarchy 实测有 59 条 `code:` 绑定始终可训练。
 - `keymapSource`：`"global-rmlvo" | "none"`，
   供测试与诊断使用；`"none"` 即降级模式。
 
@@ -421,8 +441,12 @@ Keycade 现在就以 `matchMode: "physical"` 精确比较键码训练它们，�
 
 - libxkbcommon 路径检查：非普通文件 / 非 root 属主 / 组或全局可写时拒绝加载并降级。
 - `xkb_keymap_new_from_names2` 不可用时回退成功（模拟 < 1.11.0）。
-- 影响 include path 的环境变量在建 context 前被清除；源码中不出现硬编码的
-  `/usr/share/X11/xkb`。
+- 环境在 `main()` 起始降到白名单 `{PATH, HYPRLAND_INSTANCE_SIGNATURE, XDG_RUNTIME_DIR}`；
+  子进程实测设置 `XKB_CONFIG_VERSIONED_EXTENSIONS_PATH` /
+  `XKB_CONFIG_UNVERSIONED_EXTENSIONS_PATH` 不影响结果。
+- 源码中不出现硬编码的 `/usr/share/X11/xkb`。
+- `--session-home` 与 `pwd` home 不一致，或该参数缺失时降级，且不再调用 `hyprctl getoption`。
+- keymap 的 keycode 范围 `max < min` 或 `max > 65535` 时抛错降级，**不得钳制**。
 - 枚举出的 include path 逐项校验：出现非 root 属主或组/全局可写目录（如 `/tmp`）时降级；
   路径数为 0 时降级。
 - 启动方传入 `--xkb-environment-overridden` 时直接降级，且不再调用 `hyprctl getoption`。
@@ -441,11 +465,13 @@ Keycade 现在就以 `matchMode: "physical"` 精确比较键码训练它们，�
 - `l "us"`：`,` → `[59]`；`/` → `[61]`；`` ` `` → `[49]`。
 - 小键盘不与主键区合并：`-` 的条目只含 kc20，不含 kc82（`KP_Subtract`）。
 - Apple 并集：`appleKeyboard` 为真时 `DELETE` 条目同时含 kc119 与 kc22；为假时只含 kc119。
-- 冲突条目被丢弃。
-- **`enter` 与 `return` 同时存在时 `RETURN` 条目被丢弃**，两种顺序结果一致——
-  不可解析的拼写不得借用另一种拼写的键。
+- 同一规范化名称下拼写结论不一致（keycode 集合不同，或一可解析一不可解析）时
+  **整表降级**，两种顺序结果一致。
 - 条目 / keycode / 字节任一超限即整体降级。
-- 无候选时空表为权威结论；有候选但全部失败时降级。
+- 空表在权威模式下是有效结论：`["code:10"]`、`["slash"]`（不可达）、`[]` 三种输入
+  都产出 `global-rmlvo` + `{}`。
+- **无关绑定不得改变结论**：`["return","enter"]` 与 `["return","enter","comma"]`
+  必须给出相同的 `keymapSource`。
 - raw key sidecar 与记录索引对齐，JSON 与 plain 两条 snapshot 路径分别验证，含被拒绝记录的占位。
 - `SUPER + ALT + code:10`、`mouse:272`、`mouse_up`、`switch:off:...` 不被送入
   `xkb_keysym_from_name()`，既不产生条目也不报错。
@@ -513,6 +539,8 @@ Keycade 现在就以 `matchMode: "physical"` 精确比较键码训练它们，�
 | `XDG_CONFIG_HOME` 会让 `append_default()` 前置用户目录，`XKB_CONFIG_ROOT` 会整个替换系统路径 | 实测 |
 | `re.match(r"^...$", "us\\n")` 为真，`fullmatch` 为假 | 实测 |
 | `xkb_keysym_from_name("enter", CI)` 为 NoSymbol，而 `enter`/`return` 同归一为 `RETURN` | 实测 |
+| `XKB_CONFIG_VERSIONED_EXTENSIONS_PATH` / `..._UNVERSIONED_...` 同样能注入 include path | 实测 + `xkbcommon.h` |
+| Omarchy 有 59 条 physical 绑定，`unreachable-on-layout` 不作用于它们，权威空表清不空训练内容 | 实测 |
 | `kb_layout="/etc/passwd"` 会使 libxkbcommon 真的打开并解析该文件（编译失败，无泄漏） | 实测 |
 | 相对路径穿越被 include path 挡住，超长名字被库的 4096 长度检查挡住，非法 `kb_options` 被忽略 | 实测 |
 | `xkb_keymap_new_from_names2` 自 1.11.0 起提供，其余符号自 0.5.0 起 | `nm -D /usr/lib/libxkbcommon.so.0` |
