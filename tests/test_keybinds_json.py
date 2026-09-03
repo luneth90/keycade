@@ -457,11 +457,19 @@ class KeymapResolutionTests(unittest.TestCase):
 
     def test_devices_must_all_follow_the_global_layout(self):
         rmlvo = ("", "", "us", "", "")
-        line = 'rules: r "", m "", l "us", v "", o ""'
-        self.assertTrue(self.helper.devices_follow_global(f"{line}\n{line}", rmlvo))
-        other = 'rules: r "", m "", l "de", v "", o ""'
-        self.assertFalse(self.helper.devices_follow_global(f"{line}\n{other}", rmlvo))
+
+        def section(layout):
+            return f'\tKeyboard at 0x1:\n\t\trules: r "", m "", l "{layout}", v "", o ""'
+
+        self.assertTrue(self.helper.devices_follow_global(
+            f"{section('us')}\n{section('us')}", rmlvo))
+        self.assertFalse(self.helper.devices_follow_global(
+            f"{section('us')}\n{section('de')}", rmlvo))
         self.assertFalse(self.helper.devices_follow_global("", rmlvo))
+        # A keyboard whose rule line is missing must not be answered for by the
+        # keyboards that did parse.
+        self.assertFalse(self.helper.devices_follow_global(
+            f"{section('us')}\n\tKeyboard at 0x2:\n\t\tactive layout index: 0", rmlvo))
 
     def test_keysym_candidate_mirrors_canonical_key_preprocessing(self):
         self.assertEqual(self.helper.keysym_candidate("SUPER + ALT + comma"), "comma")
@@ -771,3 +779,44 @@ class KeymapReviewRegressionTests(unittest.TestCase):
                 snapshot = json.loads(result.stdout)
                 # Stripped by the whitelist, so the run is unaffected.
                 self.assertEqual(snapshot["keymapSource"], "global-rmlvo")
+
+
+class CanonicalKeyAgreementTests(unittest.TestCase):
+    """The producer and the consumer must normalise keys identically.
+
+    The keycode map is indexed by canonical_key()'s output and looked up with
+    InputNormalizer canonicalKey(), so any disagreement silently drops a
+    binding. tests/qml/tst_algorithms.qml holds the other side to the same
+    corpus.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.helper = load_helper()
+        text = (ROOT / "tests/fixtures/canonical-keys.js").read_text(encoding="utf-8")
+        cls.pairs = json.loads(text[text.index("["):text.rindex("]") + 1])
+
+    def test_corpus_covers_every_alias(self):
+        self.assertGreater(len(self.pairs), 20)
+        covered = {raw.lower() for raw, _ in self.pairs}
+        for alias in self.helper.KEY_ALIASES:
+            self.assertIn(alias, covered, f"{alias} is not in the shared corpus")
+
+    def test_producer_matches_the_corpus(self):
+        for raw, expected in self.pairs:
+            with self.subTest(raw=raw):
+                self.assertEqual(self.helper.canonical_key(raw)[0], expected)
+
+    def test_single_letters_are_upper_cased(self):
+        # canonicalKey() upper-cases single characters, so a lower-case bind
+        # produced "q" here against "Q" there and lost the binding.
+        self.assertEqual(self.helper.canonical_key("q")[0], "Q")
+        self.assertEqual(self.helper.canonical_key("SUPER + q")[0], "Q")
+
+    def test_a_lower_case_binding_is_still_reachable(self):
+        binds = (ROOT / "tests/fixtures/binds.txt").read_text().replace("key: 3", "key: q", 1)
+        keymap = fake_keymap({ord("q"): [24]})
+        keymap["library"].xkb_keysym_from_name = lambda name, flags: {b"q": ord("q")}.get(name, 0)
+        snapshot = self.helper.snapshot(binds, "", keymap)
+        self.assertEqual(snapshot["bindings"][0]["key"], "Q")
+        self.assertEqual(snapshot["keycodeMap"], {"Q": [24]})
