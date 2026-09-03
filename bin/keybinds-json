@@ -89,6 +89,7 @@ HYPRLAND_EMPTY = "[[EMPTY]]"
 # fullmatch, not match: Python's "$" also matches before a trailing newline.
 RMLVO_ALLOWED = re.compile(r"[A-Za-z0-9_,:.+()-]*")
 MAX_RMLVO_CHARS = 128
+MAX_SESSION_HOME_CHARS = 4096
 USER_XKB_DIRECTORIES = (".config/xkb", ".xkb")
 # Everything this helper needs. xkb_context_include_path_append_default()
 # assembles its result from the environment, and the set of variables it reads
@@ -490,6 +491,35 @@ def validated_rmlvo(options: dict[str, Any]) -> tuple[str, ...] | None:
     return tuple(values)
 
 
+def session_home_matches_passwd(value: str) -> bool:
+    """Whether the launcher's HOME is the one this helper looks under.
+
+    Compared only, never used as a path. Anything that is not a plain absolute
+    path is treated as a mismatch rather than cleaned up.
+    """
+    if not value or len(value) > MAX_SESSION_HOME_CHARS or not value.startswith("/"):
+        return False
+    if any(unicodedata.category(character).startswith("C") for character in value):
+        return False
+    try:
+        return value == pwd.getpwuid(os.getuid()).pw_dir
+    except (KeyError, OSError):
+        return False
+
+
+def resolve_by_sym(options: dict[str, Any]) -> bool:
+    """Read input:resolve_binds_by_sym under a strict boolean contract.
+
+    Split out so the schema check can be tested without a working keymap: a
+    missing field or a 1 must not be read as false and skip the checks the
+    flag guards.
+    """
+    value = options["resolve_binds_by_sym"].get("bool")
+    if not isinstance(value, bool):
+        raise HelperError("input:resolve_binds_by_sym is not a boolean")
+    return value
+
+
 def user_xkb_override_present() -> bool:
     """Whether the user ships XKB data this helper deliberately does not read.
 
@@ -628,7 +658,7 @@ def resolve_keymap(
     """
     try:
         return _resolve_keymap(raw_devices, environment_overridden, session_home)
-    except (HelperError, OSError, ValueError, AttributeError):
+    except (HelperError, OSError, ValueError, AttributeError, KeyError):
         return None
 
 
@@ -643,8 +673,7 @@ def _resolve_keymap(
     # The override directories are looked up under the passwd home. If the
     # session runs with a different HOME, libxkbcommon would search there and
     # this helper would be checking the wrong place, so it declines instead.
-    # Compared only; never used as a path.
-    if session_home != pwd.getpwuid(os.getuid()).pw_dir:
+    if not session_home_matches_passwd(session_home):
         return None
     options = keymap_options()
     if option_text(options, "kb_file"):
@@ -666,10 +695,7 @@ def _resolve_keymap(
         if not keymap:
             return None
         try:
-            resolve_by_sym = options["resolve_binds_by_sym"].get("bool")
-            if not isinstance(resolve_by_sym, bool):
-                raise HelperError("input:resolve_binds_by_sym is not a boolean")
-            if resolve_by_sym:
+            if resolve_by_sym(options):
                 # Binds then resolve against the event keyboard's own keymap at
                 # its active group. Those coincide with the global keymap only
                 # when every keyboard follows it and there is a single group.

@@ -656,14 +656,14 @@ class KeymapReviewRegressionTests(unittest.TestCase):
             options.assert_not_called()
 
     def test_resolve_binds_by_sym_must_be_a_real_boolean(self):
-        for value in ({"str": "true"}, {"bool": 1}, {"bool": None}, {}):
+        # Checked directly rather than through resolve_keymap(): a run that
+        # degrades earlier would let a broken schema check pass unnoticed.
+        for value in ({"str": "true"}, {"bool": 1}, {"bool": None}, {"bool": "true"}, {}):
             with self.subTest(value=value):
-                options = self.options(resolve_binds_by_sym=value)
-                with mock.patch.object(self.helper, "keymap_options", return_value=options), \
-                        mock.patch.object(self.helper, "user_xkb_override_present", return_value=False):
-                    # A non-boolean must not be read as false and skip the
-                    # per-device and single-layout checks.
-                    self.assertIsNone(self.helper.resolve_keymap(self.devices, session_home=HOME))
+                with self.assertRaises(self.helper.HelperError):
+                    self.helper.resolve_by_sym(self.options(resolve_binds_by_sym=value))
+        self.assertTrue(self.helper.resolve_by_sym(self.options(resolve_binds_by_sym={"bool": True})))
+        self.assertFalse(self.helper.resolve_by_sym(self.options(resolve_binds_by_sym={"bool": False})))
 
     def test_duplicate_or_unknown_options_are_refused(self):
         for reply in (
@@ -729,10 +729,20 @@ class KeymapReviewRegressionTests(unittest.TestCase):
     def test_session_home_must_match_the_passwd_home(self):
         # The override directories are looked up under the passwd home, so a
         # session with a different HOME would have them searched elsewhere.
+        self.assertTrue(self.helper.session_home_matches_passwd(HOME))
+        for value in ("/somewhere/else", "", "relative/path", "/" + "a" * 4096,
+                      "/home/\x00", "/home/\n"):
+            with self.subTest(value=value[:20]):
+                self.assertFalse(self.helper.session_home_matches_passwd(value))
         with mock.patch.object(self.helper, "keymap_options") as options:
             self.assertIsNone(self.helper.resolve_keymap(self.devices, False, "/somewhere/else"))
-            self.assertIsNone(self.helper.resolve_keymap(self.devices, False, ""))
             options.assert_not_called()
+
+    def test_a_missing_passwd_entry_degrades_instead_of_failing(self):
+        # The keymap path is an enhancement; nothing in it may cost a snapshot.
+        with mock.patch.object(self.helper.pwd, "getpwuid", side_effect=KeyError("no entry")):
+            self.assertFalse(self.helper.session_home_matches_passwd(HOME))
+            self.assertIsNone(self.helper.resolve_keymap(self.devices, False, HOME))
 
     def test_keycode_range_outside_the_schema_degrades(self):
         library = mock.Mock()
