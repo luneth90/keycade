@@ -21,7 +21,9 @@
 
 - 不读取或执行 `~/.config/hypr/hyprland.lua`。
 - 不启动 Lua 解释器，不加载用户模块。
-- 只消费 `hyprctl -j binds`、`hyprctl binds` 和 `hyprctl devices` 的运行时输出。
+- 只消费 `hyprctl -j binds`、`hyprctl binds`、`hyprctl devices` 和 `hyprctl getoption`
+  的运行时输出。四者同类：均为 Hyprland 自身的只读查询接口，经 `trusted_command()`
+  与有界 `command_output()` 调用，命令串为固定字面量。
 
 ### 实现
 
