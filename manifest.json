@@ -2,9 +2,9 @@
   "schemaVersion": 1,
   "id": "luneth90.keycade",
   "name": "Keycade",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "author": "luneth90",
-  "description": "Keycade — a shortcut recall arcade for Omarchy and Hyprland.",
+  "description": "Keycade — a shortcut recall arcade for Omarchy. It trains the shortcuts your machine actually uses.",
   "kinds": [
     "overlay"
   ],
