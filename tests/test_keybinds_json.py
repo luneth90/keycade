@@ -1,3 +1,4 @@
+import ctypes
 import importlib.machinery
 import importlib.util
 import json
@@ -469,24 +470,25 @@ class KeymapResolutionTests(unittest.TestCase):
                 self.assertEqual(self.helper.keysym_candidate(skipped), "")
 
     def test_keycode_map_is_indexed_by_canonical_key(self):
-        result = self.helper.keycode_map(["comma", "SUPER + ALT + slash"],
-                                         fake_keymap({ord(","): [59], ord("/"): [61]}), False)
-        self.assertEqual(result, {",": [59], "/": [61]})
+        resolved, candidates = self.helper.keycode_map(
+            ["comma", "SUPER + ALT + slash"], fake_keymap({ord(","): [59], ord("/"): [61]}), False)
+        self.assertEqual(resolved, {",": [59], "/": [61]})
+        self.assertEqual(candidates, 2)
 
     def test_keycode_map_skips_keys_with_no_base_level_code(self):
         # A layout where nothing produces slash unshifted: the bind cannot be
         # pressed there, and Hyprland would not fire it either.
-        result = self.helper.keycode_map(["comma", "slash"], fake_keymap({ord(","): [59]}), False)
-        self.assertEqual(result, {",": [59]})
+        resolved, _ = self.helper.keycode_map(["comma", "slash"], fake_keymap({ord(","): [59]}), False)
+        self.assertEqual(resolved, {",": [59]})
 
     def test_keycode_map_keeps_every_code_for_one_keysym(self):
-        result = self.helper.keycode_map(["comma"], fake_keymap({ord(","): [59, 91]}), False)
-        self.assertEqual(result[","], [59, 91])
+        resolved, _ = self.helper.keycode_map(["comma"], fake_keymap({ord(","): [59, 91]}), False)
+        self.assertEqual(resolved[","], [59, 91])
 
     def test_keycode_map_unions_backspace_into_delete_for_apple_keyboards(self):
         keymap = fake_keymap({0xFFFF: [119], 0xFF08: [22]})
-        self.assertEqual(self.helper.keycode_map(["Delete"], keymap, True)["DELETE"], [119, 22])
-        self.assertEqual(self.helper.keycode_map(["Delete"], keymap, False)["DELETE"], [119])
+        self.assertEqual(self.helper.keycode_map(["Delete"], keymap, True)[0]["DELETE"], [119, 22])
+        self.assertEqual(self.helper.keycode_map(["Delete"], keymap, False)[0]["DELETE"], [119])
 
     def test_keycode_map_drops_conflicting_spellings(self):
         # Two raw names that canonicalize to one displayed key but resolve to
@@ -495,23 +497,29 @@ class KeymapResolutionTests(unittest.TestCase):
         keymap["library"].xkb_keysym_from_name = (
             lambda name, flags: {b"comma": ord(","), b"COMMA": ord("<")}.get(name, 0)
         )
-        self.assertEqual(self.helper.keycode_map(["comma", "COMMA"], keymap, False), {})
+        self.assertEqual(self.helper.keycode_map(["comma", "COMMA"], keymap, False)[0], {})
 
     def test_keycode_map_limits_fail_closed(self):
         syms = {index: [index] for index in range(400)}
         keymap = {"source": "global-rmlvo", "syms": syms, "library": FakeXkb(syms)}
         keymap["library"].xkb_keysym_from_name = lambda name, flags: int(name)
-        self.assertEqual(self.helper.keycode_map([str(index) for index in range(400)], keymap, False), {})
+        with self.assertRaises(self.helper.HelperError):
+            self.helper.keycode_map([str(index) for index in range(400)], keymap, False)
 
     def test_keymap_fields_report_no_keymap_when_degraded(self):
         self.assertEqual(self.helper.keymap_fields(["comma"], None, False),
                          {"keymapSource": "none", "keycodeMap": {}})
 
-    def test_empty_map_is_reported_as_no_keymap(self):
-        # An authoritative but empty map would make every binding unanswerable,
-        # because absence from the map means no key can match.
+    def test_candidates_that_all_fail_are_reported_as_no_keymap(self):
+        # Absence from an authoritative map means no key matches, so publishing
+        # one where every candidate failed would leave nothing answerable.
         fields = self.helper.keymap_fields(["nothing-resolves"], fake_keymap(), False)
         self.assertEqual(fields, {"keymapSource": "none", "keycodeMap": {}})
+
+    def test_empty_map_is_authoritative_when_nothing_asked_to_resolve(self):
+        # Only code:, mouse and switch binds: an empty map is the answer.
+        fields = self.helper.keymap_fields(["code:10", "mouse_up"], fake_keymap(), False)
+        self.assertEqual(fields, {"keymapSource": "global-rmlvo", "keycodeMap": {}})
 
     def test_snapshot_carries_the_keymap_fields(self):
         degraded = self.helper.snapshot(self.binds, self.devices)
@@ -592,3 +600,109 @@ class KeymapResolutionTests(unittest.TestCase):
         result = self.helper.snapshot(self.binds, self.devices, exploding)
         self.assertEqual(result["keymapSource"], "none")
         self.assertEqual(len(result["bindings"]), 3)
+
+
+class KeymapReviewRegressionTests(unittest.TestCase):
+    """One test per finding from the branch review, so none can return."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.helper = load_helper()
+        cls.devices = (ROOT / "tests/fixtures/devices.txt").read_text()
+
+    def options(self, **overrides):
+        values = {name: {"option": f"input:{name}", "str": ""} for name in self.helper.RMLVO_NAMES}
+        values["kb_file"] = {"option": "input:kb_file", "str": self.helper.HYPRLAND_EMPTY}
+        values["resolve_binds_by_sym"] = {"option": "input:resolve_binds_by_sym", "bool": False}
+        values.update(overrides)
+        return values
+
+    def test_include_path_environment_is_cleared_before_the_context_is_built(self):
+        # XKB_CONFIG_ROOT replaces the system path outright and the others
+        # prepend user directories, so the search path must not be steerable
+        # by whatever environment the helper was started with.
+        self.assertEqual(
+            set(self.helper.XKB_ENVIRONMENT_KEYS),
+            {"XKB_CONFIG_ROOT", "XKB_CONFIG_EXTRA_PATH", "XDG_CONFIG_HOME", "HOME"},
+        )
+        source = SCRIPT.read_text(encoding="utf-8")
+        self.assertIn("os.environ.pop(name, None)", source)
+
+    def test_include_paths_must_be_root_owned_and_not_writable(self):
+        self.assertTrue(self.helper.trusted_directory("/usr/share"))
+        self.assertFalse(self.helper.trusted_directory("/tmp"))  # world writable
+        with tempfile.TemporaryDirectory() as owned:
+            self.assertFalse(self.helper.trusted_directory(owned))  # not root owned
+            self.assertFalse(self.helper.trusted_directory(owned + "/missing"))
+
+    def test_untrusted_include_path_degrades(self):
+        library = mock.Mock()
+        library.xkb_context_num_include_paths.return_value = 2
+        library.xkb_context_include_path_get.side_effect = [b"/usr/share", b"/tmp"]
+        self.assertFalse(self.helper.system_include_paths(library, 1))
+        library.xkb_context_num_include_paths.return_value = 0
+        self.assertFalse(self.helper.system_include_paths(library, 1))
+
+    def test_launcher_can_report_an_overridden_xkb_environment(self):
+        with mock.patch.object(self.helper, "keymap_options") as options:
+            self.assertIsNone(self.helper.resolve_keymap(self.devices, True))
+            options.assert_not_called()
+
+    def test_resolve_binds_by_sym_must_be_a_real_boolean(self):
+        for value in ({"str": "true"}, {"bool": 1}, {"bool": None}, {}):
+            with self.subTest(value=value):
+                options = self.options(resolve_binds_by_sym=value)
+                with mock.patch.object(self.helper, "keymap_options", return_value=options), \
+                        mock.patch.object(self.helper, "user_xkb_override_present", return_value=False):
+                    # A non-boolean must not be read as false and skip the
+                    # per-device and single-layout checks.
+                    self.assertIsNone(self.helper.resolve_keymap(self.devices))
+
+    def test_duplicate_or_unknown_options_are_refused(self):
+        for reply in (
+            '{"option":"input:kb_layout","str":"us"}\n{"option":"input:kb_layout","str":"de"}',
+            '{"option":"input:kb_repeat_rate","int":25}',
+        ):
+            with self.subTest(reply=reply[:40]):
+                with mock.patch.object(self.helper, "command_output", return_value=reply), \
+                        mock.patch.object(self.helper, "trusted_command", side_effect=lambda path: path):
+                    with self.assertRaises(self.helper.HelperError):
+                        self.helper.keymap_options()
+
+    def test_too_many_keycodes_for_one_keysym_degrades_instead_of_truncating(self):
+        library = mock.Mock()
+        library.xkb_keymap_min_keycode.return_value = 8
+        library.xkb_keymap_max_keycode.return_value = 8 + self.helper.MAX_KEYCODES_PER_ENTRY
+        keysym = ctypes.c_uint32(0x61)
+
+        def one_sym(keymap, code, layout, level, out):
+            out._obj.contents = keysym
+            return 1
+        library.xkb_keymap_key_get_syms_by_level.side_effect = one_sym
+        with self.assertRaises(self.helper.HelperError):
+            self.helper.base_keysyms(library, 1)
+
+    def test_apple_union_overflow_degrades_instead_of_truncating(self):
+        codes = list(range(self.helper.MAX_KEYCODES_PER_ENTRY))
+        keymap = fake_keymap({0xFFFF: codes, 0xFF08: [200]})
+        with self.assertRaises(self.helper.HelperError):
+            self.helper.keycode_map(["Delete"], keymap, True)
+
+    def test_an_unresolvable_spelling_cannot_borrow_another_ones_keys(self):
+        # canonical_key() maps both "enter" and "return" to RETURN, but only
+        # "return" names a keysym. Hyprland never fires "SUPER, enter", so the
+        # entry must not make it look pressable.
+        keymap = fake_keymap({0xFF0D: [36]})
+        keymap["library"].xkb_keysym_from_name = (
+            lambda name, flags: {b"return": 0xFF0D}.get(name, 0)
+        )
+        resolved, candidates = self.helper.keycode_map(["return", "enter"], keymap, False)
+        self.assertEqual(resolved, {})
+        self.assertEqual(candidates, 2)
+        # Order must not change the outcome.
+        self.assertEqual(self.helper.keycode_map(["enter", "return"], keymap, False)[0], {})
+
+    def test_rmlvo_whitelist_is_anchored_at_both_ends(self):
+        # Python's "$" also matches before a trailing newline.
+        self.assertIsNone(self.helper.validated_rmlvo(self.options(kb_layout={"str": "us\n"})))
+        self.assertIsNotNone(self.helper.validated_rmlvo(self.options(kb_layout={"str": "us"})))

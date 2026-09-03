@@ -69,6 +69,18 @@ Item {
     loader.running = true
   }
 
+  // The helper runs with a rebuilt environment, so it cannot see whether the
+  // session Hyprland was started in names an XKB source of its own. Report it
+  // as a flag rather than forwarding the variables: an overridden search path
+  // means the helper cannot reproduce the compositor's keymap.
+  function xkbEnvironmentOverridden() {
+    if (Quickshell.env("XKB_CONFIG_ROOT") || Quickshell.env("XKB_CONFIG_EXTRA_PATH")) return true
+    var home = String(Quickshell.env("HOME") || "")
+    var configHome = String(Quickshell.env("XDG_CONFIG_HOME") || "")
+    if (!configHome) return false
+    return !home || configHome !== home + "/.config"
+  }
+
   // Only what the helper needs to reach the compositor socket.
   function childEnvironment() {
     return {
@@ -151,7 +163,8 @@ Item {
     if (!value || typeof value !== "object" || Array.isArray(value))
       throw new Error("Invalid keycode map")
     var names = Object.keys(value)
-    if (!names.length || names.length > root.maxKeycodeMapEntries)
+    // Empty is a legitimate answer when no binding named a keysym at all.
+    if (names.length > root.maxKeycodeMapEntries)
       throw new Error("Invalid keycode map size")
     var result = Object.create(null)
     for (var i = 0; i < names.length; i++) {
@@ -261,7 +274,7 @@ Item {
       "--max-bytes", String(root.relayMaxBytes),
       "--deadline", String(root.relayDeadline),
       "--", root.interpreterPath, root.helperPath
-    ]
+    ].concat(root.xkbEnvironmentOverridden() ? ["--xkb-environment-overridden"] : [])
     clearEnvironment: true
     Component.onCompleted: loader.environment = root.childEnvironment()
     stdout: SplitParser {

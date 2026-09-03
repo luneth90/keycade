@@ -173,6 +173,9 @@ resolve_binds_by_sym == true:
     否则                                                      -> 降级
 ```
 
+`resolve_binds_by_sym` 必须是**严格布尔**：缺失、`1`、`"true"`、`null` 一律降级，
+不得当作 false 而跳过后续检查。`getoption` 的每个选项名也必须精确匹配预期集合并拒绝重复。
+
 `resolve_binds_by_sym` 为 true 时 Hyprland 改用 per-keyboard keymap 与活动 group。
 只在**全部键盘沿用全局布局且只有一个 group** 时，那份 keymap 与全局 RMLVO 逐位相同、
 活动 group 恒为 0，两条路径重合，可安全按权威处理；其余情形一律降级。
@@ -200,7 +203,8 @@ resolve_binds_by_sym == true:
 因此传入前逐项校验：
 
 - 长度 ≤ 128。
-- 字符集限 `[A-Za-z0-9_,:.+()-]`。
+- 字符集限 `[A-Za-z0-9_,:.+()-]`，用 `fullmatch()` 校验——Python 的 `$`
+  也匹配结尾换行之前，`re.match()` 会放过 `"us\n"`。
 - 显式拒绝 `/` 与 `..`。
 - 任一项不通过即降级，不做截断或清洗。
 
@@ -208,16 +212,26 @@ Hyprland 的真实取值全部通过：`us`、`us,de`、`pc105`、`compose:caps,
 实测相对路径穿越被 include path 限制挡住，超长名字被库自身的 4096 路径长度检查挡住，
 `kb_options` 中的非法项被库忽略——**只有绝对路径会真正落到文件系统上**，故校验以拒绝 `/` 为核心。
 
-include path 只包含系统只读数据：
+include path 需要三重处理，**`append_default()` 本身并不安全**：
 
 ```
+for name in ("XKB_CONFIG_ROOT", "XKB_CONFIG_EXTRA_PATH", "XDG_CONFIG_HOME", "HOME"):
+    os.environ.pop(name, None)                 # 1. 清除能操纵搜索路径的环境变量
 ctx = xkb_context_new(XKB_CONTEXT_NO_DEFAULT_INCLUDES)
-xkb_context_include_path_append_default(ctx)   # 必须由库添加系统路径
+xkb_context_include_path_append_default(ctx)   # 2. 由库给出系统路径
+# 3. 枚举结果，每一项必须是 root 属主、组与其他用户不可写的目录，否则降级
 ```
 
-**系统路径不得硬编码。** 本机实测 `append_default()` 加入的是 `/usr/share/xkeyboard-config-2`，
-而非常被假定的 `/usr/share/X11/xkb`；写死会得到错误或空的 keymap。
-不追加任何用户目录——用户 XKB 覆盖目录的存在已在 5.3 触发降级。
+**`append_default()` 的结果由环境变量决定，不是常量。** 实测：`XDG_CONFIG_HOME`
+指向含 `xkb` 子目录的位置时，该目录会被**前置**进搜索路径；`XKB_CONFIG_ROOT=/tmp`
+会把系统路径**整个替换掉**。所以必须先清除、再枚举校验。
+
+**系统路径同样不得硬编码。** 环境清除后 `append_default()` 加入的是
+`/usr/share/xkeyboard-config-2`，而非常被假定的 `/usr/share/X11/xkb`；写死会得到错误或空的 keymap。
+
+**还有一个 helper 看不见的来源。** helper 的环境由 `KeybindSource` 重建，因此它无法得知
+Hyprland 启动所处的会话是否设置了这些变量——那会让 Hyprland 用上与 helper 不同的系统 keymap。
+由启动方检查并通过 `--xkb-environment-overridden` 传入布尔标记，置位即降级。
 
 编译：优先 `xkb_keymap_new_from_names2(ctx, &names, XKB_KEYMAP_FORMAT_TEXT_V2, 0)` 以对齐
 Hyprland；该符号自 libxkbcommon **1.11.0** 起提供，`getattr` 探测失败时回退
@@ -265,8 +279,12 @@ libxkbcommon 会把编译错误写入 stderr。helper 由 `bounded-relay` 以
 - **Apple 并集**：`has_apple_keyboard()` 为真时，把 `BackSpace` 的 keycode 并入 `DELETE` 条目。
   苹果键盘上标着 delete 的键发送 `BackSpace`(kc22)，而 `DELETE` 解析到 kc119；
   现有等价规则以数据形式保留，不再依赖判定层的特例分支。
-- 上限：条目 ≤ 256、每项 keycode ≤ 16、序列化后 ≤ 4 KiB。超限即降级，
-  确保 header 记录不触碰 `MAX_RECORD_BYTES`（8 KiB）。
+- **同一规范化名称下只要有一种拼写解析不出 keycode，整条丢弃。**
+  `canonical_key()` 把 `enter` 与 `return` 都归一为 `RETURN`，而 `enter` 是 NoSymbol：
+  若只跳过不可解析的拼写，`return` 建立的条目会让 `SUPER, enter` 也显得可达，
+  而 Hyprland 根本不会触发它。
+- 上限：条目 ≤ 256、每项 keycode ≤ 16、序列化后 ≤ 4 KiB。
+  **超限一律降级，不得截断**——截断会产出一张看似权威、却会拒绝合法 keycode 的表。
 
 实测体积：本机 239 条绑定、131 个不同 key 值，us 解析出 64 项共 **988 字节**，de 为 62 项 962 字节。
 
@@ -274,7 +292,10 @@ libxkbcommon 会把编译错误写入 stderr。helper 由 `bounded-relay` 以
 
 `write_stream()` 的 header 增加两个字段：
 
-- `keycodeMap`：上表；降级时为 `{}`。
+- `keycodeMap`：上表；降级时为 `{}`。空表的含义取决于是否存在候选：
+  若没有任何绑定给出 keysym 名（全是 `code:` / mouse / switch），空表就是**权威结论**；
+  若存在候选却一个都没解析出来，则判为降级——消费端把「不在表中」读作「没有键能命中」，
+  发布这样一张表会让所有绑定都答不出来。
 - `keymapSource`：`"global-rmlvo" | "none"`，
   供测试与诊断使用；`"none"` 即降级模式。
 
@@ -289,7 +310,7 @@ libxkbcommon 会把编译错误写入 stderr。helper 由 `bounded-relay` 以
 
 header 校验新增两个字段，遵循加固方案 04 的原型安全要求：
 
-- `keycodeMap` 必须是对象且非数组；条目 ≤ 256；键为字符串、长度 ≤ 128，
+- `keycodeMap` 必须是对象且非数组；条目 ≤ 256（空表合法，见 5.8）；键为字符串、长度 ≤ 128，
   拒绝 `__proto__` / `constructor` / `prototype`；值为数组、长度 ≤ 16，
   元素经 `safeInteger(v, 0, 65535)` 校验；以 `Object.create(null)` 重建，不保留原对象。
 - `keymapSource` 必须是上述两个字面量之一。
@@ -400,14 +421,18 @@ Keycade 现在就以 `matchMode: "physical"` 精确比较键码训练它们，�
 
 - libxkbcommon 路径检查：非普通文件 / 非 root 属主 / 组或全局可写时拒绝加载并降级。
 - `xkb_keymap_new_from_names2` 不可用时回退成功（模拟 < 1.11.0）。
-- 系统 include path 由 `append_default()` 提供，源码中不出现硬编码的
-  `/usr/share/X11/xkb`，且不追加任何用户目录。
-- RMLVO 字符校验：`/etc/passwd`、`../../../etc/passwd`、超长串、含 `/` 或 `..` 的取值
-  一律降级，且**不得**调用 `xkb_keymap_new_from_names*()`。
+- 影响 include path 的环境变量在建 context 前被清除；源码中不出现硬编码的
+  `/usr/share/X11/xkb`。
+- 枚举出的 include path 逐项校验：出现非 root 属主或组/全局可写目录（如 `/tmp`）时降级；
+  路径数为 0 时降级。
+- 启动方传入 `--xkb-environment-overridden` 时直接降级，且不再调用 `hyprctl getoption`。
+- `resolve_binds_by_sym` 为 `{"str":"true"}` / `{"bool":1}` / `{"bool":null}` / 缺失时降级。
+- `getoption` 回复含重复或非预期选项名时拒绝。
+- 单个 keysym 的 keycode 数超过上限时抛错降级，**不得截断**；Apple 并集导致溢出同样降级。
+- RMLVO 字符校验：`/etc/passwd`、`../../../etc/passwd`、`"us\n"`、超长串一律降级，
+  且**不得**调用 `xkb_keymap_new_from_names*()`。
 - RMLVO 合法取值全部通过：`us`、`us,de`、`pc105`、`compose:caps,shift:both_capslock_cancel`。
 - libxkbcommon 的 stderr 不进入 stdout，也不进入 QML。
-- `xkb_context_new`、`xkb_keymap_new_from_*` 返回 NULL 时降级且不抛异常。
-- 成功与失败分支都完成 `unref`（以计数桩验证）。
 
 ### 8.3 表内容
 
@@ -416,8 +441,11 @@ Keycade 现在就以 `matchMode: "physical"` 精确比较键码训练它们，�
 - `l "us"`：`,` → `[59]`；`/` → `[61]`；`` ` `` → `[49]`。
 - 小键盘不与主键区合并：`-` 的条目只含 kc20，不含 kc82（`KP_Subtract`）。
 - Apple 并集：`appleKeyboard` 为真时 `DELETE` 条目同时含 kc119 与 kc22；为假时只含 kc119。
-- 冲突条目被丢弃；`NoSymbol` 键名不构成冲突。
+- 冲突条目被丢弃。
+- **`enter` 与 `return` 同时存在时 `RETURN` 条目被丢弃**，两种顺序结果一致——
+  不可解析的拼写不得借用另一种拼写的键。
 - 条目 / keycode / 字节任一超限即整体降级。
+- 无候选时空表为权威结论；有候选但全部失败时降级。
 - raw key sidecar 与记录索引对齐，JSON 与 plain 两条 snapshot 路径分别验证，含被拒绝记录的占位。
 - `SUPER + ALT + code:10`、`mouse:272`、`mouse_up`、`switch:off:...` 不被送入
   `xkb_keysym_from_name()`，既不产生条目也不报错。
@@ -482,6 +510,9 @@ Keycade 现在就以 `matchMode: "physical"` 精确比较键码训练它们，�
 | 多码 base keysym 全为 `XF86*` / `PRINT`，已被 `Eligibility.isDeviceSpecialKey()` 排除 | 实测 + `lib/Eligibility.js:29-31` |
 | Omarchy 有 59 条 `code:` 绑定，证明 xkb 键码单位已在生产中验证 | `hyprctl binds` 实测 |
 | `append_default()` 加入 `/usr/share/xkeyboard-config-2` 而非 `/usr/share/X11/xkb` | 实测 |
+| `XDG_CONFIG_HOME` 会让 `append_default()` 前置用户目录，`XKB_CONFIG_ROOT` 会整个替换系统路径 | 实测 |
+| `re.match(r"^...$", "us\\n")` 为真，`fullmatch` 为假 | 实测 |
+| `xkb_keysym_from_name("enter", CI)` 为 NoSymbol，而 `enter`/`return` 同归一为 `RETURN` | 实测 |
 | `kb_layout="/etc/passwd"` 会使 libxkbcommon 真的打开并解析该文件（编译失败，无泄漏） | 实测 |
 | 相对路径穿越被 include path 挡住，超长名字被库的 4096 长度检查挡住，非法 `kb_options` 被忽略 | 实测 |
 | `xkb_keymap_new_from_names2` 自 1.11.0 起提供，其余符号自 0.5.0 起 | `nm -D /usr/lib/libxkbcommon.so.0` |
