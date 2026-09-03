@@ -48,6 +48,80 @@ TestCase {
                               { modMask: 64, logicalKey: "4", physicalCode: 12 }))
   }
 
+  // A German QWERTZ layout: the key that types "," unshifted types ";" with
+  // Shift, which is what Qt reports and what the old matcher compared.
+  function germanMap() {
+    var map = Object.create(null)
+    map[","] = [59]
+    map["-"] = [20]
+    return map
+  }
+
+  function test_keymapJudgesByKeycodeNotByProducedCharacter() {
+    var comma = binding({ modMask: 65, key: ",", description: "Dismiss all notifications" })
+    var pressed = { modMask: 65, logicalKey: ";", physicalCode: 59 }
+    // What issue #1 reported: correct key, judged wrong.
+    verify(!Normalizer.matches(comma, pressed))
+    verify(Normalizer.matches(comma, pressed, { keycodeMap: germanMap() }))
+  }
+
+  function test_keymapRejectsAnotherKeyOnTheSameCharacter() {
+    var comma = binding({ modMask: 65, key: ",", description: "Dismiss all notifications" })
+    verify(!Normalizer.matches(comma, { modMask: 65, logicalKey: ",", physicalCode: 94 },
+                               { keycodeMap: germanMap() }))
+  }
+
+  function test_keymapSeparatesTheKeypadFromTheMainRow() {
+    // kc82 is KP_Subtract and kc20 is minus, but Qt reports Key_Minus for both.
+    var minus = binding({ key: "-", description: "Shrink window" })
+    var keypad = { modMask: 64, logicalKey: "-", physicalCode: 82 }
+    verify(Normalizer.matches(minus, keypad))
+    verify(!Normalizer.matches(minus, keypad, { keycodeMap: germanMap() }))
+    verify(Normalizer.matches(minus, { modMask: 64, logicalKey: "-", physicalCode: 20 },
+                              { keycodeMap: germanMap() }))
+  }
+
+  function test_keyAbsentFromTheKeymapMatchesNothing() {
+    // No base-level key produces slash on this layout, so Hyprland would not
+    // fire the bind either.
+    var slash = binding({ modMask: 65, key: "/", description: "Passwords" })
+    verify(Normalizer.matches(slash, { modMask: 65, logicalKey: "/", physicalCode: 15 }))
+    verify(!Normalizer.matches(slash, { modMask: 65, logicalKey: "/", physicalCode: 15 },
+                               { keycodeMap: germanMap() }))
+  }
+
+  function test_eventWithoutAKeycodeStillFallsBackToTheCharacter() {
+    var comma = binding({ key: "," })
+    verify(Normalizer.matches(comma, { modMask: 64, logicalKey: ",", physicalCode: 0 },
+                              { keycodeMap: germanMap() }))
+  }
+
+  function test_keymapNeverOverridesTheModifierComparison() {
+    var comma = binding({ modMask: 65, key: "," })
+    verify(!Normalizer.matches(comma, { modMask: 64, logicalKey: ";", physicalCode: 59 },
+                               { keycodeMap: germanMap() }))
+  }
+
+  function test_unreachableBindingsAreExcludedOnlyWhenTheKeymapIsKnown() {
+    var reachable = binding({ key: ",", description: "Dismiss last notification" })
+    var unreachable = binding({ key: "/", description: "Passwords" })
+    // code: binds carry the layout-independent fallback label for the keycode.
+    var physical = binding({ key: "3", keycode: 12, matchMode: "physical",
+                             description: "Switch to workspace 3" })
+    var options = { keymapAuthoritative: true, keycodeMap: germanMap() }
+
+    compare(Eligibility.reason(unreachable, options), "unreachable-on-layout")
+    compare(Eligibility.reason(reachable, options), "")
+    // A code: bind names its keycode directly and is unaffected.
+    compare(Eligibility.reason(physical, options), "")
+    // Without a confirmed keymap the rule does not apply.
+    compare(Eligibility.reason(unreachable, {}), "")
+
+    var result = Eligibility.filter([reachable, unreachable], options)
+    compare(result.eligible.length, 1)
+    compare(result.eligible[0].key, ",")
+  }
+
   function test_appleDeleteAcceptsBackspaceOneWay() {
     var deleteBinding = binding({ key: "DELETE", description: "Close all windows" })
     var backspaceInput = { modMask: 64, logicalKey: "BACKSPACE", physicalCode: 22 }
