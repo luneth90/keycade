@@ -289,7 +289,15 @@ libxkbcommon 会把编译错误写入 stderr。helper 由 `bounded-relay` 以
 
 ### 5.7 producer · 产出表
 
-以 `canonical_key()` 的输出为索引，QML 侧可直接用 `binding.key` 查表：
+以 `canonical_key()` 的输出为索引，消费端对 `binding.key` 再调用一次 `canonicalKey()` 查表。
+
+**两侧的规范化必须逐字一致**，这是本方案最容易出错的接缝：不一致不会表现为显示异常，
+而是查不到条目 → 判为不可达 → **绑定直接从训练中消失**。
+实测 Python 侧原先对单字符保留原始大小写，`bind = SUPER, q` 产出 `keycodeMap["q"]`，
+消费端却查 `"Q"`——比修复前的字符匹配更差。
+因此 `canonical_key()` 无条件 `.upper()`，`KEY_ALIASES` 补齐 JS 侧独有的
+`esc` / `ret` / `control` / `meta` / `win`，使其输出成为 `canonicalKey()` 的**不动点**。
+`tests/fixtures/canonical-keys.js` 是两侧共享的语料，Python 与 QML 测试各读同一份文件：
 
 ```json
 "keycodeMap": { ",": [59], "TAB": [23], "DELETE": [119, 22] }
@@ -445,6 +453,8 @@ Keycade 现在就以 `matchMode: "physical"` 精确比较键码训练它们，�
 - `resolve_binds_by_sym=true` + 全部键盘沿用全局布局 + `num_layouts==1` → `"global-rmlvo"`，
   **不因该标志降级**。
 - `resolve_binds_by_sym=true` + 任一键盘 rules 与全局不同 → `"none"`。
+- `resolve_binds_by_sym=true` + 某个键盘段缺少 `rules:` 行 → `"none"`
+  （`Keyboard at` 段数必须等于 `rules:` 行数，否则解析成功的键盘会替缺失者作答）。
 - `resolve_binds_by_sym=true` + `num_layouts > 1` → `"none"`。
 - 全局 `kb_options` 参与编译：`compose:caps` 生效时 CapsLock 的 base keysym 随之改变。
 
@@ -482,6 +492,9 @@ Keycade 现在就以 `matchMode: "physical"` 精确比较键码训练它们，�
 - `l "us"`：`,` → `[59]`；`/` → `[61]`；`` ` `` → `[49]`。
 - 小键盘不与主键区合并：`-` 的条目只含 kc20，不含 kc82（`KP_Subtract`）。
 - Apple 并集：`appleKeyboard` 为真时 `DELETE` 条目同时含 kc119 与 kc22；为假时只含 kc119。
+- 两侧规范化一致：`tests/fixtures/canonical-keys.js` 的每一行，Python 产出等于期望值，
+  且该期望值经 `canonicalKey()` 后不变（不动点）；语料必须覆盖 `KEY_ALIASES` 的全部键。
+- 小写字母绑定端到端可达：`key: q` 产出 `binding.key == "Q"` 与 `keycodeMap == {"Q": [...]}`。
 - 同一规范化名称下拼写结论不一致（keycode 集合不同，或一可解析一不可解析）时
   **整表降级**，两种顺序结果一致。
 - 条目 / keycode / 字节任一超限即整体降级。
