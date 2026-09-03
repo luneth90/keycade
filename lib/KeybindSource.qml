@@ -21,6 +21,8 @@ Item {
   readonly property int maxPayloadChars: 8 * 1024 * 1024
   readonly property int maxRecordChars: 8 * 1024
   readonly property int maxBindings: 2000
+  readonly property int maxKeycodeMapEntries: 256
+  readonly property int maxKeycodesPerEntry: 16
   readonly property var allowedFlags: [
     "locked", "release", "click", "drag", "long-press", "repeat",
     "non-consuming", "mouse", "transparent", "ignore-mods", "separate",
@@ -29,6 +31,12 @@ Item {
   property var bindings: []
   property string fingerprint: ""
   property bool appleKeyboard: false
+  // Keycodes accepted for each canonical key name, reproduced from the keymap
+  // Hyprland resolves binds against. Empty whenever the helper could not
+  // confirm that keymap, in which case judging stays character based.
+  property var keycodeMap: ({})
+  property string keymapSource: "none"
+  readonly property bool keymapAuthoritative: root.keymapSource !== "none"
   property bool loading: false
   property string error: ""
   // Bindings the helper dropped for breaking a schema limit. Surfaced so a
@@ -55,6 +63,8 @@ Item {
     root.streamChars = 0
     root.streamRecords = 0
     root.streamSettled = false
+    root.keycodeMap = ({})
+    root.keymapSource = "none"
     loadTimeout.restart()
     loader.running = true
   }
@@ -124,6 +134,41 @@ Item {
     }
   }
 
+  // A malformed map degrades judging to the character comparison instead of
+  // failing the snapshot: a keybind trainer with no keybinds is worse than one
+  // that judges the way it did before.
+  function acceptedKeycodeMap(record) {
+    if (record.keymapSource !== "global-rmlvo") return null
+    try {
+      return root.validatedKeycodeMap(record.keycodeMap)
+    } catch (error) {
+      console.warn("Keycade ignored an invalid keycode map: " + error)
+      return null
+    }
+  }
+
+  function validatedKeycodeMap(value) {
+    if (!value || typeof value !== "object" || Array.isArray(value))
+      throw new Error("Invalid keycode map")
+    var names = Object.keys(value)
+    if (!names.length || names.length > root.maxKeycodeMapEntries)
+      throw new Error("Invalid keycode map size")
+    var result = Object.create(null)
+    for (var i = 0; i < names.length; i++) {
+      var name = names[i]
+      if (name === "__proto__" || name === "constructor" || name === "prototype")
+        throw new Error("Unsafe keycode map key")
+      var codes = value[name]
+      if (!Array.isArray(codes) || !codes.length || codes.length > root.maxKeycodesPerEntry)
+        throw new Error("Invalid keycode map entry")
+      var accepted = []
+      for (var j = 0; j < codes.length; j++)
+        accepted.push(root.safeInteger(codes[j], 0, 65535, "keycode"))
+      result[root.safeText(name, 128, "keycode map key")] = accepted
+    }
+    return result
+  }
+
   // Called once per newline-delimited record while the helper is still
   // running, so the budget below is a pre-allocation bound rather than a
   // check performed after the whole stream has been retained.
@@ -163,7 +208,8 @@ Item {
           count: count,
           rejected: rejected,
           fingerprint: record.keymapFingerprint,
-          appleKeyboard: record.appleKeyboard
+          appleKeyboard: record.appleKeyboard,
+          keycodeMap: root.acceptedKeycodeMap(record)
         }
         if (count === 0) root.settle()
         return
@@ -189,6 +235,8 @@ Item {
     root.rejected = root.pendingHeader.rejected
     root.fingerprint = root.pendingHeader.fingerprint
     root.appleKeyboard = root.pendingHeader.appleKeyboard === true
+    root.keycodeMap = root.pendingHeader.keycodeMap || ({})
+    root.keymapSource = root.pendingHeader.keycodeMap ? "global-rmlvo" : "none"
     root.pendingBindings = []
     root.pendingHeader = null
     loadTimeout.stop()

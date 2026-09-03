@@ -44,6 +44,23 @@ Home/End/Insert/Page, ambiguous, unsafe, and unsupported bindings are excluded.
 Keycade refuses to start a run when it cannot verify input protection. It does
 not fall back to an unsafe focus-only mode.
 
+## Keyboard layouts
+
+Keycade judges an answer by which physical key was pressed, the same way
+Hyprland decides whether a bind fires: a bind names the key that produces its
+keysym with no modifiers held, whatever that key types once Shift is down. This
+matters on non-US layouts, where `SUPER + SHIFT + comma` is the key labelled `,`
+even though it types `;` while Shift is held.
+
+Keycade reads the layout from Hyprland's own `input:kb_*` options. A bind whose
+key has no unshifted position on the active layout cannot be pressed at all, so
+it is left out of training rather than taught.
+
+Two setups fall back to comparing typed characters, which is how earlier
+versions always worked: a keymap supplied through `input:kb_file`, and a custom
+layout under `~/.xkb` or `~/.config/xkb`. Keycade does not read files outside
+Hyprland's own output, so it steps back rather than guess.
+
 ## Install
 
 ```bash

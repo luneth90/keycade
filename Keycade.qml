@@ -138,7 +138,11 @@ Item {
       savedLocale = "en"
     }
     if (!root.requestedLocale) i18n.locale = savedLocale
-    var result = Eligibility.filter(keybinds.bindings, { appleKeyboard: keybinds.appleKeyboard })
+    var result = Eligibility.filter(keybinds.bindings, {
+      appleKeyboard: keybinds.appleKeyboard,
+      keymapAuthoritative: keybinds.keymapAuthoritative,
+      keycodeMap: keybinds.keycodeMap
+    })
     root.eligibleBindings = result.eligible
     if (!root.eligibleBindings.length) {
       root.errorMessage = i18n.t("noBindings")
@@ -219,6 +223,15 @@ Item {
     store.settings.countdownSound = !Boolean(store.settings.countdownSound)
     store.settings = Object.assign({}, store.settings)
     store.saveSettings()
+  }
+
+  // The reproduced keymap decides judging when it is available; without it the
+  // matcher keeps comparing characters exactly as before.
+  function matchOptions() {
+    return {
+      appleKeyboard: keybinds.appleKeyboard,
+      keycodeMap: keybinds.keymapAuthoritative ? keybinds.keycodeMap : null
+    }
   }
 
   function refreshProgressCounts() {
@@ -431,11 +444,11 @@ Item {
     var input = Normalizer.normalizeEvent(event)
     if (input.autoRepeat || Normalizer.isModifier(input.logicalKey)) return
     if (root.correctionRequired) {
-      if (Normalizer.matches(root.currentBinding, input, { appleKeyboard: keybinds.appleKeyboard })) completeCorrection()
+      if (Normalizer.matches(root.currentBinding, input, root.matchOptions())) completeCorrection()
       else missCorrection(Normalizer.inputDisplay(input))
       return
     }
-    if (Normalizer.matches(root.currentBinding, input, { appleKeyboard: keybinds.appleKeyboard })) hitCurrent()
+    if (Normalizer.matches(root.currentBinding, input, root.matchOptions())) hitCurrent()
     else missCurrent("received", Normalizer.inputDisplay(input))
   }
 

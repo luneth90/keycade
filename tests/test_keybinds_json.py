@@ -361,3 +361,234 @@ class KeybindHelperTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class FakeXkb:
+    """A stand-in for libxkbcommon with a hand-written base-level keymap.
+
+    Keeps the keymap tests independent of whichever xkeyboard-config the host
+    happens to ship, while still exercising the real call sequence.
+    """
+
+    def __init__(self, syms=None, num_layouts=1):
+        self.syms = syms if syms is not None else {ord(","): [59], ord("/"): [61]}
+        self.num_layouts = num_layouts
+
+    def xkb_keysym_from_name(self, name, flags):
+        table = {
+            b"comma": ord(","), b"slash": ord("/"), b"minus": ord("-"),
+            b"BackSpace": 0xFF08, b"Delete": 0xFFFF, b"less": ord("<"),
+        }
+        return table.get(name, 0)
+
+
+def fake_keymap(syms=None):
+    return {"source": "global-rmlvo", "syms": syms if syms is not None else {ord(","): [59]},
+            "library": FakeXkb(syms)}
+
+
+class KeymapResolutionTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.helper = load_helper()
+        cls.binds = (ROOT / "tests/fixtures/binds.txt").read_text()
+        cls.devices = (ROOT / "tests/fixtures/devices.txt").read_text()
+
+    def options(self, **overrides):
+        values = {name: {"option": f"input:{name}", "str": ""} for name in self.helper.RMLVO_NAMES}
+        values["kb_file"] = {"option": "input:kb_file", "str": self.helper.HYPRLAND_EMPTY}
+        values["resolve_binds_by_sym"] = {"option": "input:resolve_binds_by_sym", "bool": False}
+        for name, value in overrides.items():
+            values[name] = value
+        return values
+
+    def test_rmlvo_accepts_real_hyprland_values(self):
+        options = self.options(
+            kb_layout={"str": "us,de"}, kb_model={"str": "pc105"},
+            kb_options={"str": "compose:caps,shift:both_capslock_cancel"},
+        )
+        self.assertEqual(
+            self.helper.validated_rmlvo(options),
+            ("", "pc105", "us,de", "", "compose:caps,shift:both_capslock_cancel"),
+        )
+
+    def test_rmlvo_rejects_values_that_reach_the_filesystem(self):
+        # These strings come from the user's config and are handed to an API
+        # that resolves names to files; an absolute path makes libxkbcommon
+        # open and parse it.
+        for value in ("/etc/passwd", "../../../etc/passwd", "a/b", "..", "x" * 129, "a b"):
+            with self.subTest(value=value):
+                self.assertIsNone(self.helper.validated_rmlvo(self.options(kb_layout={"str": value})))
+
+    def test_kb_file_sentinel_is_read_as_unset(self):
+        self.assertEqual(self.helper.option_text(self.options(), "kb_file"), "")
+        self.assertEqual(
+            self.helper.option_text(self.options(kb_file={"str": "/home/u/map.xkb"}), "kb_file"),
+            "/home/u/map.xkb",
+        )
+
+    def test_keymap_options_parses_the_batched_reply(self):
+        reply = "\n\n".join(
+            json.dumps({"option": f"input:{name}", "str": "us" if name == "kb_layout" else ""})
+            for name in self.helper.KEYMAP_OPTION_NAMES
+        )
+        with mock.patch.object(self.helper, "command_output", return_value=reply), \
+                mock.patch.object(self.helper, "trusted_command", side_effect=lambda path: path):
+            options = self.helper.keymap_options()
+        self.assertEqual(options["kb_layout"]["str"], "us")
+        self.assertEqual(set(options), set(self.helper.KEYMAP_OPTION_NAMES))
+
+    def test_keymap_options_requires_every_option(self):
+        with mock.patch.object(self.helper, "command_output", return_value='{"option":"input:kb_layout","str":"us"}'), \
+                mock.patch.object(self.helper, "trusted_command", side_effect=lambda path: path):
+            with self.assertRaises(self.helper.HelperError):
+                self.helper.keymap_options()
+
+    def test_user_xkb_override_degrades(self):
+        with tempfile.TemporaryDirectory() as home:
+            entry = mock.Mock(pw_dir=home)
+            with mock.patch.object(self.helper.pwd, "getpwuid", return_value=entry):
+                self.assertFalse(self.helper.user_xkb_override_present())
+                (Path(home) / ".config" / "xkb").mkdir(parents=True)
+                self.assertTrue(self.helper.user_xkb_override_present())
+
+    def test_devices_must_all_follow_the_global_layout(self):
+        rmlvo = ("", "", "us", "", "")
+        line = 'rules: r "", m "", l "us", v "", o ""'
+        self.assertTrue(self.helper.devices_follow_global(f"{line}\n{line}", rmlvo))
+        other = 'rules: r "", m "", l "de", v "", o ""'
+        self.assertFalse(self.helper.devices_follow_global(f"{line}\n{other}", rmlvo))
+        self.assertFalse(self.helper.devices_follow_global("", rmlvo))
+
+    def test_keysym_candidate_mirrors_canonical_key_preprocessing(self):
+        self.assertEqual(self.helper.keysym_candidate("SUPER + ALT + comma"), "comma")
+        self.assertEqual(self.helper.keysym_candidate("SLASH"), "SLASH")
+        for skipped in ("SUPER + code:10", "code:10", "mouse:272", "mouse_up",
+                        "switch:off:Lid Switch", ""):
+            with self.subTest(skipped=skipped):
+                self.assertEqual(self.helper.keysym_candidate(skipped), "")
+
+    def test_keycode_map_is_indexed_by_canonical_key(self):
+        result = self.helper.keycode_map(["comma", "SUPER + ALT + slash"],
+                                         fake_keymap({ord(","): [59], ord("/"): [61]}), False)
+        self.assertEqual(result, {",": [59], "/": [61]})
+
+    def test_keycode_map_skips_keys_with_no_base_level_code(self):
+        # A layout where nothing produces slash unshifted: the bind cannot be
+        # pressed there, and Hyprland would not fire it either.
+        result = self.helper.keycode_map(["comma", "slash"], fake_keymap({ord(","): [59]}), False)
+        self.assertEqual(result, {",": [59]})
+
+    def test_keycode_map_keeps_every_code_for_one_keysym(self):
+        result = self.helper.keycode_map(["comma"], fake_keymap({ord(","): [59, 91]}), False)
+        self.assertEqual(result[","], [59, 91])
+
+    def test_keycode_map_unions_backspace_into_delete_for_apple_keyboards(self):
+        keymap = fake_keymap({0xFFFF: [119], 0xFF08: [22]})
+        self.assertEqual(self.helper.keycode_map(["Delete"], keymap, True)["DELETE"], [119, 22])
+        self.assertEqual(self.helper.keycode_map(["Delete"], keymap, False)["DELETE"], [119])
+
+    def test_keycode_map_drops_conflicting_spellings(self):
+        # Two raw names that canonicalize to one displayed key but resolve to
+        # different physical keys. Neither is trusted.
+        keymap = fake_keymap({ord(","): [59], ord("<"): [94]})
+        keymap["library"].xkb_keysym_from_name = (
+            lambda name, flags: {b"comma": ord(","), b"COMMA": ord("<")}.get(name, 0)
+        )
+        self.assertEqual(self.helper.keycode_map(["comma", "COMMA"], keymap, False), {})
+
+    def test_keycode_map_limits_fail_closed(self):
+        syms = {index: [index] for index in range(400)}
+        keymap = {"source": "global-rmlvo", "syms": syms, "library": FakeXkb(syms)}
+        keymap["library"].xkb_keysym_from_name = lambda name, flags: int(name)
+        self.assertEqual(self.helper.keycode_map([str(index) for index in range(400)], keymap, False), {})
+
+    def test_keymap_fields_report_no_keymap_when_degraded(self):
+        self.assertEqual(self.helper.keymap_fields(["comma"], None, False),
+                         {"keymapSource": "none", "keycodeMap": {}})
+
+    def test_empty_map_is_reported_as_no_keymap(self):
+        # An authoritative but empty map would make every binding unanswerable,
+        # because absence from the map means no key can match.
+        fields = self.helper.keymap_fields(["nothing-resolves"], fake_keymap(), False)
+        self.assertEqual(fields, {"keymapSource": "none", "keycodeMap": {}})
+
+    def test_snapshot_carries_the_keymap_fields(self):
+        degraded = self.helper.snapshot(self.binds, self.devices)
+        self.assertEqual(degraded["keymapSource"], "none")
+        self.assertEqual(degraded["keycodeMap"], {})
+
+    def test_snapshot_raw_keys_stay_aligned_when_a_record_is_rejected(self):
+        # Rejecting the first record must not shift the raw keys of the ones
+        # that follow: only the third binding carries a resolvable key here, so
+        # a shifted list would look up "3" or "code:12" and resolve nothing.
+        broken = self.binds.replace("key: 3", "key: " + "x" * 200, 1)
+        keymap = fake_keymap({ord("W"): [25]})
+        keymap["library"].xkb_keysym_from_name = lambda name, flags: {b"W": ord("W")}.get(name, 0)
+        result = self.helper.snapshot(broken, self.devices, keymap)
+        self.assertEqual(result["rejected"], 1)
+        self.assertEqual(result["keycodeMap"], {"W": [25]})
+
+    def test_stream_header_carries_the_keymap_fields(self):
+        result = subprocess.run(
+            [sys.executable, str(SCRIPT), "--input", str(ROOT / "tests/fixtures/binds.txt"),
+             "--devices-input", str(ROOT / "tests/fixtures/devices.txt")],
+            capture_output=True, text=True, timeout=20,
+        )
+        header = json.loads(result.stdout.splitlines()[0])
+        self.assertEqual(header["type"], "header")
+        self.assertEqual(header["keymapSource"], "none")
+        self.assertEqual(header["keycodeMap"], {})
+
+    def test_library_is_absolute_and_trusted(self):
+        source = SCRIPT.read_text(encoding="utf-8")
+        self.assertIn('LIBXKBCOMMON_PATH = "/usr/lib/libxkbcommon.so.0"', source)
+        self.assertIn("ctypes.CDLL(trusted_command(LIBXKBCOMMON_PATH)", source)
+        # The system XKB directory is whatever the library reports, never a
+        # hardcoded guess, and no user directory is ever appended.
+        self.assertNotIn("/usr/share/X11/xkb", source)
+        self.assertIn("xkb_context_include_path_append_default", source)
+        self.assertNotIn("xkb_context_include_path_append(", source)
+
+    def test_no_library_is_loaded_by_soname(self):
+        # R7: keep-loaded paths must not resolve executable code, shared
+        # objects included, through the loader's ambient search.
+        for script in ("keybinds-json", "bounded-relay", "state-store"):
+            source = (ROOT / "bin" / script).read_text(encoding="utf-8")
+            with self.subTest(script=script):
+                self.assertNotIn('CDLL("lib', source)
+                self.assertNotIn("CDLL('lib", source)
+
+    def test_resolve_keymap_degrades_instead_of_raising(self):
+        for failure in (OSError("gone"), self.helper.HelperError("no hyprctl")):
+            with self.subTest(failure=type(failure).__name__):
+                with mock.patch.object(self.helper, "keymap_options", side_effect=failure):
+                    self.assertIsNone(self.helper.resolve_keymap(self.devices))
+
+    def test_resolve_keymap_degrades_on_kb_file_and_user_overrides(self):
+        with mock.patch.object(self.helper, "keymap_options",
+                               return_value=self.options(kb_file={"str": "/home/u/map.xkb"})):
+            self.assertIsNone(self.helper.resolve_keymap(self.devices))
+        with mock.patch.object(self.helper, "keymap_options", return_value=self.options()), \
+                mock.patch.object(self.helper, "user_xkb_override_present", return_value=True):
+            self.assertIsNone(self.helper.resolve_keymap(self.devices))
+
+    def test_resolve_keymap_degrades_when_the_library_is_unavailable(self):
+        with mock.patch.object(self.helper, "keymap_options", return_value=self.options()), \
+                mock.patch.object(self.helper, "user_xkb_override_present", return_value=False), \
+                mock.patch.object(self.helper, "xkb_library", side_effect=OSError("missing")):
+            self.assertIsNone(self.helper.resolve_keymap(self.devices))
+
+    def test_a_broken_keymap_path_never_costs_the_snapshot(self):
+        # Judging is an enhancement: every failure inside it degrades.
+        for failure in (self.helper.HelperError("boom"), OSError("boom"),
+                        ValueError("boom"), AttributeError("boom")):
+            with self.subTest(failure=type(failure).__name__):
+                with mock.patch.object(self.helper, "keymap_options", side_effect=failure):
+                    self.assertIsNone(self.helper.resolve_keymap(self.devices))
+
+        exploding = fake_keymap()
+        exploding["library"].xkb_keysym_from_name = mock.Mock(side_effect=OSError("boom"))
+        result = self.helper.snapshot(self.binds, self.devices, exploding)
+        self.assertEqual(result["keymapSource"], "none")
+        self.assertEqual(len(result["bindings"]), 3)

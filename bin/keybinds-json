@@ -13,6 +13,7 @@ import ctypes
 import hashlib
 import json
 import os
+import pwd
 import re
 import selectors
 import signal
@@ -71,6 +72,34 @@ KEY_ALIASES = {
     "escape": "ESCAPE",
 }
 
+# The keymap Hyprland resolves keysym binds against. It compiles the global
+# input:kb_* options with a fresh state, so a bind names the physical key that
+# produces that keysym with no modifiers applied, at layout group 0.
+LIBXKBCOMMON_PATH = "/usr/lib/libxkbcommon.so.0"
+KEYMAP_OPTION_NAMES = (
+    "kb_file", "kb_rules", "kb_model", "kb_layout", "kb_variant", "kb_options",
+    "resolve_binds_by_sym",
+)
+RMLVO_NAMES = ("kb_rules", "kb_model", "kb_layout", "kb_variant", "kb_options")
+# Hyprland's sentinel for an option that was never set.
+HYPRLAND_EMPTY = "[[EMPTY]]"
+# These values come from the user's Hyprland config and reach an API that
+# resolves names to files, so they are checked before the call rather than
+# cleaned: an absolute path here makes libxkbcommon open and parse that file.
+RMLVO_ALLOWED = re.compile(r"^[A-Za-z0-9_,:.+()-]*$")
+MAX_RMLVO_CHARS = 128
+USER_XKB_DIRECTORIES = (".config/xkb", ".xkb")
+MAX_KEYCODE_MAP_ENTRIES = 256
+MAX_KEYCODES_PER_ENTRY = 16
+MAX_KEYCODE_MAP_BYTES = 4 * 1024
+XKB_CONTEXT_NO_DEFAULT_INCLUDES = 1
+XKB_KEYSYM_CASE_INSENSITIVE = 1
+XKB_KEYMAP_FORMAT_TEXT_V2 = 2
+DEVICE_RULES = re.compile(
+    r'rules:\s*r\s*"([^"]*)",\s*m\s*"([^"]*)",\s*l\s*"([^"]*)",'
+    r'\s*v\s*"([^"]*)",\s*o\s*"([^"]*)"'
+)
+
 PHYSICAL_FALLBACKS = {
     10: "1", 11: "2", 12: "3", 13: "4", 14: "5",
     15: "6", 16: "7", 17: "8", 18: "9", 19: "0",
@@ -82,6 +111,9 @@ class HelperError(RuntimeError):
 
 
 HYPRCTL_PATH = "/usr/bin/hyprctl"
+# Absolute so no library this keep-loaded path relies on is resolved by the
+# dynamic loader's ambient search.
+LIBC_PATH = "/usr/lib/libc.so.6"
 # hyprctl only needs to locate the compositor socket. Everything else is
 # dropped so a child never inherits an attacker-influenced environment.
 CHILD_ENVIRONMENT_KEYS = ("HYPRLAND_INSTANCE_SIGNATURE", "XDG_RUNTIME_DIR")
@@ -126,7 +158,7 @@ def _prepare_child() -> None:
     os.setsid()
     parent = os.getppid()
     try:
-        ctypes.CDLL("libc.so.6", use_errno=True).prctl(PR_SET_PDEATHSIG, signal.SIGKILL)
+        ctypes.CDLL(LIBC_PATH, use_errno=True).prctl(PR_SET_PDEATHSIG, signal.SIGKILL)
     except OSError:
         return
     if os.getppid() != parent:
@@ -391,6 +423,285 @@ def has_apple_keyboard(raw_devices: str) -> bool:
     return bool(section and "apple" in section.group(1).lower())
 
 
+class _XkbRuleNames(ctypes.Structure):
+    _fields_ = [
+        ("rules", ctypes.c_char_p),
+        ("model", ctypes.c_char_p),
+        ("layout", ctypes.c_char_p),
+        ("variant", ctypes.c_char_p),
+        ("options", ctypes.c_char_p),
+    ]
+
+
+def keymap_options() -> dict[str, Any]:
+    """Read the global input options Hyprland resolves keysym binds against.
+
+    One batched call. ``hyprctl`` answers with one JSON object per option,
+    separated by blank lines rather than wrapped in an array.
+    """
+    request = ";".join(f"getoption input:{name}" for name in KEYMAP_OPTION_NAMES)
+    raw = command_output(
+        [trusted_command(HYPRCTL_PATH), "-j", "--batch", request],
+        max_stdout=64 * 1024,
+    )
+    decoder = json.JSONDecoder()
+    options: dict[str, Any] = {}
+    index = 0
+    while index < len(raw):
+        if raw[index].isspace():
+            index += 1
+            continue
+        value, index = decoder.raw_decode(raw, index)
+        if not isinstance(value, dict):
+            raise HelperError("hyprctl getoption returned a non-object")
+        name = value.get("option", "")
+        if not isinstance(name, str) or not name.startswith("input:"):
+            raise HelperError("hyprctl getoption returned an unexpected option")
+        options[name[len("input:"):]] = value
+    if any(name not in options for name in KEYMAP_OPTION_NAMES):
+        raise HelperError("hyprctl getoption omitted a keymap option")
+    return options
+
+
+def option_text(options: dict[str, Any], name: str) -> str:
+    value = options.get(name, {}).get("str", "")
+    if not isinstance(value, str):
+        raise HelperError(f"input:{name} is not a string")
+    return "" if value == HYPRLAND_EMPTY else value
+
+
+def validated_rmlvo(options: dict[str, Any]) -> tuple[str, ...] | None:
+    """Return the five rule names, or None when any of them fails the check."""
+    values = []
+    for name in RMLVO_NAMES:
+        value = option_text(options, name)
+        if len(value) > MAX_RMLVO_CHARS or not RMLVO_ALLOWED.match(value) or ".." in value:
+            return None
+        values.append(value)
+    return tuple(values)
+
+
+def user_xkb_override_present() -> bool:
+    """Whether the user ships XKB data this helper deliberately does not read.
+
+    Hyprland runs with a full environment and loads these; the helper does not
+    read user-writable content, so the two keymaps would silently disagree.
+    """
+    try:
+        home = Path(pwd.getpwuid(os.getuid()).pw_dir)
+    except (KeyError, OSError):
+        return True
+    return any((home / name).exists() for name in USER_XKB_DIRECTORIES)
+
+
+def devices_follow_global(raw_devices: str, rmlvo: tuple[str, ...]) -> bool:
+    matches = DEVICE_RULES.findall(raw_devices)
+    if not matches:
+        return False
+    # The device line prints r, m, l, v, o in that order.
+    return all(tuple(match) == rmlvo for match in matches)
+
+
+def xkb_library() -> Any:
+    library = ctypes.CDLL(trusted_command(LIBXKBCOMMON_PATH), use_errno=True)
+    rule_names = ctypes.POINTER(_XkbRuleNames)
+    signatures = {
+        "xkb_context_new": (ctypes.c_void_p, [ctypes.c_int]),
+        "xkb_context_unref": (None, [ctypes.c_void_p]),
+        "xkb_context_include_path_append_default": (ctypes.c_int, [ctypes.c_void_p]),
+        "xkb_keymap_new_from_names": (ctypes.c_void_p, [ctypes.c_void_p, rule_names, ctypes.c_int]),
+        "xkb_keymap_unref": (None, [ctypes.c_void_p]),
+        "xkb_keymap_num_layouts": (ctypes.c_uint32, [ctypes.c_void_p]),
+        "xkb_keymap_min_keycode": (ctypes.c_uint32, [ctypes.c_void_p]),
+        "xkb_keymap_max_keycode": (ctypes.c_uint32, [ctypes.c_void_p]),
+        "xkb_keymap_key_get_syms_by_level": (
+            ctypes.c_int,
+            [ctypes.c_void_p, ctypes.c_uint32, ctypes.c_uint32, ctypes.c_uint32,
+             ctypes.POINTER(ctypes.POINTER(ctypes.c_uint32))],
+        ),
+        "xkb_keysym_from_name": (ctypes.c_uint32, [ctypes.c_char_p, ctypes.c_int]),
+    }
+    for name, (restype, argtypes) in signatures.items():
+        function = getattr(library, name)
+        function.restype = restype
+        function.argtypes = argtypes
+    try:
+        # Hyprland compiles with the v2 text format; the entry point exists
+        # from libxkbcommon 1.11.0 onward.
+        creator = library.xkb_keymap_new_from_names2
+    except AttributeError:
+        pass
+    else:
+        creator.restype = ctypes.c_void_p
+        creator.argtypes = [ctypes.c_void_p, rule_names, ctypes.c_int, ctypes.c_int]
+    return library
+
+
+def compile_keymap(library: Any, context: int, rmlvo: tuple[str, ...]) -> int:
+    # Empty strings rather than NULL, matching how Hyprland fills the struct.
+    names = _XkbRuleNames(*(value.encode("utf-8") for value in rmlvo))
+    try:
+        creator = library.xkb_keymap_new_from_names2
+    except AttributeError:
+        return library.xkb_keymap_new_from_names(context, ctypes.byref(names), 0) or 0
+    return creator(context, ctypes.byref(names), XKB_KEYMAP_FORMAT_TEXT_V2, 0) or 0
+
+
+def base_keysyms(library: Any, keymap: int) -> dict[int, list[int]]:
+    """Map each base-level keysym to every keycode that produces it.
+
+    Hyprland compares the pressed key's base keysym against the bind's keysym,
+    so a keysym reachable from several keycodes is triggered by all of them.
+    """
+    table: dict[int, list[int]] = {}
+    syms = ctypes.POINTER(ctypes.c_uint32)()
+    first = library.xkb_keymap_min_keycode(keymap)
+    last = library.xkb_keymap_max_keycode(keymap)
+    for code in range(first, min(last, MAX_KEYCODE) + 1):
+        if library.xkb_keymap_key_get_syms_by_level(keymap, code, 0, 0, ctypes.byref(syms)) != 1:
+            continue
+        entry = table.setdefault(int(syms[0]), [])
+        if len(entry) < MAX_KEYCODES_PER_ENTRY:
+            entry.append(int(code))
+    return table
+
+
+def resolve_keymap(raw_devices: str) -> dict[str, Any] | None:
+    """Reproduce Hyprland's bind keymap, or None when it cannot be confirmed.
+
+    Anything that would require reading user-writable content, or that leaves
+    the effective keymap ambiguous, degrades instead of guessing: the caller
+    then keeps the pre-existing character comparison. This is an enhancement to
+    judging, so no failure inside it may cost the caller its snapshot.
+    """
+    try:
+        return _resolve_keymap(raw_devices)
+    except (HelperError, OSError, ValueError, AttributeError):
+        return None
+
+
+def _resolve_keymap(raw_devices: str) -> dict[str, Any] | None:
+    options = keymap_options()
+    if option_text(options, "kb_file"):
+        return None
+    if user_xkb_override_present():
+        return None
+    rmlvo = validated_rmlvo(options)
+    if rmlvo is None:
+        return None
+    library = xkb_library()
+
+    context = library.xkb_context_new(XKB_CONTEXT_NO_DEFAULT_INCLUDES)
+    if not context:
+        return None
+    try:
+        # Only root-owned system XKB data; no user directory is appended.
+        library.xkb_context_include_path_append_default(context)
+        keymap = compile_keymap(library, context, rmlvo)
+        if not keymap:
+            return None
+        try:
+            if options.get("resolve_binds_by_sym", {}).get("bool") is True:
+                # Binds then resolve against the event keyboard's own keymap at
+                # its active group. Those coincide with the global keymap only
+                # when every keyboard follows it and there is a single group.
+                if library.xkb_keymap_num_layouts(keymap) != 1:
+                    return None
+                if not devices_follow_global(raw_devices, rmlvo):
+                    return None
+            return {"source": "global-rmlvo", "syms": base_keysyms(library, keymap), "library": library}
+        finally:
+            library.xkb_keymap_unref(keymap)
+    finally:
+        library.xkb_context_unref(context)
+
+
+def keysym_candidate(raw_key: str) -> str:
+    """The keysym name Hyprland would look up for this bind, or "".
+
+    Mirrors canonical_key()'s preprocessing: hyprctl prints the whole chord in
+    the key field, and non-keyboard binds carry no keysym at all.
+    """
+    key = sanitize_text(raw_key, FIELD_LIMITS["key"]).strip()
+    if " + " in key:
+        key = key.rsplit(" + ", 1)[-1].strip()
+    if not key or key.lower().startswith("code:"):
+        return ""
+    if re.match(r"^(?:mouse:|mouse_|switch:)", key, re.IGNORECASE):
+        return ""
+    return key
+
+
+def keycodes_for(keymap: dict[str, Any], name: str) -> list[int]:
+    # The same call Hyprland makes; hyprctl prints key names in mixed case.
+    keysym = keymap["library"].xkb_keysym_from_name(
+        name.encode("utf-8"), XKB_KEYSYM_CASE_INSENSITIVE
+    )
+    if not keysym:
+        return []
+    return list(keymap["syms"].get(int(keysym), []))
+
+
+def keycode_map(raw_keys: list[str], keymap: dict[str, Any], apple_keyboard: bool) -> dict[str, list[int]]:
+    """Keycodes accepted for each canonical key name used by the bindings.
+
+    Indexed by canonical_key()'s output so the QML side can look up
+    ``binding.key`` directly without carrying raw keysym names in the schema.
+    """
+    resolved: dict[str, list[int]] = {}
+    conflicting: set[str] = set()
+    for raw_key in raw_keys:
+        try:
+            name = keysym_candidate(raw_key)
+            canonical = canonical_key(raw_key)[0] if name else ""
+        except HelperError:
+            continue
+        if not name or not canonical or canonical in conflicting:
+            continue
+        codes = keycodes_for(keymap, name)
+        if not codes:
+            continue
+        existing = resolved.get(canonical)
+        if existing is None:
+            resolved[canonical] = codes
+        elif existing != codes:
+            # Two spellings of one displayed key disagree; neither is trusted.
+            conflicting.add(canonical)
+            resolved.pop(canonical, None)
+
+    if apple_keyboard and "DELETE" in resolved:
+        # The key labelled delete on an Apple keyboard sends BackSpace. The
+        # existing equivalence is carried as data instead of a matcher special
+        # case.
+        for code in keycodes_for(keymap, "BackSpace"):
+            if code not in resolved["DELETE"] and len(resolved["DELETE"]) < MAX_KEYCODES_PER_ENTRY:
+                resolved["DELETE"].append(code)
+
+    if len(resolved) > MAX_KEYCODE_MAP_ENTRIES:
+        return {}
+    if len(json.dumps(resolved, separators=(",", ":")).encode("utf-8")) > MAX_KEYCODE_MAP_BYTES:
+        return {}
+    return resolved
+
+
+def keymap_fields(raw_keys: list[str], keymap: dict[str, Any] | None, apple_keyboard: bool) -> dict[str, Any]:
+    """The two header fields describing how judging should be performed.
+
+    An empty map is reported as no keymap at all: the consumer treats absence
+    from an authoritative map as "no key can match", so an empty authoritative
+    map would make every binding unanswerable.
+    """
+    if keymap is None:
+        return {"keymapSource": "none", "keycodeMap": {}}
+    try:
+        resolved = keycode_map(raw_keys, keymap, apple_keyboard)
+    except (HelperError, OSError, ValueError, AttributeError):
+        resolved = {}
+    if not resolved:
+        return {"keymapSource": "none", "keycodeMap": {}}
+    return {"keymapSource": keymap["source"], "keycodeMap": resolved}
+
+
 def accept_records(values: list[Any], build: Any) -> tuple[list[dict[str, Any] | None], int]:
     """Build one record per input, keeping index alignment.
 
@@ -410,14 +721,26 @@ def accept_records(values: list[Any], build: Any) -> tuple[list[dict[str, Any] |
     return records, rejected
 
 
-def snapshot(raw_binds: str, raw_devices: str = "") -> dict[str, Any]:
-    records, rejected = accept_records(split_blocks(raw_binds), binding_from_block)
+def snapshot(
+    raw_binds: str, raw_devices: str = "", keymap: dict[str, Any] | None = None
+) -> dict[str, Any]:
+    blocks = split_blocks(raw_binds)
+    records, rejected = accept_records(blocks, binding_from_block)
+    # Index-aligned with records, so a rejected record cannot shift the raw key
+    # of the ones that follow it. Transient: never part of the snapshot.
+    raw_keys = [
+        block.get("key", "").strip()
+        for block, record in zip(blocks, records)
+        if record is not None
+    ]
+    apple_keyboard = has_apple_keyboard(raw_devices)
     return {
         "schemaVersion": SCHEMA_VERSION,
         "keymapFingerprint": fingerprint(raw_binds, raw_devices),
-        "appleKeyboard": has_apple_keyboard(raw_devices),
+        "appleKeyboard": apple_keyboard,
         "rejected": rejected,
         "bindings": [record for record in records if record is not None],
+        **keymap_fields(raw_keys, keymap, apple_keyboard),
     }
 
 
@@ -491,7 +814,10 @@ def records_align(json_binding: dict[str, Any], plain_binding: dict[str, Any]) -
     return True
 
 
-def snapshot_json(raw_json: str, raw_plain: str, raw_devices: str = "") -> dict[str, Any]:
+def snapshot_json(
+    raw_json: str, raw_plain: str, raw_devices: str = "",
+    keymap: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     try:
         values = json.loads(raw_json)
     except json.JSONDecodeError as error:
@@ -504,7 +830,8 @@ def snapshot_json(raw_json: str, raw_plain: str, raw_devices: str = "") -> dict[
 
     # Current JSON exposes most named flags, but some releases omit
     # dont_inhibit. Merge the text header's compact `p` flag by record order.
-    plain, _ = accept_records(split_blocks(raw_plain), binding_from_block)
+    plain_blocks = split_blocks(raw_plain)
+    plain, _ = accept_records(plain_blocks, binding_from_block)
     if len(plain) != len(bindings):
         raise HelperError("hyprctl JSON and plain binding counts differ")
     for index, binding in enumerate(bindings):
@@ -528,12 +855,26 @@ def snapshot_json(raw_json: str, raw_plain: str, raw_devices: str = "") -> dict[
             binding["keycode"] = plain_binding["keycode"]
             binding["matchMode"] = plain_binding["matchMode"]
 
+    # The plain record supplies the raw key whenever the JSON record had none,
+    # matching the key/keycode recovery performed above.
+    raw_keys = []
+    for index, binding in enumerate(bindings):
+        if binding is None:
+            continue
+        value = values[index] if isinstance(values[index], dict) else {}
+        raw_key = str(value.get("key", "") or "").strip()
+        if not raw_key and index < len(plain_blocks):
+            raw_key = plain_blocks[index].get("key", "").strip()
+        raw_keys.append(raw_key)
+
+    apple_keyboard = has_apple_keyboard(raw_devices)
     return {
         "schemaVersion": SCHEMA_VERSION,
         "keymapFingerprint": fingerprint(raw_plain, raw_devices),
-        "appleKeyboard": has_apple_keyboard(raw_devices),
+        "appleKeyboard": apple_keyboard,
         "rejected": rejected,
         "bindings": [binding for binding in bindings if binding is not None],
+        **keymap_fields(raw_keys, keymap, apple_keyboard),
     }
 
 
@@ -555,6 +896,8 @@ def write_stream(result: dict[str, Any]) -> int:
         "appleKeyboard": result["appleKeyboard"],
         "rejected": result["rejected"],
         "count": len(bindings),
+        "keymapSource": result["keymapSource"],
+        "keycodeMap": result["keycodeMap"],
     }
     lines = [header] + [dict(binding, type="binding") for binding in bindings]
     total = 0
@@ -603,15 +946,21 @@ def main() -> int:
             sys.stdout.buffer.write(encoded + b"\n")
             return 0
         devices = read_text(args.devices_input, [trusted_command(HYPRCTL_PATH), "devices"])
+        # Fixture runs describe a machine that is not this one, so the live
+        # keymap must not be applied to them.
+        keymap = None if (args.input or args.devices_input) else resolve_keymap(devices)
         if args.input:
             binds = read_text(args.input, [trusted_command(HYPRCTL_PATH), "binds"])
-            result = snapshot(binds, devices)
+            result = snapshot(binds, devices, keymap)
         else:
             plain = command_output([trusted_command(HYPRCTL_PATH), "binds"])
             try:
-                result = snapshot_json(command_output([trusted_command(HYPRCTL_PATH), "-j", "binds"]), plain, devices)
+                result = snapshot_json(
+                    command_output([trusted_command(HYPRCTL_PATH), "-j", "binds"]),
+                    plain, devices, keymap,
+                )
             except HelperError:
-                result = snapshot(plain, devices)
+                result = snapshot(plain, devices, keymap)
     except (OSError, UnicodeError, json.JSONDecodeError, HelperError) as error:
         print(json.dumps({"schemaVersion": SCHEMA_VERSION, "type": "error", "error": str(error)}))
         return 1

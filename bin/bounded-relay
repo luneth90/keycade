@@ -29,6 +29,9 @@ from typing import Any
 
 SCHEMA_VERSION = 1
 PR_SET_PDEATHSIG = 1
+# Absolute so no library this keep-loaded path relies on is resolved by the
+# dynamic loader's ambient search.
+LIBC_PATH = "/usr/lib/libc.so.6"
 READ_SIZE = 64 * 1024
 
 _CHILD: subprocess.Popen[bytes] | None = None
@@ -40,7 +43,7 @@ def _prepare_child() -> None:
     os.setsid()
     parent = os.getppid()
     try:
-        ctypes.CDLL("libc.so.6", use_errno=True).prctl(PR_SET_PDEATHSIG, signal.SIGKILL)
+        ctypes.CDLL(LIBC_PATH, use_errno=True).prctl(PR_SET_PDEATHSIG, signal.SIGKILL)
     except OSError:
         return
     if os.getppid() != parent:

@@ -35,13 +35,17 @@ ShellRoot {
       keymapFingerprint: "a".repeat(64),
       appleKeyboard: false,
       rejected: rejected,
-      count: count
+      count: count,
+      keymapSource: "none",
+      keycodeMap: {}
     }
     Object.keys(overrides || {}).forEach(function(key) { result[key] = overrides[key] })
     return JSON.stringify(result)
   }
 
   function reset() {
+    source.keycodeMap = ({})
+    source.keymapSource = "none"
     source.bindings = []
     source.error = ""
     source.rejected = 0
@@ -111,6 +115,30 @@ ShellRoot {
       root.require(source.error.length > 0 && source.bindings.length === 0,
                    "oversized record was accepted")
 
+      // A valid keycode map is adopted with the rest of the header.
+      root.reset()
+      source.acceptLine(root.header(0, 0, { keymapSource: "global-rmlvo", keycodeMap: { ",": [59] } }))
+      root.require(source.keymapAuthoritative && source.keycodeMap[","][0] === 59,
+                   "valid keycode map was not adopted")
+      root.require(source.keycodeMap["__proto__"] === undefined,
+                   "keycode map was not built on a null prototype")
+
+      // A malformed map degrades judging instead of failing the snapshot.
+      var badMaps = [
+        { keymapSource: "global-rmlvo", keycodeMap: [] },
+        { keymapSource: "global-rmlvo", keycodeMap: { ",": [] } },
+        { keymapSource: "global-rmlvo", keycodeMap: { ",": [70000] } },
+        { keymapSource: "global-rmlvo", keycodeMap: { ",": "59" } },
+        { keymapSource: "global-rmlvo", keycodeMap: { "__proto__": [59] } },
+        { keymapSource: "unexpected", keycodeMap: { ",": [59] } }
+      ]
+      for (var i = 0; i < badMaps.length; i++) {
+        root.reset()
+        source.acceptLine(root.header(0, 0, badMaps[i]))
+        root.require(source.error === "" && !source.keymapAuthoritative,
+                     "malformed keycode map " + i + " was adopted or failed the snapshot")
+      }
+
       // A helper-reported error line surfaces as a failure.
       root.reset()
       source.acceptLine(JSON.stringify({ schemaVersion: 1, type: "error", error: "boom" }))
@@ -136,6 +164,10 @@ ShellRoot {
         root.require(source.error === "", "live helper run failed: " + source.error)
         root.require(source.bindings.length > 0, "live helper run produced no bindings")
         root.require(/^[0-9a-f]{64}$/.test(source.fingerprint), "live run produced no fingerprint")
+        // A compositor is reachable, so the helper should have reproduced its
+        // bind keymap rather than degrading.
+        root.require(source.keymapAuthoritative, "live helper run produced no keymap")
+        root.require(Object.keys(source.keycodeMap).length > 0, "live keycode map was empty")
       } else {
         root.require(!source.loading, "live helper run never settled")
       }
