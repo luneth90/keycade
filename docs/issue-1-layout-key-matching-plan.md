@@ -243,6 +243,9 @@ helper 只需要三个变量，把环境降到白名单即可，无需持续追�
   - 五个默认 RMLVO 变量 `XKB_DEFAULT_RULES` / `MODEL` / `LAYOUT` / `VARIANT` / `OPTIONS`。
     Hyprland 的 `input:kb_*` 为空时由它们补位，实测 `XKB_DEFAULT_LAYOUT=de` 会把
     kc61 的 base keysym 从 `slash` 变成 `minus`。
+这九个变量的权威出处是 `/usr/include/xkbcommon/xkbcommon.h`，libxkbcommon 升级时必须复核
+（见 [`docs/review-invariants.md`](review-invariants.md) 的 L1）。
+
 - 判定用**存在性而非真值**：`Quickshell.env()` 未设置返回 `null`、设置为空返回 `""`（falsy），
   而实测 `XKB_CONFIG_ROOT=""` 会让默认 include path 变成空列表。
 - 会话 `HOME` → 以 `--session-home=<值>` 单 token 传入（避免形似选项的值产生解析歧义），
