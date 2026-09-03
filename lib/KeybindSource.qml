@@ -31,9 +31,8 @@ Item {
   property var bindings: []
   property string fingerprint: ""
   property bool appleKeyboard: false
-  // Keycodes accepted for each canonical key name, reproduced from the keymap
-  // Hyprland resolves binds against. Empty whenever the helper could not
-  // confirm that keymap, in which case judging stays character based.
+  // Indexed by InputNormalizer canonicalKey()'s output; empty when the helper
+  // could not reproduce the compositor's keymap.
   property var keycodeMap: ({})
   property string keymapSource: "none"
   readonly property bool keymapAuthoritative: root.keymapSource !== "none"

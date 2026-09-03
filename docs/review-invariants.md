@@ -163,8 +163,14 @@ R1–R8 来自市场评审。**L1 不是评审结论，是本项目自己付出�
    `lib/KeybindSource.qml` 的 `xkbEnvironmentKeys` 注释指明用途。
    libxkbcommon 升级时这份清单必须复核。
 
+**同一规则的两份实现也算一类清单。** `bin/keybinds-json` 的 `canonical_key()` 与
+`lib/InputNormalizer.js` 的 `canonicalKey()` 是同一套按键规范化的两份实现，
+第四轮评审发现它们对单字符大小写的处理不同，导致小写字母绑定**直接从训练中消失**。
+这类接缝必须由**两侧共享的语料**钉住（`tests/fixtures/canonical-keys.js`），
+而不是靠两边各写各的测试。
+
 **复核方法。** 新增或修改任何这类清单时，回答三个问题：
-出处是什么？升级时谁会发现它变了？能不能换成白名单？
+出处是什么？升级时谁会发现它变了？能不能换成白名单或共享语料？
 
 ---
 
@@ -182,7 +188,7 @@ R1–R8 来自市场评审。**L1 不是评审结论，是本项目自己付出�
 | R6 标准安装路径 | 未触及 | 不新增文件，不触及安装、更新、卸载路径 |
 | R7 不经 ambient 解析 | 触及 | **守住且有改善**。libxkbcommon 按绝对路径加载并做可信文件检查；既有 `libc.so.6` 的 soname 加载一并收敛为绝对路径 |
 | R8 预分配上界与进程树 | 触及 | **守住**。新增的 `hyprctl --batch` 由既有有界 `command_output()` 承载，纳入同一条 `bounded-relay` + `setsid` + `PDEATHSIG` 回收链，不新增独立生命周期 |
-| L1 外部输入清单 | 触及 | **守住**。helper 环境为白名单；启动方的九个 XKB 变量清单锚定 `xkbcommon.h`，方案文档与 `xkbEnvironmentKeys` 注释均写明出处 |
+| L1 外部输入清单 | 触及 | **守住**。helper 环境为白名单；启动方的九个 XKB 变量清单锚定 `xkbcommon.h`；两份按键规范化实现由 `tests/fixtures/canonical-keys.js` 共享语料钉住 |
 
 **结论：8 条全部满足，其中 R7 相对现状还有改善；L1 亦已满足。**
 

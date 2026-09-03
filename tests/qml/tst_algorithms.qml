@@ -8,6 +8,7 @@ import "../../lib/Stats.js" as Stats
 import "../../lib/Categorizer.js" as Categorizer
 import "../../lib/ActionLocalizer.js" as Actions
 import "../../lib/Session.js" as Session
+import "../fixtures/canonical-keys.js" as CanonicalKeys
 
 TestCase {
   name: "KeycadeAlgorithms"
@@ -55,6 +56,32 @@ TestCase {
     map[","] = [59]
     map["-"] = [20]
     return map
+  }
+
+  // The keycode map is indexed by the producer's canonical_key() and looked
+  // up with canonicalKey() here. Two implementations of one normalisation
+  // drift, and a drift costs the binding rather than merely displaying it
+  // oddly, so the same corpus holds both sides.
+  function test_canonicalKeyAgreesWithTheProducerCorpus() {
+    var pairs = CanonicalKeys.pairs
+    verify(pairs.length > 20)
+    for (var i = 0; i < pairs.length; i++) {
+      var canonical = pairs[i][1]
+      // The producer's output reaches QML as binding.key and is canonicalised
+      // again on the way to the lookup, so it has to survive that unchanged.
+      compare(Normalizer.canonicalKey(canonical), canonical,
+              "producer output " + JSON.stringify(canonical) + " is not stable here")
+    }
+  }
+
+  function test_lowerCaseLetterBindingsResolveToTheSameKey() {
+    compare(Normalizer.canonicalKey("q"), "Q")
+    var map = Object.create(null)
+    map["Q"] = [24]
+    var lower = binding({ key: "Q", description: "Close window" })
+    verify(Normalizer.matches(lower, { modMask: 64, logicalKey: "Q", physicalCode: 24 },
+                              { keycodeMap: map }))
+    compare(Eligibility.reason(lower, { keymapAuthoritative: true, keycodeMap: map }), "")
   }
 
   function test_keymapJudgesByKeycodeNotByProducedCharacter() {

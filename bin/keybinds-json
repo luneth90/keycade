@@ -59,6 +59,10 @@ HEADER_FLAGS = {
     "p": "dont-inhibit",
 }
 
+# Must agree with the aliases in lib/InputNormalizer.js: the keycode map is
+# indexed by this function's output and looked up with canonicalKey(), so the
+# output has to be a fixed point of that function. tests/fixtures/
+# canonical-keys.js is the shared corpus that holds both sides to it.
 KEY_ALIASES = {
     "comma": ",",
     "period": ".",
@@ -68,8 +72,13 @@ KEY_ALIASES = {
     "grave": "`",
     "return": "RETURN",
     "enter": "RETURN",
+    "ret": "RETURN",
     "space": "SPACE",
     "escape": "ESCAPE",
+    "esc": "ESCAPE",
+    "control": "CTRL",
+    "meta": "SUPER",
+    "win": "SUPER",
 }
 
 # The keymap Hyprland resolves keysym binds against. It compiles the global
@@ -102,6 +111,7 @@ MAX_KEYCODE_MAP_BYTES = 4 * 1024
 XKB_CONTEXT_NO_DEFAULT_INCLUDES = 1
 XKB_KEYSYM_CASE_INSENSITIVE = 1
 XKB_KEYMAP_FORMAT_TEXT_V2 = 2
+DEVICE_KEYBOARD = re.compile(r"^\s*Keyboard at ", re.MULTILINE)
 DEVICE_RULES = re.compile(
     r'rules:\s*r\s*"([^"]*)",\s*m\s*"([^"]*)",\s*l\s*"([^"]*)",'
     r'\s*v\s*"([^"]*)",\s*o\s*"([^"]*)"'
@@ -349,7 +359,10 @@ def canonical_key(value: str) -> tuple[str, int, str]:
         code = bounded_int(code, 0, MAX_KEYCODE, "keycode")
         return PHYSICAL_FALLBACKS.get(code, ""), code, "physical"
     alias = KEY_ALIASES.get(key.lower(), key)
-    return alias.upper() if len(alias) > 1 else alias, 0, "logical"
+    # Upper-cased whatever the length: lib/InputNormalizer.js canonicalKey()
+    # upper-cases single characters too, and the keycode map is looked up with
+    # its output. A "q" here against a "Q" there loses the binding entirely.
+    return alias.upper(), 0, "logical"
 
 
 def flags_for(block: dict[str, str]) -> list[str]:
@@ -535,7 +548,9 @@ def user_xkb_override_present() -> bool:
 
 def devices_follow_global(raw_devices: str, rmlvo: tuple[str, ...]) -> bool:
     matches = DEVICE_RULES.findall(raw_devices)
-    if not matches:
+    # A keyboard whose rule line is missing or unparsed would otherwise be
+    # skipped silently, and the keyboards that did parse would answer for it.
+    if not matches or len(matches) != len(DEVICE_KEYBOARD.findall(raw_devices)):
         return False
     # The device line prints r, m, l, v, o in that order.
     return all(tuple(match) == rmlvo for match in matches)
@@ -741,8 +756,12 @@ def keycode_map(
 ) -> dict[str, list[int]]:
     """Keycodes accepted for each canonical key name used by the bindings.
 
-    Indexed by canonical_key()'s output so the QML side can look up
-    ``binding.key`` directly without carrying raw keysym names in the schema.
+    Indexed by canonical_key()'s output, which the consumer reproduces by
+    calling canonicalKey() on the binding's key. The two must agree exactly,
+    so a key spelled one way here and another way there is not merely
+    cosmetic: it loses the binding. tests/qml/tst_algorithms.qml compares the
+    two implementations over a shared corpus.
+
     A name absent from the result is a determinate answer - nothing on this
     layout produces it, so Hyprland would not fire the bind either.
 
