@@ -117,7 +117,7 @@ base keysym 相同的多个 keycode 全部都能触发同一条绑定。
 | `input:kb_file` 已设置 | 降级 | 复现需要读取用户配置目录下的任意路径，越过 §01 边界 |
 | 存在 `~/.xkb` 或 `~/.config/xkb` | 降级 | Hyprland 会加载这些覆盖，helper 不读取用户可写内容，两边 keymap 必然分歧 |
 | RMLVO 字符串未通过字符校验 | 降级 | 见 5.4，用户配置串不得未经校验进入解析文件的 API |
-| `resolve_binds_by_sym` 为 true 且多键盘 rules 或活动 group 不一致 | 降级 | Qt 事件不携带来源设备，无法确定该用哪一个 |
+| `resolve_binds_by_sym` 为 true，且并非「全部键盘沿用全局布局的单布局」情形 | 降级 | 该组合需要多布局加手动打开一个默认关闭的开关，极其罕见，不值得为其保留一条完整分支 |
 | `libxkbcommon` 不可加载或 keymap 编译失败 | 降级 | 无数据 |
 
 降级时行为与今天**完全一致**，不产生任何回归。用户不会变得更糟，只是这一类缺陷未被修复。
@@ -150,36 +150,42 @@ getoption input:resolve_binds_by_sym"
 输出为逐行 JSON 对象（非数组），逐条解析。`kb_file` 未设置时返回哨兵串 `[[EMPTY]]`，
 与源码的 `STRVAL_EMPTY` 判断一致。
 
-per-device rules 与活动 group 取自 helper 已经获取的 `hyprctl devices`：
+per-device rules 取自 helper 已经获取的 `hyprctl devices`，仅用于与全局值比对：
 
 ```
 rules: r "", m "", l "us", v "", o "compose:caps,shift:both_capslock_cancel"
-active layout index: 0
 ```
 
 ### 5.3 producer · 选定 keymap 来源
 
-镜像 `KeybindManager.cpp` 的分支，但凡需要读取用户可写内容即降级：
+只有一条权威路径：**全局 RMLVO，layout group 0**。凡是不能确认 Hyprland 用的就是这一份的，
+一律降级。
 
 ```
-kb_file 非 [[EMPTY]]                   -> 降级（source = none）
-用户 XKB 覆盖目录存在                   -> 降级（source = none）
+kb_file 非 [[EMPTY]]                 -> 降级
+用户 XKB 覆盖目录存在                 -> 降级
+全局 RMLVO 未通过字符校验             -> 降级
+编译失败                             -> 降级
 
-resolve_binds_by_sym == false:
-    全局 RMLVO 通过字符校验             -> source = global-rmlvo, group = 0
-    否则                               -> 降级
-
+resolve_binds_by_sym == false        -> 权威（group 0）
 resolve_binds_by_sym == true:
-    全部键盘的 rules 五元组不一致       -> 降级
-    编译后 num_layouts == 1            -> source = per-device, group = 0
-    否则全部键盘的活动 index 不一致     -> 降级
-    否则                               -> source = per-device, group = 活动 index
+    全部键盘的 rules 五元组等于全局 RMLVO，且 num_layouts == 1  -> 权威（group 0）
+    否则                                                      -> 降级
 ```
 
-`num_layouts == 1` 时活动 group 恒为 0，标志位对结果无影响——单布局用户因此始终落在权威模式。
+`resolve_binds_by_sym` 为 true 时 Hyprland 改用 per-keyboard keymap 与活动 group。
+只在**全部键盘沿用全局布局且只有一个 group** 时，那份 keymap 与全局 RMLVO 逐位相同、
+活动 group 恒为 0，两条路径重合，可安全按权威处理；其余情形一律降级。
 
-用户 XKB 覆盖目录的存在性检查经 `pwd.getpwuid(os.getuid()).pw_dir` 取得家目录，
-不依赖被清空的环境变量；只做 `os.path.exists()`，不打开、不读取。
+**刻意不实现 per-device 多 group 分支。** 触发它需要同时满足：配置了多个布局，
+并且手动打开了一个默认关闭的开关。为此保留完整分支需要解析每个键盘的活动 layout index、
+按 group 建表、并处理多键盘不一致——数十行代码与一整组测试，服务的用户群极小。
+降级后这些用户得到今天的行为，不会变差。
+
+`hyprctl devices` 在此只用于比对 rules 五元组是否等于全局值，不再解析活动 layout index。
+
+用户 XKB 覆盖目录只做存在性检查，经 `pwd.getpwuid(os.getuid()).pw_dir` 取得家目录，
+不依赖被清空的环境变量；不打开、不读取。
 
 ### 5.4 producer · 编译 keymap
 
@@ -269,7 +275,7 @@ libxkbcommon 会把编译错误写入 stderr。helper 由 `bounded-relay` 以
 `write_stream()` 的 header 增加两个字段：
 
 - `keycodeMap`：上表；降级时为 `{}`。
-- `keymapSource`：`"global-rmlvo" | "per-device" | "none"`，
+- `keymapSource`：`"global-rmlvo" | "none"`，
   供测试与诊断使用；`"none"` 即降级模式。
 
 早期草案曾自我约束"不改 schema"。该约束会把设计逼成 keysym → keycode 的一对一解析，
@@ -286,7 +292,7 @@ header 校验新增两个字段，遵循加固方案 04 的原型安全要求：
 - `keycodeMap` 必须是对象且非数组；条目 ≤ 256；键为字符串、长度 ≤ 128，
   拒绝 `__proto__` / `constructor` / `prototype`；值为数组、长度 ≤ 16，
   元素经 `safeInteger(v, 0, 65535)` 校验；以 `Object.create(null)` 重建，不保留原对象。
-- `keymapSource` 必须是上述三个字面量之一。
+- `keymapSource` 必须是上述两个字面量之一。
 - 违反任一条时**丢弃整张表并置 `keymapSource` 为 `"none"`**（即降级），不使整条快照失败。
 
 新增 `property var keycodeMap: ({})` 与 `property string keymapSource: "none"`，
@@ -384,11 +390,10 @@ Keycade 现在就以 `matchMode: "physical"` 精确比较键码训练它们，�
 - `resolve_binds_by_sym=false` + 无 `kb_file` → `keymapSource == "global-rmlvo"`，group 0。
 - `kb_file` 已设置（任意路径形式）→ `"none"`。
 - 家目录存在 `.xkb` 或 `.config/xkb` → `"none"`（临时家目录 + `pwd` 打桩）。
-- `resolve_binds_by_sym=true` + 单布局（`num_layouts==1`）→ `"per-device"`，group 0，
+- `resolve_binds_by_sym=true` + 全部键盘沿用全局布局 + `num_layouts==1` → `"global-rmlvo"`，
   **不因该标志降级**。
-- `resolve_binds_by_sym=true` + 多 group + 全部键盘活动 index 一致 → `"per-device"`，使用该 index。
-- `resolve_binds_by_sym=true` + 键盘 rules 不一致 → `"none"`。
-- `resolve_binds_by_sym=true` + 多 group + 活动 index 不一致 → `"none"`。
+- `resolve_binds_by_sym=true` + 任一键盘 rules 与全局不同 → `"none"`。
+- `resolve_binds_by_sym=true` + `num_layouts > 1` → `"none"`。
 - 全局 `kb_options` 参与编译：`compose:caps` 生效时 CapsLock 的 base keysym 随之改变。
 
 ### 8.2 编译与 ABI
@@ -423,7 +428,7 @@ Keycade 现在就以 `matchMode: "physical"` 精确比较键码训练它们，�
 
 - `keycodeMap` 缺失 / 非对象 / 数组 / 超量 / 非法元素 / 含 `__proto__` 时整张表被丢弃，
   `keymapSource` 置 `"none"`，快照其余部分照常采纳。
-- `keymapSource` 非三个字面量之一时同样降级。
+- `keymapSource` 非两个字面量之一时同样降级。
 - 采纳后的表以 `Object.create(null)` 构建，`keycodeMap["__proto__"]` 不可达。
 - `refresh()` 重置、`settle()` 原子采纳。
 
@@ -456,7 +461,8 @@ Keycade 现在就以 `matchMode: "physical"` 精确比较键码训练它们，�
   小键盘减号不再被判为主键区减号（成员 4 修复确认）。
 - `dev/InputProbe.qml` 按逗号键，确认 `nativeScanCode` 为 59 而非 51。
 - `hyprctl keyword input:kb_layout de` 临时切换复现 issue 场景并验证，验证后立即恢复。
-- 切换 `input:resolve_binds_by_sym` 为 true，确认单布局下仍为权威模式。
+- 切换 `input:resolve_binds_by_sym` 为 true，确认单布局下仍为权威模式；
+  临时改为多布局后确认降级且判定退回改动前行为。
 
 ## 九 · 证据清单
 
@@ -557,7 +563,9 @@ shell 命令序列逐条扫描。实施时这三个文件（以及根 README 的
 
 ### 10.3 人工评审：不重开任何一条旧账
 
-`docs/hardening-plan.md` 记录了六项已接受的评审结论。逐条核对本方案：
+两轮人工评审共 8 条结论已固化为 [`docs/review-invariants.md`](review-invariants.md) 的 R1–R8，
+本方案的逐条复核表见该文档「当前方案的逐条复核」一节，**结论为 8 条全部满足，R7 相对现状还有改善**。
+此处只摘录第一轮六条的核对结果：
 
 | 旧评审项 | 是否重开 | 依据 |
 | --- | --- | --- |
