@@ -73,26 +73,47 @@ Item {
   // session Hyprland was started in names an XKB source of its own. Report it
   // as a flag rather than forwarding the variables: an overridden search path
   // means the helper cannot reproduce the compositor's keymap.
+  // Everything libxkbcommon reads when it assembles a keymap. The first four
+  // steer the include path; the rest supply the default rule names, which
+  // Hyprland picks up wherever its own input:kb_* option is empty.
   readonly property var xkbEnvironmentKeys: [
     "XKB_CONFIG_ROOT", "XKB_CONFIG_EXTRA_PATH",
-    "XKB_CONFIG_VERSIONED_EXTENSIONS_PATH", "XKB_CONFIG_UNVERSIONED_EXTENSIONS_PATH"
+    "XKB_CONFIG_VERSIONED_EXTENSIONS_PATH", "XKB_CONFIG_UNVERSIONED_EXTENSIONS_PATH",
+    "XKB_DEFAULT_RULES", "XKB_DEFAULT_MODEL", "XKB_DEFAULT_LAYOUT",
+    "XKB_DEFAULT_VARIANT", "XKB_DEFAULT_OPTIONS"
   ]
+  readonly property int maxSessionHomeChars: 4096
 
   function xkbEnvironmentOverridden() {
     for (var i = 0; i < root.xkbEnvironmentKeys.length; i++) {
-      if (Quickshell.env(root.xkbEnvironmentKeys[i])) return true
+      // Presence, not truthiness: an empty XKB_CONFIG_ROOT leaves the default
+      // include path empty, and Quickshell.env() returns null only when the
+      // variable is unset.
+      if (Quickshell.env(root.xkbEnvironmentKeys[i]) !== null) return true
     }
-    var home = String(Quickshell.env("HOME") || "")
-    var configHome = String(Quickshell.env("XDG_CONFIG_HOME") || "")
-    if (!configHome) return false
-    return !home || configHome !== home + "/.config"
+    var configHome = Quickshell.env("XDG_CONFIG_HOME")
+    if (configHome === null) return !root.sessionHome()
+    var home = Quickshell.env("HOME")
+    if (home === null || String(configHome) !== String(home) + "/.config") return true
+    return !root.sessionHome()
   }
 
   // Compared against the passwd home inside the helper, never used as a path:
   // the helper looks for XKB overrides under the passwd home, so a session
   // running with a different HOME would have them searched somewhere else.
+  // Anything that is not a plain absolute path is reported as an override.
+  function sessionHome() {
+    var home = Quickshell.env("HOME")
+    if (home === null) return ""
+    var value = String(home)
+    if (!value.length || value.length > root.maxSessionHomeChars || value.charAt(0) !== "/")
+      return ""
+    return /[\u0000-\u001f\u007f]/.test(value) ? "" : value
+  }
+
+  // One token, so a value that looks like an option cannot be parsed as one.
   function sessionHomeArguments() {
-    return ["--session-home", String(Quickshell.env("HOME") || "")]
+    return ["--session-home=" + root.sessionHome()]
   }
 
   // Only what the helper needs to reach the compositor socket.

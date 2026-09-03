@@ -28,16 +28,27 @@ else
   runtime_dir=$test_root/runtime
 fi
 
-output=$(
-  KEYCADE_SMOKE_EXPECT_LIVE="$expect_live" \
-  HYPRLAND_INSTANCE_SIGNATURE="${HYPRLAND_INSTANCE_SIGNATURE:-}" \
-  XDG_RUNTIME_DIR="$runtime_dir" \
-  QT_QPA_PLATFORM=offscreen \
-  QT_QPA_PLATFORMTHEME= \
-  QT_STYLE_OVERRIDE=Fusion \
-  timeout 10s quickshell --no-color --path "$test_root/config/shell.qml" 2>&1
-)
+run_smoke() {
+  env "$@" \
+    KEYCADE_SMOKE_EXPECT_LIVE="$expect_live" \
+    HYPRLAND_INSTANCE_SIGNATURE="${HYPRLAND_INSTANCE_SIGNATURE:-}" \
+    XDG_RUNTIME_DIR="$runtime_dir" \
+    QT_QPA_PLATFORM=offscreen \
+    QT_QPA_PLATFORMTHEME= \
+    QT_STYLE_OVERRIDE=Fusion \
+    timeout 10s quickshell --no-color --path "$test_root/config/shell.qml" 2>&1
+}
+
+output=$(run_smoke KEYCADE_SMOKE_EXPECT_DEGRADED=0)
 grep -Fq -- "KEYBIND_SOURCE_SMOKE_OK" <<<"$output"
+
+# A session that names an XKB source of its own compiles a different keymap
+# than this helper would, so the collection must fall back rather than publish
+# one. Only meaningful against a live compositor.
+if [[ $expect_live == 1 ]]; then
+  output=$(run_smoke KEYCADE_SMOKE_EXPECT_DEGRADED=1 XKB_DEFAULT_LAYOUT=de)
+  grep -Fq -- "KEYBIND_SOURCE_SMOKE_OK" <<<"$output"
+fi
 if grep -Fq -- "KEYBIND_SOURCE_SMOKE_FAILED" <<<"$output"; then
   printf '%s\n' "$output" >&2
   exit 1

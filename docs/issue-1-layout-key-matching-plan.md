@@ -236,11 +236,19 @@ helper 只需要三个变量，把环境降到白名单即可，无需持续追�
 **还有两个 helper 看不见的来源，都由启动方补齐。** helper 的环境由 `KeybindSource` 重建，
 无法得知 Hyprland 启动所处的会话设置了什么：
 
-- 四个 `XKB_CONFIG_*` 变量或非默认 `XDG_CONFIG_HOME` → 传入
-  `--xkb-environment-overridden`，置位即降级。
-- 会话 `HOME` → 传入 `--session-home`，helper 与 `pwd` 的 home 比对，
-  不一致即降级。helper 在 passwd home 下查找 XKB 覆盖目录，会话 HOME 不同则查错了地方。
-  该值**只做比较，从不当作路径使用**；缺失同样降级。
+- **九个变量**中任一存在，或 `XDG_CONFIG_HOME` 非默认值 → 传入
+  `--xkb-environment-overridden`，置位即降级：
+  - 四个路径变量 `XKB_CONFIG_ROOT` / `XKB_CONFIG_EXTRA_PATH` /
+    `XKB_CONFIG_VERSIONED_EXTENSIONS_PATH` / `XKB_CONFIG_UNVERSIONED_EXTENSIONS_PATH`；
+  - 五个默认 RMLVO 变量 `XKB_DEFAULT_RULES` / `MODEL` / `LAYOUT` / `VARIANT` / `OPTIONS`。
+    Hyprland 的 `input:kb_*` 为空时由它们补位，实测 `XKB_DEFAULT_LAYOUT=de` 会把
+    kc61 的 base keysym 从 `slash` 变成 `minus`。
+- 判定用**存在性而非真值**：`Quickshell.env()` 未设置返回 `null`、设置为空返回 `""`（falsy），
+  而实测 `XKB_CONFIG_ROOT=""` 会让默认 include path 变成空列表。
+- 会话 `HOME` → 以 `--session-home=<值>` 单 token 传入（避免形似选项的值产生解析歧义），
+  helper 与 `pwd` 的 home 比对，不一致即降级。helper 在 passwd home 下查找 XKB 覆盖目录，
+  会话 HOME 不同则查错了地方。该值**只做比较，从不当作路径使用**，两侧独立校验：
+  必须是绝对路径、长度 ≤ 4096、不含控制字符，缺失或不合格一律视为降级。
 
 编译：优先 `xkb_keymap_new_from_names2(ctx, &names, XKB_KEYMAP_FORMAT_TEXT_V2, 0)` 以对齐
 Hyprland；该符号自 libxkbcommon **1.11.0** 起提供，`getattr` 探测失败时回退
@@ -445,7 +453,13 @@ Keycade 现在就以 `matchMode: "physical"` 精确比较键码训练它们，�
   子进程实测设置 `XKB_CONFIG_VERSIONED_EXTENSIONS_PATH` /
   `XKB_CONFIG_UNVERSIONED_EXTENSIONS_PATH` 不影响结果。
 - 源码中不出现硬编码的 `/usr/share/X11/xkb`。
-- `--session-home` 与 `pwd` home 不一致，或该参数缺失时降级，且不再调用 `hyprctl getoption`。
+- `--session-home` 与 `pwd` home 不一致，或为非绝对路径 / 超长 / 含控制字符 / 缺失时降级，
+  且不再调用 `hyprctl getoption`。
+- `pwd` 无当前 uid 条目（`KeyError`）时降级，不得让整份快照失败。
+- 九个 XKB 环境变量中任一**存在**（含空值）即报告 override；
+  smoke test 以 `XKB_DEFAULT_LAYOUT=de` 实跑一遍确认降级。
+- `resolve_by_sym()` 单独可测：`{"str":"true"}` / `{"bool":1}` / `{"bool":null}` / 缺失
+  一律抛错，不依赖 keymap 是否编译成功。
 - keymap 的 keycode 范围 `max < min` 或 `max > 65535` 时抛错降级，**不得钳制**。
 - 枚举出的 include path 逐项校验：出现非 root 属主或组/全局可写目录（如 `/tmp`）时降级；
   路径数为 0 时降级。
@@ -540,6 +554,9 @@ Keycade 现在就以 `matchMode: "physical"` 精确比较键码训练它们，�
 | `re.match(r"^...$", "us\\n")` 为真，`fullmatch` 为假 | 实测 |
 | `xkb_keysym_from_name("enter", CI)` 为 NoSymbol，而 `enter`/`return` 同归一为 `RETURN` | 实测 |
 | `XKB_CONFIG_VERSIONED_EXTENSIONS_PATH` / `..._UNVERSIONED_...` 同样能注入 include path | 实测 + `xkbcommon.h` |
+| `XKB_DEFAULT_LAYOUT=de` 使 kc61 base 由 `slash` 变 `minus`；`XKB_DEFAULT_RULES` 可致编译失败 | 实测 + `xkbcommon.h:784` |
+| `XKB_CONFIG_ROOT=""` 使默认 include path 变为空列表 | 实测 |
+| `Quickshell.env()` 未设置返回 `null`、设置为空返回 `""` | quickshell 实跑 |
 | Omarchy 有 59 条 physical 绑定，`unreachable-on-layout` 不作用于它们，权威空表清不空训练内容 | 实测 |
 | `kb_layout="/etc/passwd"` 会使 libxkbcommon 真的打开并解析该文件（编译失败，无泄漏） | 实测 |
 | 相对路径穿越被 include path 挡住，超长名字被库的 4096 长度检查挡住，非法 `kb_options` 被忽略 | 实测 |

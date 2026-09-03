@@ -139,6 +139,13 @@ ShellRoot {
                      "malformed keycode map " + i + " was adopted or failed the snapshot")
       }
 
+      // The session HOME is only forwarded when it is a plain absolute path,
+      // as one token so a value shaped like an option cannot be parsed as one.
+      var homeArguments = source.sessionHomeArguments()
+      root.require(homeArguments.length === 1
+                   && homeArguments[0].indexOf("--session-home=") === 0,
+                   "session home was not passed as a single token")
+
       // A helper-reported error line surfaces as a failure.
       root.reset()
       source.acceptLine(JSON.stringify({ schemaVersion: 1, type: "error", error: "boom" }))
@@ -164,10 +171,17 @@ ShellRoot {
         root.require(source.error === "", "live helper run failed: " + source.error)
         root.require(source.bindings.length > 0, "live helper run produced no bindings")
         root.require(/^[0-9a-f]{64}$/.test(source.fingerprint), "live run produced no fingerprint")
-        // A compositor is reachable, so the helper should have reproduced its
-        // bind keymap rather than degrading.
-        root.require(source.keymapAuthoritative, "live helper run produced no keymap")
-        root.require(Object.keys(source.keycodeMap).length > 0, "live keycode map was empty")
+        if (Quickshell.env("KEYCADE_SMOKE_EXPECT_DEGRADED") === "1") {
+          // The session names an XKB source of its own, so the compositor's
+          // keymap cannot be reproduced and judging must fall back.
+          root.require(!source.keymapAuthoritative,
+                       "an overridden XKB environment was not reported")
+          root.require(Object.keys(source.keycodeMap).length === 0,
+                       "a keycode map was published for an overridden environment")
+        } else {
+          root.require(source.keymapAuthoritative, "live helper run produced no keymap")
+          root.require(Object.keys(source.keycodeMap).length > 0, "live keycode map was empty")
+        }
       } else {
         root.require(!source.loading, "live helper run never settled")
       }
