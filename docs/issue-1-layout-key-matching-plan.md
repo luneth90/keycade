@@ -107,21 +107,24 @@ base keysym 相同的多个 keycode 全部都能触发同一条绑定。
 无法复现 keymap 时，行为与今天**完全一致**（逻辑分支），不产生任何回归。
 用户不会变得更糟，只是这一类缺陷未被修复。
 
-### 降级面只剩两条
+### 降级面
 
-原则是**复现 Hyprland 的输入源，而不是绕过它**。因此下列情况不再降级：
+原则是**只消费 hyprctl 的运行时输出与系统只读的 XKB 数据**，与 `docs/hardening-plan.md` §01
+已公布的边界保持一致。任何需要读取用户可写内容才能复现的配置，一律降级而不猜测：
 
-| 情况 | 处理 |
-| --- | --- |
-| `kb_file` 已设置 | 按 `bin/state-store` 同款纪律读取后编译。Hyprland 本就在编译该文件，不构成新的信任边界 |
-| 存在 `~/.xkb` 或 `~/.config/xkb` | 显式构造 include path 复现 libxkbcommon 的搜索序，不依赖被清空的环境变量 |
-| `resolve_binds_by_sym` 为 true | 改用 per-device rules 与活动 group，仅在键盘之间不一致时才降级 |
+| 情况 | 处理 | 理由 |
+| --- | --- | --- |
+| `input:kb_file` 已设置 | 降级 | 复现需要读取用户配置目录下的任意路径，越过 §01 边界 |
+| 存在 `~/.xkb` 或 `~/.config/xkb` | 降级 | Hyprland 会加载这些覆盖，helper 不读取用户可写内容，两边 keymap 必然分歧 |
+| RMLVO 字符串未通过字符校验 | 降级 | 见 5.4，用户配置串不得未经校验进入解析文件的 API |
+| `resolve_binds_by_sym` 为 true 且多键盘 rules 或活动 group 不一致 | 降级 | Qt 事件不携带来源设备，无法确定该用哪一个 |
+| `libxkbcommon` 不可加载或 keymap 编译失败 | 降级 | 无数据 |
 
-真正无法判定的只剩两条：
+降级时行为与今天**完全一致**，不产生任何回归。用户不会变得更糟，只是这一类缺陷未被修复。
 
-- `libxkbcommon` 不可加载，或 keymap 编译失败 —— 无数据。
-- `resolve_binds_by_sym` 为 true 且多个键盘的 rules 或活动 group 不一致 ——
-  Qt 事件不携带来源设备，Keycade 无法知道该用哪一个。
+前两条对应的用户占比很小：issue #1 报告的场景与绝大多数用户使用纯 `input:kb_layout`，
+落在权威模式。用覆盖率换取"不读取任何用户可写内容"，是本方案有意做出的取舍——
+详见第十节。
 
 ## 五 · 实现
 
@@ -131,7 +134,8 @@ base keysym 相同的多个 keycode 全部都能触发同一条绑定。
 - ctypes 只在**短命的 helper 子进程**中执行，不在长驻的 QML 进程内；该子进程由
   `bounded-relay` 施加字节、deadline 与进程组约束，异常经既有 exit-code 路径收敛。
 - 不改变 `matchMode`，不改变 `bindingId()` / `chordId()` 的取值，学习进度完全保留。
-- 读取的用户文件仅限 `input:kb_file` 指向的绝对路径，且必须通过属主与类型检查。
+- **不读取任何用户可写内容**：只消费 `hyprctl` 的运行时输出，以及 root 属主的系统 XKB 数据。
+- 来自用户配置的字符串（RMLVO）在进入 libxkbcommon 之前必须通过字符白名单校验。
 
 ### 5.2 producer · 取得 keymap 描述
 
@@ -155,13 +159,15 @@ active layout index: 0
 
 ### 5.3 producer · 选定 keymap 来源
 
-镜像 `KeybindManager.cpp` 的分支：
+镜像 `KeybindManager.cpp` 的分支，但凡需要读取用户可写内容即降级：
 
 ```
+kb_file 非 [[EMPTY]]                   -> 降级（source = none）
+用户 XKB 覆盖目录存在                   -> 降级（source = none）
+
 resolve_binds_by_sym == false:
-    kb_file 非 [[EMPTY]] 且为绝对路径  -> source = global-file, group = 0
-    kb_file 非 [[EMPTY]] 但为相对路径  -> 降级（Hyprland 相对于配置文件路径解析，helper 无法可靠取得）
-    否则                               -> source = global-rmlvo, group = 0
+    全局 RMLVO 通过字符校验             -> source = global-rmlvo, group = 0
+    否则                               -> 降级
 
 resolve_binds_by_sym == true:
     全部键盘的 rules 五元组不一致       -> 降级
@@ -172,35 +178,49 @@ resolve_binds_by_sym == true:
 
 `num_layouts == 1` 时活动 group 恒为 0，标志位对结果无影响——单布局用户因此始终落在权威模式。
 
+用户 XKB 覆盖目录的存在性检查经 `pwd.getpwuid(os.getuid()).pw_dir` 取得家目录，
+不依赖被清空的环境变量；只做 `os.path.exists()`，不打开、不读取。
+
 ### 5.4 producer · 编译 keymap
 
 通过 ctypes 加载 libxkbcommon。**按绝对路径 `/usr/lib/libxkbcommon.so.0` 加载，并套用
 `trusted_command()` 的同款检查**（普通文件、root 属主、非组或全局可写），
 与本项目"不经 ambient 解析"的既有原则一致。所有 `argtypes` / `restype` 显式声明。
 
-include path 显式构造，不依赖环境变量（helper 环境被清空，`HOME` 不存在）：
+**RMLVO 字符校验（必需）。** `kb_rules` / `kb_model` / `kb_layout` / `kb_variant` / `kb_options`
+全部来自用户的 Hyprland 配置，而 `xkb_keymap_new_from_names*()` 会按名字解析文件。
+实测 `kb_layout = "/etc/passwd"` 会使 libxkbcommon **真的打开并解析 `/etc/passwd`**
+（编译随即失败，无内容泄漏，但这是一个由配置串驱动的任意文件打开原语）。
+因此传入前逐项校验：
+
+- 长度 ≤ 128。
+- 字符集限 `[A-Za-z0-9_,:.+()-]`。
+- 显式拒绝 `/` 与 `..`。
+- 任一项不通过即降级，不做截断或清洗。
+
+Hyprland 的真实取值全部通过：`us`、`us,de`、`pc105`、`compose:caps,shift:both_capslock_cancel`。
+实测相对路径穿越被 include path 限制挡住，超长名字被库自身的 4096 路径长度检查挡住，
+`kb_options` 中的非法项被库忽略——**只有绝对路径会真正落到文件系统上**，故校验以拒绝 `/` 为核心。
+
+include path 只包含系统只读数据：
 
 ```
 ctx = xkb_context_new(XKB_CONTEXT_NO_DEFAULT_INCLUDES)
-home = pwd.getpwuid(os.getuid()).pw_dir
-xkb_context_include_path_append(ctx, home + "/.config/xkb")   # 返回 0 表示目录不存在，属正常
-xkb_context_include_path_append(ctx, home + "/.xkb")
-xkb_context_include_path_append_default(ctx)                  # 必须由库添加系统路径
+xkb_context_include_path_append_default(ctx)   # 必须由库添加系统路径
 ```
 
 **系统路径不得硬编码。** 本机实测 `append_default()` 加入的是 `/usr/share/xkeyboard-config-2`，
 而非常被假定的 `/usr/share/X11/xkb`；写死会得到错误或空的 keymap。
+不追加任何用户目录——用户 XKB 覆盖目录的存在已在 5.3 触发降级。
 
-编译：
+编译：优先 `xkb_keymap_new_from_names2(ctx, &names, XKB_KEYMAP_FORMAT_TEXT_V2, 0)` 以对齐
+Hyprland；该符号自 libxkbcommon **1.11.0** 起提供，`getattr` 探测失败时回退
+`xkb_keymap_new_from_names`（自 0.5.0 起始终存在）。
 
-- RMLVO：优先 `xkb_keymap_new_from_names2(ctx, &names, XKB_KEYMAP_FORMAT_TEXT_V2, 0)` 以对齐 Hyprland；
-  该符号自 libxkbcommon **1.11.0** 起提供，`getattr` 探测失败时回退
-  `xkb_keymap_new_from_names`（自 0.5.0 起始终存在）。
-- kb_file：先以 `O_RDONLY | O_NOFOLLOW | O_CLOEXEC` 打开，`fstat` 后要求
-  `S_ISREG`、`st_uid == os.getuid()`、`st_size <= 1 MiB`，读入后
-  `xkb_keymap_new_from_string()`。不满足任一条件即降级。
+返回 NULL 即降级。成功与失败分支都必须 `xkb_keymap_unref` / `xkb_context_unref`。
 
-任何一步返回 NULL 即降级。成功与失败分支都必须 `xkb_keymap_unref` / `xkb_context_unref`。
+libxkbcommon 会把编译错误写入 stderr。helper 由 `bounded-relay` 以
+`stderr=subprocess.DEVNULL` 启动，故不会污染输出流，也不会进入 QML。
 
 ### 5.5 producer · 构建 keycode → base keysym
 
@@ -249,7 +269,7 @@ xkb_context_include_path_append_default(ctx)                  # 必须由库添�
 `write_stream()` 的 header 增加两个字段：
 
 - `keycodeMap`：上表；降级时为 `{}`。
-- `keymapSource`：`"global-rmlvo" | "global-file" | "per-device" | "none"`，
+- `keymapSource`：`"global-rmlvo" | "per-device" | "none"`，
   供测试与诊断使用；`"none"` 即降级模式。
 
 早期草案曾自我约束"不改 schema"。该约束会把设计逼成 keysym → keycode 的一对一解析，
@@ -266,7 +286,7 @@ header 校验新增两个字段，遵循加固方案 04 的原型安全要求：
 - `keycodeMap` 必须是对象且非数组；条目 ≤ 256；键为字符串、长度 ≤ 128，
   拒绝 `__proto__` / `constructor` / `prototype`；值为数组、长度 ≤ 16，
   元素经 `safeInteger(v, 0, 65535)` 校验；以 `Object.create(null)` 重建，不保留原对象。
-- `keymapSource` 必须是上述四个字面量之一。
+- `keymapSource` 必须是上述三个字面量之一。
 - 违反任一条时**丢弃整张表并置 `keymapSource` 为 `"none"`**（即降级），不使整条快照失败。
 
 新增 `property var keycodeMap: ({})` 与 `property string keymapSource: "none"`，
@@ -346,23 +366,24 @@ Keycade 现在就以 `matchMode: "physical"` 精确比较键码训练它们，�
 
 | 文件 | 改动 |
 | --- | --- |
-| `bin/keybinds-json` | `hyprctl --batch getoption`、keymap 来源选择、libxkbcommon 绑定与 include path 构造、kb_file 受限读取、raw key sidecar、两个 header 字段 |
+| `bin/keybinds-json` | `hyprctl --batch getoption`、keymap 来源选择、RMLVO 字符校验、libxkbcommon 绑定、raw key sidecar、两个 header 字段 |
 | `lib/KeybindSource.qml` | 校验并采纳 `keycodeMap` 与 `keymapSource`，新增 `keymapAuthoritative` |
 | `lib/InputNormalizer.js` | `matches()` 改为权威 / 降级双模式 |
 | `lib/Eligibility.js` | 新增 `unreachable-on-layout` |
 | `Keycade.qml` | 两处判定调用点与 `Eligibility.filter()` 传入新 options |
-| `tests/test_keybinds_json.py` | 来源选择、include path、kb_file 纪律、sidecar 对齐、ctypes 加载与释放 |
+| `tests/test_keybinds_json.py` | 来源选择、降级条件、RMLVO 校验、sidecar 对齐、ctypes 加载与释放 |
 | `tests/qml/tst_algorithms.qml` | 双模式判定与可达性过滤用例 |
 | `tests/qml/keybind_source_smoke.qml` | 新字段校验与丢弃用例 |
 | `README.md` / `README.zh-CN.md` | 说明按键判定依据物理键位，以及不可达绑定不参与训练 |
+| `docs/hardening-plan.md` | §01 边界清单补入 `hyprctl getoption`，与既有三条同类 |
 
 ## 八 · 验收
 
 ### 8.1 keymap 来源选择
 
 - `resolve_binds_by_sym=false` + 无 `kb_file` → `keymapSource == "global-rmlvo"`，group 0。
-- `resolve_binds_by_sym=false` + 绝对路径 `kb_file` → `"global-file"`。
-- `resolve_binds_by_sym=false` + 相对路径 `kb_file` → `"none"`。
+- `kb_file` 已设置（任意路径形式）→ `"none"`。
+- 家目录存在 `.xkb` 或 `.config/xkb` → `"none"`（临时家目录 + `pwd` 打桩）。
 - `resolve_binds_by_sym=true` + 单布局（`num_layouts==1`）→ `"per-device"`，group 0，
   **不因该标志降级**。
 - `resolve_binds_by_sym=true` + 多 group + 全部键盘活动 index 一致 → `"per-device"`，使用该 index。
@@ -375,10 +396,11 @@ Keycade 现在就以 `matchMode: "physical"` 精确比较键码训练它们，�
 - libxkbcommon 路径检查：非普通文件 / 非 root 属主 / 组或全局可写时拒绝加载并降级。
 - `xkb_keymap_new_from_names2` 不可用时回退成功（模拟 < 1.11.0）。
 - 系统 include path 由 `append_default()` 提供，源码中不出现硬编码的
-  `/usr/share/X11/xkb`。
-- 用户 include 目录不存在时 `include_path_append` 返回 0，不得视为失败。
-- 存在用户 XKB 覆盖目录时能编译出与之一致的 keymap（用临时家目录 + `pwd` 打桩）。
-- `kb_file` 为符号链接 / 非普通文件 / 非当前 uid 属主 / 超过 1 MiB 时降级。
+  `/usr/share/X11/xkb`，且不追加任何用户目录。
+- RMLVO 字符校验：`/etc/passwd`、`../../../etc/passwd`、超长串、含 `/` 或 `..` 的取值
+  一律降级，且**不得**调用 `xkb_keymap_new_from_names*()`。
+- RMLVO 合法取值全部通过：`us`、`us,de`、`pc105`、`compose:caps,shift:both_capslock_cancel`。
+- libxkbcommon 的 stderr 不进入 stdout，也不进入 QML。
 - `xkb_context_new`、`xkb_keymap_new_from_*` 返回 NULL 时降级且不抛异常。
 - 成功与失败分支都完成 `unref`（以计数桩验证）。
 
@@ -401,7 +423,7 @@ Keycade 现在就以 `matchMode: "physical"` 精确比较键码训练它们，�
 
 - `keycodeMap` 缺失 / 非对象 / 数组 / 超量 / 非法元素 / 含 `__proto__` 时整张表被丢弃，
   `keymapSource` 置 `"none"`，快照其余部分照常采纳。
-- `keymapSource` 非四个字面量之一时同样降级。
+- `keymapSource` 非三个字面量之一时同样降级。
 - 采纳后的表以 `Object.create(null)` 构建，`keycodeMap["__proto__"]` 不可达。
 - `refresh()` 重置、`settle()` 原子采纳。
 
@@ -454,6 +476,8 @@ Keycade 现在就以 `matchMode: "physical"` 精确比较键码训练它们，�
 | 多码 base keysym 全为 `XF86*` / `PRINT`，已被 `Eligibility.isDeviceSpecialKey()` 排除 | 实测 + `lib/Eligibility.js:29-31` |
 | Omarchy 有 59 条 `code:` 绑定，证明 xkb 键码单位已在生产中验证 | `hyprctl binds` 实测 |
 | `append_default()` 加入 `/usr/share/xkeyboard-config-2` 而非 `/usr/share/X11/xkb` | 实测 |
+| `kb_layout="/etc/passwd"` 会使 libxkbcommon 真的打开并解析该文件（编译失败，无泄漏） | 实测 |
+| 相对路径穿越被 include path 挡住，超长名字被库的 4096 长度检查挡住，非法 `kb_options` 被忽略 | 实测 |
 | `xkb_keymap_new_from_names2` 自 1.11.0 起提供，其余符号自 0.5.0 起 | `nm -D /usr/lib/libxkbcommon.so.0` |
 | `xkb_keysym_from_name("enter", CI)` 为 NoSymbol | 实测 |
 | `xkb_keysym_from_name("G", CI)` 返回小写 `g` | 实测 |
@@ -531,43 +555,46 @@ shell 命令序列逐条扫描。实施时这三个文件（以及根 README 的
 即 `securityBaselineEligibleForVerifiedListing()` 的最优路径。一旦引入任一能力，
 结果降为 `review-required`——仍可上架，但每次都需要维护者额外确认，摩擦显著增加。
 
-### 10.3 人工评审：真正的风险面
+### 10.3 人工评审：不重开任何一条旧账
 
-自动化基线不构成阻碍，风险集中在人工评审。本方案有三处新增面，逐条预置回答：
+`docs/hardening-plan.md` 记录了六项已接受的评审结论。逐条核对本方案：
 
-**① 编译 `input:kb_file` 指向的用户可写文件。**
-这是新增面中最重的一条。回答：该文件由用户在自己的 Hyprland 配置中指定，**Hyprland 自身正在编译同一份字节**，不构成新的信任边界；读取受 `O_NOFOLLOW`、`S_ISREG`、
-`st_uid == os.getuid()`、`st_size <= 1 MiB` 约束，与 `bin/state-store` 同款纪律；
-解析发生在**短命子进程**内，由 `bounded-relay` 施加字节、deadline 与进程组约束，
-异常经既有 exit-code 路径收敛，不影响长驻的 QML 进程。
+| 旧评审项 | 是否重开 | 依据 |
+| --- | --- | --- |
+| 01 执行用户配置 | 否 | 只消费 hyprctl 输出与 root 属主的系统 XKB 数据；`kb_file` 与用户 XKB 覆盖目录一律降级 |
+| 02 无上限 | 否 | 新增表设 4 KiB / 256 项 / 每项 16 码上限；解析对象为系统只读数据 |
+| 03 路径读写 | 否 | 方案中不存在按用户提供的路径打开文件的代码 |
+| 04 原型污染 | 否 | 新字段按 §04 以 `Object.create(null)` 重建并拒绝危险键 |
+| 05 AutoText | 否 | 无新增 UI 文本；排除计数与既有 `rejected` 一样走 `console.warn` |
+| 06 可替换路径 | 否，且有改善 | 库按绝对路径加绑定可信检查加载，既有 `libc.so.6` 的 soname 加载一并收敛 |
 
-**② 读取用户 XKB 覆盖目录。** 同上论证。**追加硬化**：`~/.config/xkb` 与 `~/.xkb`
-存在但**非当前 uid 属主**或**组/全局可写**时不加入 include path，改为降级。
-目录路径经 `pwd.getpwuid()` 取得，不依赖被清空的环境变量。
+余下三处新增面及预置回答：
 
-**③ 加载 libxkbcommon。** 按绝对路径 `/usr/lib/libxkbcommon.so.0` 加载并套用
-`trusted_command()` 同款检查（普通文件、root 属主、非组或全局可写），
-与本项目"不经 ambient 解析"的既有原则一致；既有 `libc.so.6` 的 soname 加载一并收敛为绝对路径。
+**① 加载 libxkbcommon。** 绝对路径 `/usr/lib/libxkbcommon.so.0` + `trusted_command()` 同款检查；
+执行位置在**短命子进程**内，由 `bounded-relay` 施加字节、deadline 与进程组约束，
+异常经既有 exit-code 路径收敛，不触及长驻的 QML 进程。
 
-**④ 新增 schema 字段。** 按加固方案 04 做原型安全校验：`Object.create(null)` 重建、
-拒绝 `__proto__` / `constructor` / `prototype`、条目与数值全设限、违规丢弃而非整体失败。
-
-**⑤ 新增一次子进程。** 一次 `hyprctl --batch`，走既有 `trusted_command()` 与有界
+**② 新增一次子进程。** 一次 `hyprctl --batch`，走既有 `trusted_command()` 与有界
 `command_output()`，命令串为固定字面量、无任何插值。
+**须同步在 `hardening-plan.md` §01 边界清单补入 `hyprctl getoption`** ——
+该清单当前只列了三条 hyprctl 命令，不补会被视为未申报的新增。
 
-### 10.4 残留风险与退路
+**③ 新增 schema 字段。** 见 5.9 的校验规则，违规丢弃而非整体失败。
 
-**风险：** 评审员可能持"加固 helper 不得编译任何用户可写内容"的立场，
-从而反对 ① 与 ②——即使 Hyprland 已在做同样的事。
+### 10.4 残留风险
 
-**退路：** 把 `kb_file` 与用户 XKB 覆盖目录改回降级处理（即第四节"降级面"表格中的前两行还原）。
-方案其余部分不受影响，覆盖率下降的仅是这两类少数配置；issue #1 报告的场景与绝大多数用户
-仍落在权威模式。**该退路应在提交评审时主动写明**，让评审员知道存在无争议的收敛选项，
-避免整轮被打回。
+**用户配置串进入解析文件的 API。** 这是本方案中唯一仍由用户可控数据驱动的路径。
+实测 `kb_layout = "/etc/passwd"` 会使 libxkbcommon 真的打开并解析该文件——编译随即失败，
+无内容泄漏、无副作用，但性质上是一个由配置串驱动的任意文件打开原语。
+5.4 的字符白名单（长度 ≤ 128、字符集 `[A-Za-z0-9_,:.+()-]`、拒绝 `/` 与 `..`）
+在调用前拦截，且**校验失败即降级，不做截断或清洗**。该风险与缓解措施应在提交评审时主动列出。
 
-**流程风险：** 推送后市场页面显示 `Update unverified`，需重新走
-`verify-plugin.yml` 的 "publish a newer upstream commit" 并等待维护者重新标记
-`approved-and-verified`。此期间用户安装与更新不受影响。
+**覆盖率取舍。** 设了 `input:kb_file` 或拥有自定义 XKB 目录的用户不会得到修复，
+退回今天的行为。这是为守住 §01 边界主动付出的代价，而非疏漏，应在评审说明中写清楚。
+
+**流程。** 推送后市场页面显示 `Update unverified`，需走 `verify-plugin.yml` 的
+"publish a newer upstream commit" 并等待维护者重新标记 `approved-and-verified`。
+此期间用户安装与更新不受影响。
 
 ## 十一 · 验收命令
 
