@@ -186,7 +186,7 @@ R1–R8 来自市场评审。**L1 不是评审结论，是本项目自己付出�
 | R4 原型安全 | 触及 | **守住**。新 schema 字段以 `Object.create(null)` 重建，拒绝三个危险键 |
 | R5 纯文本 | 未触及 | 无新增 UI 文本；排除计数与既有 `rejected` 一样走 `console.warn` |
 | R6 标准安装路径 | 未触及 | 不新增文件，不触及安装、更新、卸载路径 |
-| R7 不经 ambient 解析 | 触及 | **守住且有改善**。libxkbcommon 按绝对路径加载并做可信文件检查；既有 `libc.so.6` 的 soname 加载一并收敛为绝对路径 |
+| R7 不经 ambient 解析 | 触及 | **守住且有改善**。libxkbcommon 按绝对路径加载并做可信文件检查；既有 `libc.so.6` 的 soname 加载一并收敛为绝对路径，并走同一套属主/权限检查——本条第一版只做了绝对路径，合入前的安全评审按本条复核方法发现动态库这一半没跟上，检查失败按既有方式降级（跳过 PDEATHSIG），不改变生命周期设计 |
 | R8 预分配上界与进程树 | 触及 | **守住**。新增的 `hyprctl --batch` 由既有有界 `command_output()` 承载，纳入同一条 `bounded-relay` + `setsid` + `PDEATHSIG` 回收链，不新增独立生命周期 |
 | L1 外部输入清单 | 触及 | **守住**。helper 环境为白名单；启动方的九个 XKB 变量清单锚定 `xkbcommon.h`；两份按键规范化实现由 `tests/fixtures/canonical-keys.js` 共享语料钉住 |
 
