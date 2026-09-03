@@ -460,20 +460,114 @@ Keycade 现在就以 `matchMode: "physical"` 精确比较键码训练它们，�
 | 表体积 us 988 B / de 962 B | 基于本机 239 条绑定实测 |
 | Hyprland 0.56.1 全部 239 条绑定 keycode 均为 0 | `hyprctl -j binds` 实测 |
 | `libxkbcommon.so.0` 为 root 属主、非组或全局可写 | `ls -l` 实测 |
+| 自动化基线规则目录仅五条，均为远程执行/提权，本方案不涉及 | `scripts/security-baseline-policy.mjs` |
+| 扫描器不识别 ctypes / dlopen / 动态库（1473 行检索零命中） | `scripts/security-baseline-analysis.mjs` |
+| `bin/` 下无扩展名文件一律按 shell 解析 | `security-baseline-analysis.mjs:16-23` |
+| `installer` 能力为纯文件名判定 | `security-baseline-analysis.mjs:1334-1338` |
+| 本仓库对全部触发式零命中 | `git grep` 实测 |
 
-## 十 · 安全评审预期
+## 十 · 安全评审预期与风险
 
-新增面全部落在已通过审核的模式内：
+结论以市场仓库 `omacom/omarchy-plugin-marketplace` 的规则源码为准，非推测。
+基线版本 `securityBaselineVersion = "3"`，`enforcementMode = "selective"`。
 
-- ctypes 加载 C 库：当前已上架的 commit 中 `bin/keybinds-json` 与 `bin/bounded-relay`
-  已含 `ctypes.CDLL("libc.so.6")`，自动基线与人工评审均已放行。本方案进一步改用绝对路径加可信文件检查。
-- 新增子进程：一次 `hyprctl --batch`，走既有 `trusted_command()` 与有界 `command_output()`，
-  命令串为固定字面量。
-- 文件读取：`/usr/share/xkeyboard-config-2` 等系统 XKB 数据为只读系统路径；
-  用户 XKB 目录与 `kb_file` 的读取受属主、类型、尺寸与 `O_NOFOLLOW` 约束。
-- 新增 schema 字段：按加固方案 04 做原型安全校验，违规丢弃而非失败。
-- 执行位置：ctypes 只在短命 helper 子进程内，不在长驻 QML 进程内，异常由
-  `bounded-relay` 与 exit-code 路径收敛。
+### 10.1 自动化基线：风险接近零
+
+判定模型（`scripts/security-baseline-policy.mjs`）：
+
+```js
+outcome = findings.length ? "needs-fixes"
+        : capabilities.length ? "review-required"
+        : "passed"
+```
+
+**规则目录只有五条**，全部围绕远程代码执行与提权：`curl-pipe-shell`、`cargo-git-unpinned`、
+`remote-git-execution-unpinned`、`sudoers-dangerous-passwordless-command`、
+`privileged-process-control-from-shared-temp`。本方案一条都不涉及。
+
+**能力目录七项**：`installer`、`package-manager`、`privilege`、`remote-build`、
+`bundled-executable-binary`、`service-management`、`sudoers-modification`。本方案一项都不新增。
+
+**扫描器完全不认识动态库加载。** 对 `security-baseline-analysis.mjs`（1473 行）检索
+`ctypes` / `dlopen` / `CDLL` / `LD_PRELOAD` / `LD_LIBRARY` / `shared object` **零命中**。
+因此加载 libxkbcommon 既不产生 finding 也不产生 capability。既有 `ctypes.CDLL("libc.so.6")`
+在已上架 commit 中通过自动基线，亦为佐证。
+
+### 10.2 实施期必须遵守的扫描器约束
+
+`isShellRuntimePath()`（`security-baseline-analysis.mjs:16-23`）第 20 行：
+
+```js
+if (!basename.includes(".") && /^(?:bin|scripts)\//i.test(normalized)) return true;
+```
+
+**`bin/` 下无扩展名的文件一律按 shell 解析**，与实际语言无关。因此
+`bin/keybinds-json`、`bin/state-store`、`bin/bounded-relay` 的 Python 源码会被当作
+shell 命令序列逐条扫描。实施时这三个文件（以及根 README 的 shell 代码块）中不得出现：
+
+| 字面量 | 触发 | 检测点 |
+| --- | --- | --- |
+| `sudo` / `pkexec` | `privilege` 能力 | `invokesPrivilegeBoundary()` |
+| `systemctl` / `systemd-run` | `service-management` | 正则直接匹配 |
+| `pip install` / `python -m pip install` | `package-manager` | 正则直接匹配 |
+| `pacman` / `paru` / `yay` / `apt` / `cargo install` / `npm install` | `package-manager` | 正则直接匹配 |
+| `git clone` / `git fetch` / `curl` / `wget` | `remote-build` | 配合仓库归属判定 |
+
+整行注释由 `isCommentOnly()` 过滤，行内 `#` 注释在 privilege 检查前由 `stripInlineComment()`
+剥离，但**字符串字面量不会被剥离**。文档中描述这些命令是安全的：`docs/*.md` 既非
+`isShellRuntimePath` 也非根 README，不参与命令提取。
+
+另两条文件级约束：
+
+- `installer` 能力是纯文件名判定：`/(?:^|[-_])(install|installer|setup|uninstall)(?:[-_.]|$)/i`。
+  新增测试文件**不得**命名为 `test_install*.py` 之类。
+- `bundled-executable-binary` 要求 `entry.binary && mode === "100755"`；纯文本 Python 不触发。
+
+实测当前仓库对上述全部触发式**零命中**；规模 57 个文件、最大 178 KB，远低于
+`securitySnapshotFileLimit = 1000` / `securityFileByteLimit = 512 KiB` /
+`securitySnapshotByteLimit = 8 MiB`。
+
+只要遵守上表，结果仍为 `passed`（零 findings、零 capabilities），
+即 `securityBaselineEligibleForVerifiedListing()` 的最优路径。一旦引入任一能力，
+结果降为 `review-required`——仍可上架，但每次都需要维护者额外确认，摩擦显著增加。
+
+### 10.3 人工评审：真正的风险面
+
+自动化基线不构成阻碍，风险集中在人工评审。本方案有三处新增面，逐条预置回答：
+
+**① 编译 `input:kb_file` 指向的用户可写文件。**
+这是新增面中最重的一条。回答：该文件由用户在自己的 Hyprland 配置中指定，**Hyprland 自身正在编译同一份字节**，不构成新的信任边界；读取受 `O_NOFOLLOW`、`S_ISREG`、
+`st_uid == os.getuid()`、`st_size <= 1 MiB` 约束，与 `bin/state-store` 同款纪律；
+解析发生在**短命子进程**内，由 `bounded-relay` 施加字节、deadline 与进程组约束，
+异常经既有 exit-code 路径收敛，不影响长驻的 QML 进程。
+
+**② 读取用户 XKB 覆盖目录。** 同上论证。**追加硬化**：`~/.config/xkb` 与 `~/.xkb`
+存在但**非当前 uid 属主**或**组/全局可写**时不加入 include path，改为降级。
+目录路径经 `pwd.getpwuid()` 取得，不依赖被清空的环境变量。
+
+**③ 加载 libxkbcommon。** 按绝对路径 `/usr/lib/libxkbcommon.so.0` 加载并套用
+`trusted_command()` 同款检查（普通文件、root 属主、非组或全局可写），
+与本项目"不经 ambient 解析"的既有原则一致；既有 `libc.so.6` 的 soname 加载一并收敛为绝对路径。
+
+**④ 新增 schema 字段。** 按加固方案 04 做原型安全校验：`Object.create(null)` 重建、
+拒绝 `__proto__` / `constructor` / `prototype`、条目与数值全设限、违规丢弃而非整体失败。
+
+**⑤ 新增一次子进程。** 一次 `hyprctl --batch`，走既有 `trusted_command()` 与有界
+`command_output()`，命令串为固定字面量、无任何插值。
+
+### 10.4 残留风险与退路
+
+**风险：** 评审员可能持"加固 helper 不得编译任何用户可写内容"的立场，
+从而反对 ① 与 ②——即使 Hyprland 已在做同样的事。
+
+**退路：** 把 `kb_file` 与用户 XKB 覆盖目录改回降级处理（即第四节"降级面"表格中的前两行还原）。
+方案其余部分不受影响，覆盖率下降的仅是这两类少数配置；issue #1 报告的场景与绝大多数用户
+仍落在权威模式。**该退路应在提交评审时主动写明**，让评审员知道存在无争议的收敛选项，
+避免整轮被打回。
+
+**流程风险：** 推送后市场页面显示 `Update unverified`，需重新走
+`verify-plugin.yml` 的 "publish a newer upstream commit" 并等待维护者重新标记
+`approved-and-verified`。此期间用户安装与更新不受影响。
 
 ## 十一 · 验收命令
 
