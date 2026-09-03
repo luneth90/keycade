@@ -129,7 +129,8 @@ class HelperError(RuntimeError):
 
 HYPRCTL_PATH = "/usr/bin/hyprctl"
 # Absolute so no library this keep-loaded path relies on is resolved by the
-# dynamic loader's ambient search.
+# dynamic loader's ambient search, and checked like every other trusted file
+# before it is opened: an absolute path says nothing about who may replace it.
 LIBC_PATH = "/usr/lib/libc.so.6"
 # hyprctl only needs to locate the compositor socket. Everything else is
 # dropped so a child never inherits an attacker-influenced environment.
@@ -141,7 +142,9 @@ def trusted_command(path: str) -> str:
     """Return ``path`` only when it is a root-owned, non-writable executable.
 
     Commands are addressed by absolute path so nothing is resolved through the
-    ambient ``PATH`` of the long-lived shell process that hosts the plugin.
+    ambient ``PATH`` of the long-lived shell process that hosts the plugin. The
+    dynamic libraries this helper loads go through the same check, since an
+    absolute path alone still trusts whoever can write the file behind it.
     """
     try:
         info = os.stat(path)
@@ -175,8 +178,11 @@ def _prepare_child() -> None:
     os.setsid()
     parent = os.getppid()
     try:
-        ctypes.CDLL(LIBC_PATH, use_errno=True).prctl(PR_SET_PDEATHSIG, signal.SIGKILL)
-    except OSError:
+        libc = ctypes.CDLL(trusted_command(LIBC_PATH), use_errno=True)
+        libc.prctl(PR_SET_PDEATHSIG, signal.SIGKILL)
+    except (HelperError, OSError):
+        # Runs after fork, where raising would surface as a spawn failure
+        # instead of the degradation losing the death signal is allowed to be.
         return
     if os.getppid() != parent:
         os._exit(1)

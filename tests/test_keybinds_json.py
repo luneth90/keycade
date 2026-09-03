@@ -569,6 +569,21 @@ class KeymapResolutionTests(unittest.TestCase):
         self.assertIn("xkb_context_include_path_append_default", source)
         self.assertNotIn("xkb_context_include_path_append(", source)
 
+    def test_every_library_load_is_checked_not_just_absolute(self):
+        # R7 covers dynamic libraries, and an absolute path only says where the
+        # file is, not who may replace it. Every CDLL argument in a keep-loaded
+        # path therefore goes through the same root-owned, non-writable check
+        # the commands do.
+        loaders = ("trusted_command(", "_trusted_library(")
+        for script in ("keybinds-json", "bounded-relay", "state-store"):
+            source = (ROOT / "bin" / script).read_text(encoding="utf-8")
+            for index, tail in enumerate(source.split("ctypes.CDLL(")[1:]):
+                with self.subTest(script=script, load=index):
+                    self.assertTrue(
+                        tail.startswith(loaders),
+                        f"{script}: unchecked ctypes.CDLL({tail[:40]}...)",
+                    )
+
     def test_no_library_is_loaded_by_soname(self):
         # R7: keep-loaded paths must not resolve executable code, shared
         # objects included, through the loader's ambient search.

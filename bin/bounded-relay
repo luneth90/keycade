@@ -22,6 +22,7 @@ import json
 import os
 import selectors
 import signal
+import stat
 import subprocess
 import sys
 import time
@@ -30,11 +31,31 @@ from typing import Any
 SCHEMA_VERSION = 1
 PR_SET_PDEATHSIG = 1
 # Absolute so no library this keep-loaded path relies on is resolved by the
-# dynamic loader's ambient search.
+# dynamic loader's ambient search, and checked before it is opened: an absolute
+# path says nothing about who may replace the file behind it.
 LIBC_PATH = "/usr/lib/libc.so.6"
 READ_SIZE = 64 * 1024
 
 _CHILD: subprocess.Popen[bytes] | None = None
+
+
+def _trusted_library(path: str) -> str:
+    """Return ``path`` only when it is a root-owned, non-writable regular file.
+
+    The same check ``keybinds-json`` applies to the commands and libraries it
+    loads, kept here rather than imported so the relay stays a standalone
+    script with no import path of its own.
+    """
+    info = os.stat(path)
+    if not stat.S_ISREG(info.st_mode):
+        raise OSError(f"{path} is not a regular file")
+    if info.st_uid != 0:
+        raise OSError(f"{path} is not owned by root")
+    if info.st_mode & (stat.S_IWGRP | stat.S_IWOTH):
+        raise OSError(f"{path} is group or world writable")
+    if not info.st_mode & stat.S_IXUSR:
+        raise OSError(f"{path} is not executable")
+    return path
 
 
 def _prepare_child() -> None:
@@ -43,7 +64,8 @@ def _prepare_child() -> None:
     os.setsid()
     parent = os.getppid()
     try:
-        ctypes.CDLL(LIBC_PATH, use_errno=True).prctl(PR_SET_PDEATHSIG, signal.SIGKILL)
+        libc = ctypes.CDLL(_trusted_library(LIBC_PATH), use_errno=True)
+        libc.prctl(PR_SET_PDEATHSIG, signal.SIGKILL)
     except OSError:
         return
     if os.getppid() != parent:

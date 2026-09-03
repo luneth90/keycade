@@ -39,6 +39,30 @@ class BoundedRelayTests(unittest.TestCase):
         self.assertNotIn("/usr/bin/env", source)
         self.assertNotIn("shell=True", source)
 
+    def test_untrusted_libc_is_refused(self):
+        # The relay degrades rather than loading a library anyone but root can
+        # replace, so a planted file has to be rejected before the CDLL call.
+        import importlib.machinery
+        import importlib.util
+        import tempfile
+
+        loader = importlib.machinery.SourceFileLoader("relay", str(RELAY))
+        module = importlib.util.module_from_spec(
+            importlib.util.spec_from_loader("relay", loader)
+        )
+        loader.exec_module(module)
+        self.assertEqual(
+            module._trusted_library(module.LIBC_PATH), module.LIBC_PATH
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            planted = Path(directory) / "libc.so.6"
+            planted.write_bytes(b"")
+            planted.chmod(0o777)
+            with self.assertRaises(OSError):
+                module._trusted_library(str(planted))
+            with self.assertRaises(OSError):
+                module._trusted_library(str(Path(directory) / "missing"))
+
     def test_output_within_budget_passes_through_unchanged(self):
         payload = "hello\nworld\n"
         result = self.run_relay(
