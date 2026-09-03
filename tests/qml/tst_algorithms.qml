@@ -149,6 +149,10 @@ TestCase {
     compare(result.eligible[0].key, ",")
   }
 
+  // The one-way union still lives in the normaliser, but no eligible binding
+  // reaches it any more: DELETE is a device-special key, so a DELETE bind is
+  // rejected before it can ever become a card. The assertions stay to pin the
+  // normaliser's own contract until the union itself is removed.
   function test_appleDeleteAcceptsBackspaceOneWay() {
     var deleteBinding = binding({ key: "DELETE", description: "Close all windows" })
     var backspaceInput = { modMask: 64, logicalKey: "BACKSPACE", physicalCode: 22 }
@@ -158,10 +162,22 @@ TestCase {
     var backspaceBinding = binding({ key: "BACKSPACE", description: "Toggle window transparency" })
     var deleteInput = { modMask: 64, logicalKey: "DELETE", physicalCode: 119 }
     verify(!Normalizer.matches(backspaceBinding, deleteInput, { appleKeyboard: true }))
+  }
 
-    var ambiguous = Eligibility.filter([deleteBinding, backspaceBinding], { appleKeyboard: true })
-    compare(ambiguous.eligible.length, 0)
-    compare(ambiguous.excluded.length, 2)
+  // Excluding DELETE changes what the ambiguity scan sees. On an Apple
+  // keyboard the union used to collapse SUPER+DELETE and SUPER+BACKSPACE onto
+  // one chord and drop both as ambiguous; with DELETE rejected earlier, the
+  // BACKSPACE bind is alone on its chord and becomes trainable. That is the
+  // correct answer for that hardware, where the key sends BackSpace.
+  function test_excludingDeleteFreesTheAppleBackspaceBind() {
+    var deleteBinding = binding({ key: "DELETE", description: "Close all windows" })
+    var backspaceBinding = binding({ key: "BACKSPACE", description: "Toggle window transparency" })
+
+    var result = Eligibility.filter([deleteBinding, backspaceBinding], { appleKeyboard: true })
+    compare(result.eligible.length, 1)
+    compare(result.eligible[0].key, "BACKSPACE")
+    compare(result.excluded.length, 0)
+    compare(Eligibility.reason(deleteBinding), "device-special-key")
   }
 
   function test_tabAndBacktabNormalization() {
@@ -332,6 +348,7 @@ TestCase {
       binding({ key: "INSERT", description: "Insert mode" }),
       binding({ key: "PAGEUP", description: "Page up" }),
       binding({ key: "PAGEDOWN", description: "Page down" }),
+      binding({ key: "DELETE", description: "Close all windows" }),
       binding({ key: "", keycode: 201, matchMode: "physical", description: "Hardware menu" })
     ]
     for (var i = 0; i < specialBindings.length; i++) {
@@ -339,7 +356,8 @@ TestCase {
     }
 
     compare(Eligibility.reason(binding({ key: "TAB", description: "Next workspace" })), "")
-    compare(Eligibility.reason(binding({ key: "DELETE", description: "Close all windows" })), "")
+    // Arrow keys stay trainable: the compact boards that keep a navigation key
+    // at all keep these, and 60% users reach them through a layer.
     compare(Eligibility.reason(binding({ key: "LEFT", description: "Focus left window" })), "")
   }
 
