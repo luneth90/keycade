@@ -77,7 +77,6 @@ Item {
   // Hyprland picks up wherever its own input:kb_* option is empty.
   // Authoritative list: /usr/include/xkbcommon/xkbcommon.h (see the env var
   // sections around the xkb_context and xkb_keymap_new_from_names docs).
-  // Recheck it when libxkbcommon is upgraded - see docs/review-invariants.md L1.
   readonly property var xkbEnvironmentKeys: [
     "XKB_CONFIG_ROOT", "XKB_CONFIG_EXTRA_PATH",
     "XKB_CONFIG_VERSIONED_EXTENSIONS_PATH", "XKB_CONFIG_UNVERSIONED_EXTENSIONS_PATH",
