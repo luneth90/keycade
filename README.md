@@ -2,7 +2,7 @@
 
 **English** | [简体中文](README.zh-CN.md)
 
-> A shortcut recall arcade for Omarchy, herdr, tmux, Vim, Neovim and LazyVim
+> A shortcut recall arcade for Omarchy, herdr, tmux, Vim, Neovim, and LazyVim
 
 ![Keycade English learning screen](docs/screenshots/keycade-en.png)
 
@@ -10,154 +10,108 @@
 
 ![A LazyVim leader sequence](docs/screenshots/keycade-lazyvim-en.png)
 
-Keycade is a native Omarchy overlay that turns shortcuts into short recall
-runs. What you press is judged locally and never triggers what it normally
-would.
+Keycade is a native Omarchy desktop overlay that turns shortcut memorization into quick, arcade-style training runs. Keypresses are captured and judged locally through a Wayland inhibitor, never triggering desktop actions during a session.
 
-Six training grounds, picked on the home screen the way you pick a machine in
-an arcade. Each keeps its own deck, progress and mastery, and the row shows all
-of them at once:
+Six dedicated training grounds can be selected directly from the home screen, just like machines in an arcade. Each cabinet maintains its own card deck, learning curve, and mastery status:
 
-| Ground | Where its shortcuts come from |
+| Ground | Source of Shortcuts |
 | --- | --- |
-| **Omarchy** | The shortcuts active on this machine, read from the running compositor |
-| **herdr** | The bindings active on this machine, from Omarchy's read-only listing |
-| **tmux** | A running server's real prefixes and key table; with no server, the prefix from your config plus the shipped table |
-| **VIM** | Operators, motions, text objects and their compositions, each checked against Neovim's help |
-| **NEOVIM** | Neovim's built-in mappings, collected from a clean instance |
-| **LazyVim** | LazyVim's published keymaps, calibrated by your leader, extras and overrides |
+| **Omarchy** | Active desktop shortcuts read directly from the running compositor |
+| **herdr** | Active multiplexer bindings obtained from Omarchy's read-only listing |
+| **tmux** | Live server prefixes and key table; falls back to static config and standard table if offline |
+| **VIM** | Operators, motions, text objects, and compositions, verified against Neovim documentation |
+| **NEOVIM** | Built-in default keybindings collected from a clean Neovim instance |
+| **LazyVim** | Official keymaps calibrated automatically to your leader key, enabled extras, and overrides |
 
-Omarchy is what you get on a fresh install and after an upgrade; the rest are
-one click away.
+Omarchy is selected by default on a fresh install or update; all other grounds are just one click away.
 
-## Core features
+## Core Features
 
-- The first three grounds read this machine rather than dealing a generic list;
-  the other three use the tables their upstreams publish.
-- Sequences are judged like single shortcuts - `<leader>ff`, `gcc`, `C-b %` -
-  drawn step by step, each one lighting up as you type it.
-- While you train, only Keycade sees your keys. Nothing on the desktop fires.
-- One run is 24 cards mixing new, due, weak and mastered shortcuts. Keep
-  playing and it covers everything, with reviews spaced out over time.
-- Mastered means two first-try successes in a row, across two different runs.
-- A miss leaves the answer on screen, asks you to type it, and brings the card
-  back later in the run.
-- Progress is saved locally, an interrupted run resumes, and clearing a ground
-  is celebrated once.
-- A shortcut your keyboard cannot press, or one you would rather skip, can be
-  excluded and put back later with its history intact.
-- The leader and prefix keys are read from your own configuration, so there is
-  nothing to set twice.
-- English and Simplified Chinese, local sounds, and five palettes: Catppuccin,
-  Tokyo Night, Gruvbox, Everforest and Ristretto.
-- Arcade trimmings: dot matrix numbers, scanlines, a marquee frame. Reduced
-  motion stops the movement and keeps every reading.
+- **Machine-Aware & Reference Tables**: The first three grounds inspect your active system and live server state; the other three draw from upstream-verified reference tables.
+- **Multi-Key Sequences**: Supports complex sequences (`<leader>ff`, `gcc`, `C-b %`) as seamlessly as single chords, providing step-by-step visual feedback as you type.
+- **Input Isolation**: Hardware keypresses are captured directly by the Wayland inhibitor; no desktop window or application responds while you train.
+- **Spaced Repetition Engine**: Each 24-card session balances unlearned, due, weak, and mastered items to build reliable muscle memory.
+- **Strict Mastery Standard**: A card is marked as mastered only after two consecutive first-try successes across separate runs.
+- **Active Error Correction**: Missed cards display the correct answer for immediate follow-up practice and reappear later in the run.
+- **Seamless State Persistence**: Progress is saved locally in real time; interrupted sessions resume seamlessly, and completing a ground triggers a milestone celebration.
+- **Deck Customization**: Exclude awkward or unpressable shortcuts at any time; return them whenever you want without losing learning history.
+- **Zero-Config Calibration**: Automatically detects your custom Neovim leader keys and tmux prefixes without redundant manual setup.
+- **Themes & Localization**: English and Simplified Chinese support, retro sound effects, and five curated palettes: Catppuccin, Tokyo Night, Gruvbox, Everforest, and Ristretto.
+- **Retro Arcade Aesthetic**: CRT scanlines, dot-matrix counters, and marquee borders (animations gracefully disable under Reduced Motion while preserving data displays).
 
-Keys a compact keyboard may not have are left out: the function row, media
-keys, Print/Pause/SysRq, dedicated Home/End/Insert/Page/Delete, and bindings
-that are ambiguous or cannot be read reliably. So is any shortcut answered by
-Esc alone - releasing Esc saves and leaves, so that card could never be
-cleared. Esc with a modifier is a different gesture and stays trainable.
+To ensure universal playability across compact (60%/65%) keyboards, bindings requiring keys like the function row, dedicated media keys, Print/Pause/SysRq, or separate navigation clusters (Home/End/Insert/Page/Delete) are omitted by default. Standalone `Esc` is reserved for instant saving and quitting (chords like `Super + Esc` remain fully trainable).
 
 ## Requirements
 
 - Omarchy 4.x
-- Quickshell 0.3.1 with `Quickshell.Wayland._ShortcutsInhibitor.ShortcutInhibitor`
-- Hyprland with `binds:disable_keybind_grabbing = false`
+- Quickshell 0.3.1 (with `Quickshell.Wayland._ShortcutsInhibitor.ShortcutInhibitor`)
+- Hyprland (configured with `binds:disable_keybind_grabbing = false`)
 - Python 3
 
-Keycade refuses to start when it cannot confirm input protection is active. It
-never falls back to an unsafe focus-only mode.
+Keycade requires active input inhibition to run safely. If Wayland shortcut protection cannot be verified, it refuses to launch rather than falling back to an insecure focus-only mode.
 
-## Keyboard layouts
+## Keyboard Layouts
 
-Keycade judges by **which physical key you pressed**, the same way Hyprland
-decides whether a bind fires: a bind names the key that produces its keysym
-with nothing held, whatever that key types once Shift is down. This matters on
-non-US layouts, where `SUPER + SHIFT + comma` is the key labelled `,` even
-though it types `;` with Shift held.
+Keycade evaluates **physical keypresses**, matching Hyprland's internal shortcut dispatch logic: a binding matches the physical key that generates its base keysym when unshifted, regardless of what character is produced when Shift is held. This is essential for non-US layouts—for example, in a German layout, `SUPER + SHIFT + comma` refers to the physical key labeled `,`, even though pressing Shift generates `;`.
 
-The layout comes from Hyprland's own `input:kb_*` options, and a bind that
-cannot be pressed on the active layout is never dealt. Two setups fall back to
-comparing typed characters: a keymap given through `input:kb_file`, and a
-custom layout under `~/.xkb` or `~/.config/xkb`. Keycade reads no files outside
-Hyprland's own output, so it steps back rather than guess.
+Active keymaps are retrieved directly from Hyprland's `input:kb_*` parameters; shortcuts impossible to type on the current layout are automatically excluded. Character comparison fallback only occurs under custom layouts via `input:kb_file` or user directories (`~/.xkb`, `~/.config/xkb`), where Keycade degrades safely rather than guessing.
 
-## Install
+## Installation
 
 ```bash
 omarchy plugin add https://github.com/luneth90/keycade.git --enable
 ```
 
-Then add a shortcut to `~/.config/hypr/bindings.lua`, for example:
+Bind a shortcut in `~/.config/hypr/bindings.lua`, for example:
 
 ```bash
 echo 'o.bind("SUPER + SHIFT + K", "Keycade", "omarchy-shell shell summon luneth90.keycade '\''{}'\''")' >> ~/.config/hypr/bindings.lua
 ```
 
-## Update
+## Updating
 
 ```bash
 omarchy plugin update luneth90.keycade
 omarchy restart shell
 ```
 
-The restart is required: updating alone does not reliably reload Keycade.
+> **Note**: Restarting the shell is required to ensure running Quickshell components reload the updated code.
 
-## Use
+## Usage
 
-- Launch with `Super + Shift + K`, or run
-  `omarchy-shell shell summon luneth90.keycade '{}'`.
-- Pick a cabinet on the home screen and press Enter to start or continue. Every
-  cabinet shows where it stands; one you have never opened shows a dash.
-- To train somewhere else, press BACK. The run is saved, and picking that
-  cabinet again resumes where it stopped.
-- Use the top bar to switch language, sound, volume and palette. The choice is
-  remembered.
-- For a shortcut you cannot press, or would rather skip, press `✕ EXCLUDE`. It
-  stops being dealt and stops counting toward mastery. `EXCLUDED` lists what
-  you set aside and puts any of it back with its history intact. The list is
-  capped, and the last remaining shortcut cannot be excluded.
-- Release Esc to save and leave. Only a bare Esc does this; `Super + Esc` and
-  the like are ordinary shortcuts, so you can still answer a card for one.
+- **Launch**: Press `Super + Shift + K`, or run:
+  ```bash
+  omarchy-shell shell summon luneth90.keycade '{}'
+  ```
+- **Select Cabinet**: Use the home screen to pick a training ground, then press Enter to begin or resume. Each cabinet displays current completion percentage (or "—" if unplayed).
+- **Switching Grounds**: Click `BACK` at any time; your progress is automatically saved, and returning to that ground restores your exact position.
+- **Preferences**: Use the top bar to toggle language, sound effects, volume, and color themes. Preferences are saved automatically.
+- **Excluding Shortcuts**: Click `✕ EXCLUDE` during a card to remove it from active runs and mastery counts. Re-enable excluded items anytime via the `EXCLUDED` panel without losing past accuracy stats.
+- **Exiting**: Release a bare `Esc` key to save and exit immediately. Chords involving Esc (`Super + Esc`, etc.) are treated as ordinary answers.
 
-Progress lives in `${XDG_STATE_HOME:-$HOME/.local/state}/omarchy/keycade/` and
-survives updates.
+User statistics and session data are stored under `${XDG_STATE_HOME:-$HOME/.local/state}/omarchy/keycade/` and persist across updates.
 
-## Uninstall
+## Uninstallation
 
 ```bash
 omarchy plugin remove luneth90.keycade
 ```
 
-Progress stays in `${XDG_STATE_HOME:-$HOME/.local/state}/omarchy/keycade/`.
-Keycade intentionally ships no script that deletes your data or edits Hyprland
-configuration on removal.
+Saved data remains preserved in `${XDG_STATE_HOME:-$HOME/.local/state}/omarchy/keycade/`. Keycade intentionally does not ship destructive scripts that alter Hyprland configurations or erase user progress on uninstall.
 
-## Development
+## Development & Testing
 
-### What it reads from your machine
+### Host System Inspection
 
-The tables are the upstream defaults; your configuration is read only to
-calibrate the leader and prefix keys. Only fixed shapes at fixed paths are
-read, anything else is skipped and counted, and the upstream default applies
-when nothing can be proved. No Lua runs, no editor starts, no `require` chain
-is followed.
+Upstream defaults form the core table; user configuration files are inspected solely to calibrate leader and prefix keys. Files are parsed via descriptor-relative sandboxed reads adhering strictly to fixed paths and formats. Untrusted or complex constructs are safely skipped, recorded, and defaulted to upstream standards. No arbitrary Lua code is executed, no editors are spawned, and no `require` chains are followed.
 
-tmux is the one live query. Once `has-session` proves a server is already up,
-`show-options` gives its real `prefix` and `prefix2` and `list-keys` gives the
-key table. With no server, only global `set` lines in `~/.config/tmux/tmux.conf`
-and `~/.tmux.conf` are parsed and the shipped table is kept. Both prefixes fire
-in tmux, so both are accepted; if `C-b` is one of them, it is the one on the
-card.
+tmux is the only service queried dynamically: once `has-session` confirms an active server, `show-options` retrieves `prefix` and `prefix2`, and `list-keys` fetches live bindings. When no server is running, Keycade parses global `set` directives in `~/.config/tmux/tmux.conf` and `~/.tmux.conf` while preserving default bindings. Both prefixes are accepted; if `C-b` is present, it is favored on the prompt card.
 
-### Shortcut packs
+### Shortcut Packs
 
-The LazyVim, tmux, VIM and NEOVIM tables are static data, collected on a
-maintainer's machine and committed as reviewable JSON. Collection never runs on
-a user's machine, and nothing is fetched at runtime.
+Built-in tables for LazyVim, tmux, VIM, and NEOVIM are static artifacts generated on a maintainer's machine and committed as human-reviewable JSON. No scraping or remote network fetching occurs at runtime on the user's machine.
 
-When an upstream moves, re-collect and read the JSON diff:
+When upstream distributions update, regenerate the tables and inspect the resulting JSON diff:
 
 ```bash
 git clone https://github.com/LazyVim/LazyVim.github.io ../LazyVim.github.io
@@ -173,10 +127,9 @@ python3 tools/build_packs.py --collect vim --runtime /usr/share/nvim/runtime \
   --runtime-version 'NVIM v0.12.5'
 ```
 
-The `-f /dev/null` is not optional: without it tmux starts a server, sources
-your own `tmux.conf`, and collects your keys instead of the defaults.
+> **Note**: The `-f /dev/null` flag is mandatory for tmux: without it, tmux will read your personal `tmux.conf` and contaminate default dataset generation.
 
-### Tests and screenshots
+### Tests & Screenshots
 
 ```bash
 python3 -m unittest discover -s tests -p 'test_*.py' -v
