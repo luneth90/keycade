@@ -5,6 +5,7 @@ import Quickshell
 import Quickshell.Wayland
 import "lib"
 import "lib/sources"
+import "lib/AnswerMatcher.js" as AnswerMatcher
 import "lib/InputNormalizer.js" as Normalizer
 import "lib/Profiles.js" as Profiles
 import "lib/Scheduler.js" as Scheduler
@@ -55,6 +56,15 @@ Item {
   // stats or the scheduler, which grade recall and spacing rather than speed.
   property int combo: 0
   property bool cardLocked: false
+  // How much of the current answer has been typed. A chord is the length-1
+  // case, so this is 0 or 1 on the Hyprland ground and never seen.
+  property int answerStep: 0
+  // A sequence can overrun its own answer: the card asked for `gc` and the
+  // fingers typed `gcc`. The tail must not reach the next card, so a card that
+  // could overrun arms a short silence over the one that follows it.
+  property bool overrunGuardArmed: false
+  property double inputSilentUntil: 0
+  readonly property int overrunGuardMs: 150
   property bool correctionRequired: false
   property bool cardErrorSoundPlayed: false
   property string feedbackKind: "idle"
@@ -74,6 +84,8 @@ Item {
 
   readonly property var currentCard: deck.length > cardIndex ? deck[cardIndex] : null
   readonly property var currentBinding: currentCard ? currentCard.binding : null
+  readonly property var currentAnswer: currentBinding ? currentBinding.answer : null
+  readonly property var answerSteps: AnswerMatcher.stepLabels(root.currentAnswer)
   readonly property int runCardLimit: 24
   // The only training ground that exists today. Everything below reaches its
   // rules through the profile rather than assuming them.
@@ -404,6 +416,14 @@ Item {
   // before that would keep pointing at a detached copy of the defaults.
   function profileCounters() { return Stats.counters(store.stats, root.profileId) }
 
+  // One line for an answer, wherever a list has no room to draw its steps. A
+  // chord renders exactly as it always did; a sequence puts a gap between its
+  // steps rather than a plus, because they are typed one after another.
+  function answerDisplay(binding) {
+    var groups = AnswerMatcher.stepLabels(binding ? binding.answer : null)
+    return groups.map(function(keys) { return keys.join(" + ") }).join("  ")
+  }
+
   function refreshProgressCounts() {
     root.progressCounts = Stats.counts(store.stats, root.eligibleBindings, Date.now(), root.activeRunId)
   }
@@ -589,6 +609,9 @@ Item {
     root.cardLocked = false
     root.correctionRequired = false
     root.cardErrorSoundPlayed = false
+    root.answerStep = 0
+    root.inputSilentUntil = root.overrunGuardArmed ? Date.now() + root.overrunGuardMs : 0
+    root.overrunGuardArmed = false
     root.feedbackKind = "idle"
     root.revealChord = root.currentCard.tier === "guided"
     root.feedbackText = i18n.t(root.currentCard.tier === "guided" ? "copyChord" : "waiting")
@@ -617,19 +640,30 @@ Item {
 
   function handleGameInput(event) {
     if (root.view !== "playing" || root.cardLocked || !root.currentBinding) return
+    if (root.inputSilentUntil > 0 && Date.now() < root.inputSilentUntil) return
     var input = Normalizer.normalizeEvent(event)
     if (input.autoRepeat || Normalizer.isModifier(input.logicalKey)) return
+    var state = { cursor: root.answerStep }
+    var verdict = AnswerMatcher.advance(state, root.currentAnswer, event, root.matchOptions())
+    root.answerStep = state.cursor
+    // A step landed and more remain: the card's own deadline keeps running,
+    // and the step lights up. There is no per-step deadline on purpose.
+    if (verdict === "progress") return
+    var received = AnswerMatcher.inputDisplay(root.currentAnswer, event)
     if (root.correctionRequired) {
-      if (Normalizer.matches(root.currentBinding, input, root.matchOptions())) completeCorrection()
-      else missCorrection(Normalizer.inputDisplay(input))
+      if (verdict === "hit") completeCorrection()
+      else missCorrection(received)
       return
     }
-    if (Normalizer.matches(root.currentBinding, input, root.matchOptions())) hitCurrent()
-    else missCurrent("received", Normalizer.inputDisplay(input))
+    if (verdict === "hit") hitCurrent()
+    else missCurrent("received", received)
   }
 
+  // Correcting a sequence means typing it again from the start: a wrong key
+  // fails the card whole, and the muscle memory for one is the whole run of it.
   function beginCorrection() {
     if (!root.correctionRequired || root.view !== "playing") return
+    root.answerStep = 0
     root.cardLocked = false
     root.revealChord = true
     root.feedbackKind = "idle"
@@ -647,6 +681,7 @@ Item {
 
   function completeCorrection() {
     root.cardLocked = true
+    root.overrunGuardArmed = AnswerMatcher.overruns(root.currentAnswer)
     root.correctionRequired = false
     root.revealChord = true
     root.feedbackKind = "hit"
@@ -663,6 +698,7 @@ Item {
   }
 
   function retryGuided() {
+    root.answerStep = 0
     root.cardLocked = false
     root.feedbackKind = "idle"
     root.feedbackText = i18n.t("copyChord")
@@ -675,6 +711,7 @@ Item {
   function hitCurrent() {
     if (root.cardLocked) return
     root.cardLocked = true
+    root.overrunGuardArmed = AnswerMatcher.overruns(root.currentAnswer)
     cardTimer.stop()
     sounds.stopCountdown()
     var reaction = Math.max(0, Date.now() - root.cardStartedAt)
@@ -1245,7 +1282,7 @@ Item {
                     spacing: 10
                     SafeText {
                       width: 170; elide: Text.ElideRight; maximumLineCount: 1
-                      text: Normalizer.display(excludedRow.modelData)
+                      text: root.answerDisplay(excludedRow.modelData)
                       color: root.inkColor; font.family: "monospace"; font.pixelSize: 11; font.bold: true
                     }
                     SafeText {
@@ -1724,26 +1761,41 @@ Item {
           color: root.coinColor; font.family: "monospace"; font.pixelSize: 11; font.bold: true
           elide: Text.ElideRight; maximumLineCount: 1
         }
+        // One group of key caps per step. A chord has exactly one group, so
+        // this draws what it always drew; a sequence reads left to right, and
+        // the steps already typed stay lit.
         Item {
           width: parent.width; height: 74
           Row {
             anchors.centerIn: parent
-            spacing: 8
+            spacing: 10
             visible: root.revealChord
             Repeater {
-              model: root.currentBinding ? Normalizer.display(root.currentBinding).split(" + ") : []
+              model: root.answerSteps
               delegate: Row {
-                id: keyDatum
+                id: stepDatum
                 required property var modelData
                 required property int index
                 spacing: 8
-                Rectangle {
-                  width: Math.max(54, keyText.implicitWidth + 24); height: 46
-                  color: root.screenColor; border.width: 3; border.color: root.inkColor
-                  Rectangle { anchors.left: parent.left; anchors.right: parent.right; anchors.bottom: parent.bottom; height: 5; color: "#05070e" }
-                  SafeText { id: keyText; anchors.centerIn: parent; width: parent.width - 8; horizontalAlignment: Text.AlignHCenter; elide: Text.ElideRight; maximumLineCount: 1; text: keyDatum.modelData; color: root.inkColor; font.family: "monospace"; font.pixelSize: 14; font.bold: true }
+                readonly property bool typed: stepDatum.index < root.answerStep
+                Repeater {
+                  model: stepDatum.modelData
+                  delegate: Row {
+                    id: keyDatum
+                    required property var modelData
+                    required property int index
+                    spacing: 8
+                    Rectangle {
+                      width: Math.max(54, keyText.implicitWidth + 24); height: 46
+                      color: root.screenColor; border.width: 3
+                      border.color: stepDatum.typed ? root.successColor : root.inkColor
+                      Rectangle { anchors.left: parent.left; anchors.right: parent.right; anchors.bottom: parent.bottom; height: 5; color: "#05070e" }
+                      SafeText { id: keyText; anchors.centerIn: parent; width: parent.width - 8; horizontalAlignment: Text.AlignHCenter; elide: Text.ElideRight; maximumLineCount: 1; text: keyDatum.modelData; color: stepDatum.typed ? root.successColor : root.inkColor; font.family: "monospace"; font.pixelSize: 14; font.bold: true }
+                    }
+                    SafeText { visible: keyDatum.index < stepDatum.modelData.length - 1; text: "+"; color: root.mutedColor; font.family: "monospace"; font.pixelSize: 20; font.bold: true; anchors.verticalCenter: parent.verticalCenter }
+                  }
                 }
-                SafeText { visible: keyDatum.index < (root.currentBinding ? Normalizer.display(root.currentBinding).split(" + ").length - 1 : 0); text: "+"; color: root.mutedColor; font.family: "monospace"; font.pixelSize: 20; font.bold: true; anchors.verticalCenter: parent.verticalCenter }
+                SafeText { visible: stepDatum.index < root.answerSteps.length - 1; text: "›"; color: root.mutedColor; font.family: "monospace"; font.pixelSize: 22; font.bold: true; anchors.verticalCenter: parent.verticalCenter }
               }
             }
           }
@@ -1884,7 +1936,7 @@ Item {
               required property var modelData
               width: 154; height: 42
               color: root.screenColor; border.width: 2; border.color: root.secondaryColor
-              SafeText { anchors.centerIn: parent; width: parent.width - 12; horizontalAlignment: Text.AlignHCenter; elide: Text.ElideRight; text: Normalizer.display(reviewDatum.modelData.binding); color: root.inkColor; font.family: "monospace"; font.pixelSize: 11; font.bold: true }
+              SafeText { anchors.centerIn: parent; width: parent.width - 12; horizontalAlignment: Text.AlignHCenter; elide: Text.ElideRight; text: root.answerDisplay(reviewDatum.modelData.binding); color: root.inkColor; font.family: "monospace"; font.pixelSize: 11; font.bold: true }
               MouseArea { anchors.fill: parent; onClicked: root.requestHint(reviewDatum.modelData.binding.id) }
             }
           }

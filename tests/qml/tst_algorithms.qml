@@ -1,8 +1,10 @@
 import QtQuick
 import QtTest
 import "../../lib"
+import "../../lib/AnswerMatcher.js" as AnswerMatcher
 import "../../lib/InputNormalizer.js" as Normalizer
 import "../../lib/Profiles.js" as Profiles
+import "../../lib/TextKey.js" as TextKey
 import "../../lib/Scheduler.js" as Scheduler
 import "../../lib/Stats.js" as Stats
 import "../../lib/Session.js" as Session
@@ -12,6 +14,7 @@ import "../../lib/sources/hyprland/ActionLocalizer.js" as Actions
 import "../../lib/DotFont.js" as DotFont
 import "../../lib/Palettes.js" as Palettes
 import "../fixtures/canonical-keys.js" as CanonicalKeys
+import "../fixtures/text-keys.js" as TextKeys
 
 TestCase {
   name: "KeycadeAlgorithms"
@@ -1062,6 +1065,236 @@ TestCase {
     compare(sanitized.cards[0].tier, "learning")
     compare(sanitized.cards[0].queue, "weak")
     compare(sanitized.runResults["__proto__"], undefined)
+  }
+
+  // --- the answer model: a chord is the length-1 case of a sequence ---
+
+  readonly property int qtShift: 0x02000000
+  readonly property int qtCtrl: 0x04000000
+  readonly property int qtAlt: 0x08000000
+  readonly property int qtSuper: 0x10000000
+
+  readonly property var namedEvents: ({
+    "CR": { key: 0x01000004, text: "\r" },
+    "TAB": { key: 0x01000001, text: "\t" },
+    "ESC": { key: 0x01000000, text: "\u001b" },
+    "SPACE": { key: 0x20, text: " " },
+    "BS": { key: 0x01000003, text: "\b" },
+    "DEL": { key: 0x01000007, text: "" },
+    "UP": { key: 0x01000013, text: "" },
+    "DOWN": { key: 0x01000015, text: "" }
+  })
+
+  // The key press a keyboard would actually deliver for one text step. With a
+  // modifier down a terminal receives a control character rather than the
+  // letter, which is why the step is judged from event.key there.
+  function textEvent(step) {
+    var mods = Number(step.mods || 0)
+    var qtModifiers = 0
+    if (mods & 4) qtModifiers |= qtCtrl
+    if (mods & 8) qtModifiers |= qtAlt
+    if (mods & 64) qtModifiers |= qtSuper
+    if (step.named) {
+      var named = namedEvents[step.named]
+      return { key: named.key, text: mods ? "" : named.text, modifiers: qtModifiers, isAutoRepeat: false }
+    }
+    var character = String(step.text)
+    var upper = character.toUpperCase()
+    if (upper !== character.toLowerCase() && upper === character) qtModifiers |= qtShift
+    return {
+      key: upper.charCodeAt(0),
+      text: mods ? "\u0017" : character,
+      modifiers: qtModifiers,
+      isAutoRepeat: false
+    }
+  }
+
+  function textAnswer(steps) {
+    return { judgeMode: "text", context: "normal", steps: steps }
+  }
+
+  function typeAll(answer, steps) {
+    var state = AnswerMatcher.begin()
+    var verdict = ""
+    for (var index = 0; index < steps.length; index++)
+      verdict = AnswerMatcher.advance(state, answer, textEvent(steps[index]), {})
+    return { verdict: verdict, cursor: state.cursor }
+  }
+
+  // The producer writes these steps into a pack; the consumer judges presses
+  // against them. Both sides are held to this one corpus.
+  function test_textStepsFromTheSharedCorpusAreAcceptedAndMatched() {
+    verify(TextKeys.pairs.length > 20)
+    for (var index = 0; index < TextKeys.pairs.length; index++) {
+      var notation = TextKeys.pairs[index][0]
+      var steps = TextKeys.pairs[index][1]
+      for (var stepIndex = 0; stepIndex < steps.length; stepIndex++) {
+        var normalized = TextKey.normalizedStep(steps[stepIndex])
+        verify(normalized !== null, notation + " step " + stepIndex + " was refused")
+        verify(TextKey.matches(normalized, TextKey.normalizeEvent(textEvent(steps[stepIndex]))),
+               notation + " step " + stepIndex + " did not match its own key press")
+      }
+      var result = typeAll(textAnswer(steps), steps)
+      compare(result.verdict, "hit", notation)
+    }
+  }
+
+  // Case is decisive with no modifier held, and is not with one: Vim reads
+  // <C-w> and <C-W> as one mapping but g and G as two.
+  function test_textModeIsCaseSensitiveOnlyWithoutAModifier() {
+    var lower = TextKey.normalizedStep({ mods: 0, text: "g" })
+    var upper = TextKey.normalizedStep({ mods: 0, text: "G" })
+    verify(TextKey.matches(lower, TextKey.normalizeEvent(textEvent({ mods: 0, text: "g" }))))
+    verify(!TextKey.matches(lower, TextKey.normalizeEvent(textEvent({ mods: 0, text: "G" }))))
+    verify(TextKey.matches(upper, TextKey.normalizeEvent(textEvent({ mods: 0, text: "G" }))))
+    verify(!TextKey.matches(upper, TextKey.normalizeEvent(textEvent({ mods: 0, text: "g" }))))
+
+    var control = TextKey.normalizedStep({ mods: 4, text: "w" })
+    verify(TextKey.matches(control, TextKey.normalizeEvent(textEvent({ mods: 4, text: "w" }))))
+    verify(TextKey.matches(control, TextKey.normalizeEvent(textEvent({ mods: 4, text: "W" }))))
+    // A modifier is part of the answer, so the bare letter is not the answer.
+    verify(!TextKey.matches(control, TextKey.normalizeEvent(textEvent({ mods: 0, text: "w" }))))
+    verify(!TextKey.matches(TextKey.normalizedStep({ mods: 0, text: "w" }),
+                            TextKey.normalizeEvent(textEvent({ mods: 4, text: "w" }))))
+  }
+
+  // Shift is never compared: it is already inside the character. A capital
+  // reached without Shift - a different layout, a lock - still answers.
+  function test_shiftIsNotComparedInTextMode() {
+    var step = TextKey.normalizedStep({ mods: 0, text: "G" })
+    verify(TextKey.matches(step, TextKey.normalizeEvent(
+        { key: 0x47, text: "G", modifiers: qtShift, isAutoRepeat: false })))
+    verify(TextKey.matches(step, TextKey.normalizeEvent(
+        { key: 0x47, text: "G", modifiers: 0, isAutoRepeat: false })))
+  }
+
+  function test_textModeRefusesStepsItCannotJudge() {
+    compare(TextKey.normalizedStep({ mods: 0, text: "" }), null)
+    compare(TextKey.normalizedStep({ mods: 0, named: "NotAKey" }), null)
+    compare(TextKey.normalizedStep(null), null)
+    compare(TextKey.normalizedStep([]), null)
+    // Named spellings of a character become the character.
+    compare(TextKey.normalizedStep({ mods: 0, named: "lt" }).text, "<")
+    compare(TextKey.normalizedStep({ mods: 0, named: "Bar" }).text, "|")
+    // Every spelling of Enter lands on one name.
+    compare(TextKey.normalizedStep({ mods: 0, named: "Return" }).named, "CR")
+    compare(TextKey.normalizedStep({ mods: 0, named: "enter" }).named, "CR")
+  }
+
+  // A sequence advances one step at a time and only answers on the last one.
+  function test_sequenceAdvancesStepByStepAndAnswersOnTheLast() {
+    var steps = [{ mods: 0, text: "g" }, { mods: 0, text: "c" }, { mods: 0, text: "c" }]
+    var answer = textAnswer(steps)
+    var state = AnswerMatcher.begin()
+    compare(AnswerMatcher.advance(state, answer, textEvent(steps[0]), {}), "progress")
+    compare(state.cursor, 1)
+    compare(AnswerMatcher.advance(state, answer, textEvent(steps[1]), {}), "progress")
+    compare(state.cursor, 2)
+    compare(AnswerMatcher.advance(state, answer, textEvent(steps[2]), {}), "hit")
+    compare(state.cursor, 0)
+  }
+
+  // A wrong key fails the card whole, not the step: correcting a sequence
+  // means typing it again from the start.
+  function test_aWrongStepFailsTheWholeCard() {
+    var answer = textAnswer([{ mods: 0, text: "g" }, { mods: 0, text: "c" }])
+    var state = AnswerMatcher.begin()
+    compare(AnswerMatcher.advance(state, answer, textEvent({ mods: 0, text: "g" }), {}), "progress")
+    compare(AnswerMatcher.advance(state, answer, textEvent({ mods: 0, text: "x" }), {}), "miss")
+    compare(state.cursor, 0)
+    // And the retype starts over rather than resuming mid-sequence.
+    compare(AnswerMatcher.advance(state, answer, textEvent({ mods: 0, text: "c" }), {}), "miss")
+    compare(AnswerMatcher.advance(state, answer, textEvent({ mods: 0, text: "g" }), {}), "progress")
+    compare(AnswerMatcher.advance(state, answer, textEvent({ mods: 0, text: "c" }), {}), "hit")
+  }
+
+  // The card asked for `gc`; `gc` answers it. Waiting to see whether a third
+  // key turns it into `gcc` would leave every prefix unanswerable.
+  function test_aCompletedSequenceAnswersWithoutWaitingForALongerOne() {
+    var answer = textAnswer([{ mods: 0, text: "g" }, { mods: 0, text: "c" }])
+    var state = AnswerMatcher.begin()
+    AnswerMatcher.advance(state, answer, textEvent({ mods: 0, text: "g" }), {})
+    compare(AnswerMatcher.advance(state, answer, textEvent({ mods: 0, text: "c" }), {}), "hit")
+    // Which is exactly why the card that follows has to be deaf for a moment.
+    verify(AnswerMatcher.overruns(answer))
+    verify(!AnswerMatcher.overruns(textAnswer([{ mods: 0, text: "g" }])))
+  }
+
+  // The Hyprland ground goes down this same path, and must judge as it did.
+  function test_aChordIsTheLengthOneCaseAndJudgesAsBefore() {
+    var item = binding({ key: "3", arg: "3", description: "Switch to workspace 3" })
+    var answer = AnswerMatcher.chordAnswer(item)
+    compare(AnswerMatcher.stepCount(answer), 1)
+    compare(AnswerMatcher.judgeMode(answer), "keysym")
+    verify(!AnswerMatcher.overruns(answer))
+    compare(AnswerMatcher.stepLabels(answer)[0].join(" + "), Normalizer.display(item))
+
+    var hit = { key: 0x33, text: "3", modifiers: qtSuper, isAutoRepeat: false }
+    var wrong = { key: 0x34, text: "4", modifiers: qtSuper, isAutoRepeat: false }
+    var state = AnswerMatcher.begin()
+    compare(AnswerMatcher.advance(state, answer, hit, {}), "hit")
+    compare(AnswerMatcher.advance(state, answer, wrong, {}), "miss")
+    // Byte for byte the old verdict, reached the new way.
+    verify(Normalizer.matches(item, Normalizer.normalizeEvent(hit), {}))
+    verify(!Normalizer.matches(item, Normalizer.normalizeEvent(wrong), {}))
+  }
+
+  function test_answersAreBoundedInSteps() {
+    var steps = []
+    for (var index = 0; index < 20; index++) steps.push({ mods: 0, text: "a" })
+    compare(AnswerMatcher.stepCount(textAnswer(steps)), 8)
+    compare(AnswerMatcher.stepCount({ steps: [] }), 0)
+    compare(AnswerMatcher.stepCount(null), 0)
+    var state = AnswerMatcher.begin()
+    compare(AnswerMatcher.advance(state, { steps: [] }, textEvent({ mods: 0, text: "a" }), {}), "miss")
+  }
+
+  // A longer answer takes longer to type. The clamps were chosen for one
+  // chord, so the extra per step is added outside them.
+  function test_cardTimeGrowsWithTheStepCount() {
+    var stats = Stats.defaults()
+    var one = binding({ key: "3", arg: "3", description: "Switch to workspace 3" })
+    one.id = "hyprland/one"
+    one.answer = AnswerMatcher.chordAnswer(one)
+    var three = binding({ key: "4", arg: "4", description: "Switch to workspace 4" })
+    three.id = "hyprland/three"
+    three.answer = textAnswer([{ mods: 0, text: "g" }, { mods: 0, text: "c" }, { mods: 0, text: "c" }])
+
+    var learningOne = { binding: one, tier: "learning", queue: "due", remedial: false }
+    var learningThree = { binding: three, tier: "learning", queue: "due", remedial: false }
+    compare(Scheduler.durationFor(learningOne, stats), 4500)
+    compare(Scheduler.durationFor(learningThree, stats), 4500 + 1600)
+
+    var maintenanceOne = { binding: one, tier: "maintenance", queue: "maintenance", remedial: false }
+    var maintenanceThree = { binding: three, tier: "maintenance", queue: "maintenance", remedial: false }
+    compare(Scheduler.durationFor(maintenanceOne, stats), 3600)
+    compare(Scheduler.durationFor(maintenanceThree, stats), 3600 + 1200)
+
+    // A guided card is still untimed however long its answer is.
+    compare(Scheduler.durationFor({ binding: three, tier: "guided", queue: "unseen" }, stats), 0)
+  }
+
+  // Esc saves the run and leaves. A bind answering with a bare Esc cannot be
+  // answered at all - releasing it exits - so it is not dealt. Esc held with a
+  // modifier is a different gesture, decided on release, and stays trainable.
+  function test_bareEscapeAnswersAreNotDealtButModifiedOnesAre() {
+    var bare = binding({ modMask: 0, key: "ESCAPE", description: "Show the menu" })
+    var modified = binding({ modMask: 64, key: "ESCAPE", description: "Show the menu" })
+    compare(Eligibility.reason(bare), "escape-in-answer")
+    compare(Eligibility.reason(modified), "")
+
+    var result = Eligibility.filter([bare, modified], {})
+    compare(result.eligible.length, 1)
+    compare(result.eligible[0].modMask, 64)
+  }
+
+  // Every eligible binding carries an answer, because that is what the card
+  // draws and what the matcher judges.
+  function test_eligibleBindingsCarryAnAnswer() {
+    var item = binding({ key: "8", arg: "8", description: "Switch to workspace 8" })
+    var result = Eligibility.filter([item], {})
+    compare(AnswerMatcher.stepCount(result.eligible[0].answer), 1)
+    compare(AnswerMatcher.judgeMode(result.eligible[0].answer), "keysym")
   }
 
   function test_builtinActionsHaveLocaleKeysAndCustomTextStaysRaw() {
