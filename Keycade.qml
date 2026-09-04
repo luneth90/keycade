@@ -82,6 +82,10 @@ Item {
   property bool languageMenuOpen: false
   property bool soundMenuOpen: false
   property bool excludedMenuOpen: false
+  // Every top-bar control is this wide. A run shows six of them at once,
+  // and the row is anchored to the right edge of a cabinet that stops at
+  // 1040: at the old assorted widths the sixth one ran under the brand.
+  readonly property int topButtonWidth: 100
   property bool themeMenuOpen: false
   property var excludedRows: []
   property int staleExcludedCount: 0
@@ -545,7 +549,47 @@ Item {
     root.groundLoading = false
     root.applyEligibility()
     root.resumeAvailable = root.hasResumableSession()
+    root.adoptRunState()
     root.maybeShowHome()
+  }
+
+  // A run belongs to one ground, and so does every number a run produces. The
+  // header row and the counters beside the deck are drawn on the home screen
+  // too, so leaving a tmux run and picking LazyVim used to leave tmux's run
+  // number, progress, targets, streak and "new learned" sitting under
+  // LazyVim's name until the next run happened to overwrite them.
+  //
+  // Only one session is kept, tagged with its ground. So: if this ground is
+  // the one that can be resumed, what is on screen is that run's - it is what
+  // picking RESUME walks back into. Otherwise there is no run here yet, and
+  // the header reads as the run that pressing START would begin.
+  //
+  // The deck itself is not restored here; RESUME rebuilds it against this
+  // ground's own bindings. Only what the screen shows is adopted.
+  function adoptRunState() {
+    if (root.view === "playing") return
+    var session = root.resumeAvailable ? store.session : null
+    root.deck = []
+    root.cardIndex = 0
+    root.runOffset = session ? Math.max(0, Math.min(root.runCardLimit - 1,
+                                                   Number(session.offset || 0))) : 0
+    root.runNumber = session ? Number(session.runId || root.activeRunId) : root.activeRunId
+    root.correct = session ? Math.max(0, Number(session.correct || 0)) : 0
+    root.attempts = session ? Math.max(0, Number(session.attempts || 0)) : 0
+    root.newLearned = session ? Math.max(0, Number(session.newLearned || 0)) : 0
+    root.masteredGained = session ? Math.max(0, Number(session.masteredGained || 0)) : 0
+    root.runReviewTarget = session ? Math.max(0, Number(session.runReviewTarget || 0)) : 0
+    root.runNewTarget = session ? Math.max(0, Number(session.runNewTarget || 0)) : 0
+    root.reactions = session && Array.isArray(session.reactions) ? session.reactions : []
+    root.runResults = session
+        ? Session.restoreResults(session.runResults, root.eligibleBindings) : ({})
+    root.pendingReinforcements = ({})
+    var pending = session && Array.isArray(session.pendingReinforcements)
+        ? session.pendingReinforcements : []
+    for (var index = 0; index < pending.length; index++)
+      root.setReinforcementPending(String(pending[index]), true)
+    root.combo = 0
+    root.energy = 1
   }
 
   // One line for an answer, wherever a list has no room to draw its steps. A
@@ -1316,15 +1360,19 @@ Item {
           id: topControls
           anchors.right: parent.right; anchors.rightMargin: 22
           anchors.verticalCenter: parent.verticalCenter
-          spacing: 10
+          // One width for every control, and a gap narrow enough that all six
+          // - which is what a run shows - still clear the brand block on the
+          // left. Each label elides inside it rather than widening its button.
+          spacing: 8
 
           Rectangle {
             id: leaveButton
-            width: 96; height: 36
+            width: root.topButtonWidth; height: 36
             visible: root.view === "playing"
             color: root.screenColor; border.width: 3; border.color: root.mutedColor
             SafeText {
-              anchors.centerIn: parent
+              anchors.centerIn: parent; width: parent.width - 12
+              horizontalAlignment: Text.AlignHCenter; elide: Text.ElideRight; maximumLineCount: 1
               text: i18n.t("leaveRun")
               color: root.inkColor; font.family: "monospace"; font.bold: true; font.pixelSize: 10
             }
@@ -1332,11 +1380,12 @@ Item {
           }
           Rectangle {
             id: excludeButton
-            width: 122; height: 36
+            width: root.topButtonWidth; height: 36
             visible: root.view === "playing"
             color: root.screenColor; border.width: 3; border.color: root.dangerColor
             SafeText {
-              anchors.centerIn: parent
+              anchors.centerIn: parent; width: parent.width - 12
+              horizontalAlignment: Text.AlignHCenter; elide: Text.ElideRight; maximumLineCount: 1
               text: i18n.t("excludeAction")
               color: root.dangerColor; font.family: "monospace"; font.bold: true; font.pixelSize: 10
             }
@@ -1344,10 +1393,11 @@ Item {
           }
           Rectangle {
             id: excludedButton
-            width: 140; height: 36; color: root.screenColor; border.width: 3; border.color: root.voidColor
+            width: root.topButtonWidth; height: 36; color: root.screenColor; border.width: 3; border.color: root.voidColor
             Rectangle { id: excludedLamp; anchors.fill: parent; color: root.coinColor; opacity: 0 }
             SafeText {
-              anchors.centerIn: parent
+              anchors.centerIn: parent; width: parent.width - 12
+              horizontalAlignment: Text.AlignHCenter; elide: Text.ElideRight; maximumLineCount: 1
               text: i18n.t("excludedMenu", { count: root.excludedRows.length + root.staleExcludedCount }) + " ▾"
               color: root.inkColor; font.family: "monospace"; font.bold: true; font.pixelSize: 10
             }
@@ -1363,9 +1413,10 @@ Item {
           }
           Rectangle {
             id: soundButton
-            width: 116; height: 36; color: root.screenColor; border.width: 3; border.color: root.voidColor
+            width: root.topButtonWidth; height: 36; color: root.screenColor; border.width: 3; border.color: root.voidColor
             SafeText {
-              anchors.centerIn: parent
+              anchors.centerIn: parent; width: parent.width - 12
+              horizontalAlignment: Text.AlignHCenter; elide: Text.ElideRight; maximumLineCount: 1
               text: store.settings.feedbackSound || store.settings.countdownSound
                     ? i18n.t("soundVolume", { volume: Math.round(Number(store.settings.soundVolume || 0.4) * 100) })
                     : i18n.t("soundOff")
@@ -1384,8 +1435,13 @@ Item {
           }
           Rectangle {
             id: languageButton
-            width: 124; height: 36; color: root.screenColor; border.width: 3; border.color: root.voidColor
-            SafeText { anchors.centerIn: parent; text: root.localeLabel(i18n.locale) + " ▾"; color: root.inkColor; font.family: "monospace"; font.bold: true; font.pixelSize: 10 }
+            width: root.topButtonWidth; height: 36; color: root.screenColor; border.width: 3; border.color: root.voidColor
+            SafeText {
+              anchors.centerIn: parent; width: parent.width - 12
+              horizontalAlignment: Text.AlignHCenter; elide: Text.ElideRight; maximumLineCount: 1
+              text: root.localeLabel(i18n.locale) + " ▾"
+              color: root.inkColor; font.family: "monospace"; font.bold: true; font.pixelSize: 10
+            }
             MouseArea {
               anchors.fill: parent
               onClicked: {
@@ -1398,12 +1454,12 @@ Item {
           }
           Rectangle {
             id: themeButton
-            width: 148; height: 36; color: root.screenColor; border.width: 3; border.color: root.voidColor
+            width: root.topButtonWidth; height: 36; color: root.screenColor; border.width: 3; border.color: root.voidColor
             SafeText {
               anchors.centerIn: parent; width: parent.width - 12
               horizontalAlignment: Text.AlignHCenter; elide: Text.ElideRight; maximumLineCount: 1
               text: root.themeName.toUpperCase() + " ▾"
-              color: root.inkColor; font.family: "monospace"; font.bold: true; font.pixelSize: 11
+              color: root.inkColor; font.family: "monospace"; font.bold: true; font.pixelSize: 10
             }
             MouseArea {
               anchors.fill: parent
@@ -1548,7 +1604,7 @@ Item {
 
       Rectangle {
         id: themeMenu
-        x: topbar.x + topControls.x + themeButton.x + (themeButton.width - width) / 2
+        x: topbar.x + topControls.x + themeButton.x + themeButton.width - width
         y: topbar.y + topbar.height + 8
         width: 176; height: Palettes.names().length * 36 + 8
         visible: root.themeMenuOpen
@@ -1578,7 +1634,7 @@ Item {
 
       Rectangle {
         id: languageMenu
-        x: topbar.x + topControls.x + languageButton.x + (languageButton.width - width) / 2
+        x: topbar.x + topControls.x + languageButton.x + languageButton.width - width
         y: topbar.y + topbar.height + 8
         width: 164; height: i18n.supported.length * 36 + 8
         visible: root.languageMenuOpen
