@@ -3,8 +3,9 @@
 
 `tmux list-keys` starts a server (and sources user configuration) when none is
 running. This helper therefore calls `has-session` first and never calls
-`list-keys` unless that read-only probe succeeds. Any failure emits an
-unavailable record; the QML side then uses the shipped default pack.
+`show-options` or `list-keys` unless that read-only probe succeeds. The live
+prefix/prefix2 values are returned with the documented table so the consumer
+does not mix a running server's bindings with stale values from a file.
 """
 
 from __future__ import annotations
@@ -123,7 +124,33 @@ def description_key(desc: str) -> str:
     return "packdesc_tmux_" + slug if slug else ""
 
 
-def collect(listing: str) -> dict:
+def prefix_options(prefix: str, prefix2: str = "") -> dict[str, str]:
+    """Order effective prefixes, preferring tmux's conflict-free C-b default."""
+    candidates: list[tuple[str, dict]] = []
+    for token in (prefix.strip(), prefix2.strip()):
+        if not token or token.lower() == "none":
+            continue
+        if len(token) > 32 or re.search(r"[\x00-\x1f\x7f]", token):
+            raise Refused()
+        parsed = parse_key(token)
+        if parsed.get("named") == "ESC":
+            raise Refused()
+        if not any(existing == parsed for _, existing in candidates):
+            candidates.append((token, parsed))
+    if not candidates:
+        raise Refused()
+    default = {"mods": CTRL, "text": "b"}
+    for index, (_, parsed) in enumerate(candidates):
+        if parsed == default:
+            candidates.insert(0, candidates.pop(index))
+            break
+    options = {"prefix": candidates[0][0]}
+    if len(candidates) > 1:
+        options["prefix2"] = candidates[1][0]
+    return options
+
+
+def collect(listing: str, options: dict[str, str] | None = None) -> dict:
     bindings = []
     dropped: dict[str, int] = {}
     seen = set()
@@ -146,11 +173,12 @@ def collect(listing: str) -> dict:
             drop("missing-description")
             continue
         try:
-            first, second = parse_key(prefix), parse_key(key)
+            parse_key(prefix)  # validates the live listing's first column
+            second = parse_key(key)
         except Refused:
             drop("unreadable-notation")
             continue
-        steps = [first, second]
+        steps = [{"option": "prefix"}, second]
         if any(step.get("named") == "ESC" for step in steps):
             drop("escape-in-answer")
             continue
@@ -181,10 +209,11 @@ def collect(listing: str) -> dict:
     return {
         "schemaVersion": 1, "profile": "tmux", "judgeMode": "text",
         "contexts": ["prefix"], "extras": [],
+        "options": options or {},
         "categories": [name for name in CATEGORY_NAMES
                        if any(entry["category"] == name for entry in bindings)],
         "provenance": {
-            "upstream": "tmux", "authority": "active tmux server: list-keys -N -T prefix",
+            "upstream": "tmux", "authority": "active tmux server: show-options + list-keys",
             "source": {"url": "local tmux server", "commit": "", "tag": "live",
                        "date": date.today().isoformat(),
                        "checksum": hashlib.sha256(listing.encode()).hexdigest()},
@@ -206,11 +235,19 @@ def main() -> None:
         if status != 0:
             payload = unavailable("no running tmux server")
         else:
-            status, listing = command([tmux, "list-keys", "-N", "-T", "prefix"], MAX_STDOUT)
-            if status != 0 or not listing.strip():
+            prefix_status, prefix = command(
+                [tmux, "show-options", "-gv", "prefix"], 4096)
+            prefix2_status, prefix2 = command(
+                [tmux, "show-options", "-gv", "prefix2"], 4096)
+            status, listing = command(
+                [tmux, "list-keys", "-N", "-T", "prefix"], MAX_STDOUT)
+            if prefix_status != 0 or not prefix.strip():
+                payload = unavailable("tmux prefix could not be read")
+            elif status != 0 or not listing.strip():
                 payload = unavailable("tmux key table could not be read")
             else:
-                payload = collect(listing)
+                options = prefix_options(prefix, prefix2 if prefix2_status == 0 else "")
+                payload = collect(listing, options)
                 payload["available"] = bool(payload["bindings"])
     except Exception as error:  # one bounded record, never a traceback
         payload = unavailable(type(error).__name__)

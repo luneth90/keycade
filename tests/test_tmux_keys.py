@@ -28,14 +28,23 @@ class TmuxLiveTests(unittest.TestCase):
         pack = helper.collect(
             'C-Space % Split window horizontally\n'
             'C-Space c Create a new window\n'
-            'C-Space C-b Send the prefix key\n')
+            'C-Space C-b Send the prefix key\n',
+            {"prefix": "C-b", "prefix2": "C-Space"})
         self.assertEqual(len(pack["bindings"]), 3)
         first = pack["bindings"][0]
-        self.assertEqual(first["steps"][0], {"mods": 4, "named": "SPACE"})
+        self.assertEqual(first["steps"][0], {"option": "prefix"})
         self.assertEqual(first["steps"][1], {"mods": 0, "text": "%"})
         self.assertEqual(first["alternates"][0][0], {"option": "prefix2"})
         self.assertEqual(first["localId"], "prefix/%")
         self.assertEqual(first["category"], "window")
+        self.assertEqual(pack["options"], {"prefix": "C-b", "prefix2": "C-Space"})
+
+    def test_c_b_is_primary_only_when_the_server_actually_enables_it(self):
+        self.assertEqual(helper.prefix_options("C-Space", "C-b"),
+                         {"prefix": "C-b", "prefix2": "C-Space"})
+        self.assertEqual(helper.prefix_options("C-a", "C-x"),
+                         {"prefix": "C-a", "prefix2": "C-x"})
+        self.assertEqual(helper.prefix_options("C-b", "C-b"), {"prefix": "C-b"})
 
     def test_no_server_never_reaches_list_keys(self):
         calls = []
@@ -58,6 +67,10 @@ class TmuxLiveTests(unittest.TestCase):
             calls.append(command)
             if command[-1] == "has-session":
                 return 0, ""
+            if command[-2:] == ["-gv", "prefix"]:
+                return 0, "C-a\n"
+            if command[-2:] == ["-gv", "prefix2"]:
+                return 0, "C-b\n"
             return 0, "C-a c Create a new window\n"
 
         output = io.StringIO()
@@ -66,7 +79,10 @@ class TmuxLiveTests(unittest.TestCase):
             helper.main()
         result = json.loads(output.getvalue())
         self.assertTrue(result["available"])
-        self.assertEqual(calls[1],
+        self.assertEqual(result["options"], {"prefix": "C-b", "prefix2": "C-a"})
+        self.assertEqual(calls[1], ["/usr/bin/tmux", "show-options", "-gv", "prefix"])
+        self.assertEqual(calls[2], ["/usr/bin/tmux", "show-options", "-gv", "prefix2"])
+        self.assertEqual(calls[3],
                          ["/usr/bin/tmux", "list-keys", "-N", "-T", "prefix"])
 
     def test_unreadable_lines_and_device_keys_are_counted(self):

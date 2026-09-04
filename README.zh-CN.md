@@ -18,7 +18,7 @@ Keycade 是一个原生 Omarchy 快捷键训练器。它把快捷键编成简短
 | --- | --- |
 | **Hyprland** | 你这台机器上真正生效的快捷键，从运行中的合成器读取 |
 | **herdr** | 通过 Omarchy 的只读清单读取本机真正生效的键位 |
-| **tmux** | 优先读取已运行 server 的带说明 prefix 表，读不到就回退到内置默认表 |
+| **tmux** | server 运行时读取真实 prefix 与带说明键位表；未运行时读取本地字面量 prefix，并配合内置键位表 |
 | **VIM** | 依据 Neovim runtime help 校验的操作符、移动、文本对象及组合语法 |
 | **NEOVIM** | 从干净 Neovim 实例采集的内置映射 |
 | **LazyVim** | 官方发布的键位，并按 leader、extras 和顶格字面量改键校准 |
@@ -39,8 +39,8 @@ Keycade 是一个原生 Omarchy 快捷键训练器。它把快捷键编成简短
 - 本地保存学习进度、恢复中断对局、显示总掌握进度，并在首次达到 100% 时展示
   一次性恭喜结算。
 - 可以排除键盘按不出、或者不想练的快捷键，随时一键恢复，进度不丢。
-- 每个训练场都写明快捷键来自哪里。应用级训练场标注上游名称与该表发布日期，
-  绝不暗示它读了你自己的配置。
+- 可配置的键——LazyVim 的 leader、tmux 的 prefix——直接从本机真实配置解析，
+  不需要用户再维护一份手工选择；顶栏写明检测到的值以及它是从哪来的。
 - 内置英语和简体中文、本地反馈/倒计时音效，以及五套配色：Catppuccin、
   Tokyo Night、Gruvbox、Everforest、Ristretto。
 - 街机质感：点阵倒计时与计数、屏幕扫描线、跑马灯边框，以及只作展示、
@@ -131,12 +131,22 @@ omarchy plugin remove luneth90.keycade
 
 ### 应用级训练场会从本机读什么
 
-键位表是上游默认。本机**改动过**的那部分，从配置里形状固定的地方读出来：其他绑定
-所依附的那个键、启用了哪些 LazyVim 扩展包、装的是哪个上游版本，以及
-`lua/config/keymaps.lua` 中顶格的字面量 `vim.keymap.set/del`。不跑 Lua、不起编辑器、
-不跟 `require` 链。tmux 是唯一的实时查询：只有在 `has-session` 确认 server 已经运行后
-才连接其本地 socket 并调用 `list-keys`；否则直接使用内置表。读不出来的内容会计数显示，
-绝不猜测。
+键位表是上游默认。Keycade 不再让用户为可配置的 leader / prefix 另维护一份人工选择，
+而是从本机配置中形状固定、可静态证明的部分直接解析；只有无法确定时才回退到上游默认值。
+这些键直接用在牌上。
+
+LazyVim 读取器兼容常见的等价字面量写法：`vim.g` 的点号或下标赋值、写死参数的
+`nvim_set_var` / `vim.cmd("let …")`，以及字面量 `vim.keycode` 包装。
+`lua/config/keymaps.lua` 支持直接 `vim.keymap.set/del`、旧式全局 API、括号配平的多行调用、
+字面量模式数组和 options table，以及允许列表内可静态确认的局部别名。动态值、块内调用、
+未知 wrapper 与 `require` 链全部跳过并计数；不跑 Lua，也不起编辑器。
+
+tmux 是唯一的实时查询：`has-session` 确认 server 已经存在后，先用 `show-options` 读取实际
+生效的 `prefix` / `prefix2`，再用 `list-keys` 读取带说明键位。没有 server 时只静态解析
+固定的 XDG 与 `~/.tmux.conf` 路径里的全局字面量 `set` / `set-option`，绑定仍用内置表。
+tmux 两个前缀都会触发，所以两个都判对：实际启用的前缀里如果有官方默认 `C-b`，
+卡面就显示 `C-b`，另一个作为备选答案；只设了别的前缀就完全按配置来。
+prefix 读不出来时回退到官方默认 `C-b`，并在顶栏写明，不藏起来。
 
 ### 应用级词条包
 

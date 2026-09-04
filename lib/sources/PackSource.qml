@@ -22,7 +22,7 @@ Item {
   property string profileId: ""
   // The ground's configurable keys, by the names its profile declares:
   // { leader: " ", localleader: "\\" } for LazyVim, { prefix: "C-b" } for
-  // tmux. They are settings in the application being trained, not keys, so
+  // tmux. They are configuration in the application being trained, not keys, so
   // someone who moved theirs trains the mapping rather than a key they never
   // press. Anything absent here falls back to the profile's own default.
   property var options: ({})
@@ -78,7 +78,7 @@ Item {
   }
 
   // A pack stores { option: "leader" } rather than the key it was built with,
-  // so the answer follows the setting.
+  // so the answer follows the detected configuration.
   function resolvedStep(step) {
     if (!step || typeof step !== "object" || Array.isArray(step)) return null
     if (step.option !== undefined) {
@@ -137,10 +137,16 @@ Item {
     // The other ways in - tmux's prefix2, say. One whose option is unset
     // resolves to nothing and is simply not offered.
     var alternates = []
+    var primaryKey = JSON.stringify(steps)
+    var alternateKeys = ({})
     if (Array.isArray(record.alternates)) {
       for (var other = 0; other < record.alternates.length && alternates.length < 4; other++) {
         var sequence = root.resolvedSteps(record.alternates[other])
-        if (sequence) alternates.push(sequence)
+        var sequenceKey = sequence ? JSON.stringify(sequence) : ""
+        if (sequence && sequenceKey !== primaryKey && !alternateKeys[sequenceKey]) {
+          alternateKeys[sequenceKey] = true
+          alternates.push(sequence)
+        }
       }
     }
     return {

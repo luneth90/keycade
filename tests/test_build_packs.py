@@ -41,7 +41,7 @@ class NotationTests(unittest.TestCase):
 
     def test_a_configurable_key_becomes_a_placeholder_not_a_character(self):
         # A pack must not bake in the key the table was built with: LazyVim's
-        # leader, tmux's prefix and herdr's prefix are all settings, and
+        # leader, tmux's prefix and herdr's prefix are all configuration, and
         # someone who moved theirs still has to be training the mapping.
         steps = build_packs.parse_notation(build_packs.LEADER_MARK + "ff")
         self.assertEqual(steps[0], {"option": "leader"})

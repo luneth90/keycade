@@ -1,5 +1,6 @@
 import QtQuick
 import Quickshell.Io
+import "../TextKey.js" as TextKey
 
 // Optional live tmux table. Failure is not an error: the shipped pack is the
 // fallback, and in particular no server is ever started just to collect keys.
@@ -10,6 +11,7 @@ Item {
   readonly property string relayPath: String(Qt.resolvedUrl("../../bin/bounded-relay")).replace("file://", "")
   readonly property string helperPath: String(Qt.resolvedUrl("../../bin/tmux-keys-json")).replace("file://", "")
   property var pack: null
+  property var options: ({})
   property bool loading: false
   property bool settled: false
   property bool pending: false
@@ -17,6 +19,7 @@ Item {
 
   function refresh() {
     root.pack = null
+    root.options = ({})
     root.settled = false
     if (reader.running) {
       root.pending = true
@@ -36,6 +39,18 @@ Item {
     root.finished()
   }
 
+  function acceptedOptions(value) {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return null
+    var prefix = String(value.prefix || "")
+    var prefix2 = String(value.prefix2 || "")
+    if (!prefix.length || prefix.length > 32 || /[\u0000-\u001f\u007f]/.test(prefix)) return null
+    if (prefix2.length > 32 || /[\u0000-\u001f\u007f]/.test(prefix2)) return null
+    if (!TextKey.parseKeySpec(prefix) || (prefix2 && !TextKey.parseKeySpec(prefix2))) return null
+    var result = ({ prefix: prefix })
+    if (prefix2 && prefix2 !== prefix) result.prefix2 = prefix2
+    return result
+  }
+
   Process {
     id: reader
     command: [root.interpreterPath, root.relayPath,
@@ -51,10 +66,15 @@ Item {
           var text = String(line || "")
           if (!text.length || text.length > 512 * 1024) return
           var record = JSON.parse(text)
+          var options = root.acceptedOptions(record ? record.options : null)
           if (record && record.schemaVersion === 1 && record.profile === "tmux"
-              && record.available === true && Array.isArray(record.bindings)) root.pack = record
+              && record.available === true && Array.isArray(record.bindings) && options) {
+            root.options = options
+            root.pack = record
+          }
         } catch (error) {
           root.pack = null
+          root.options = ({})
         }
       }
     }

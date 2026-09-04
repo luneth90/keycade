@@ -63,60 +63,10 @@ Item {
       countdownSound: true,
       soundVolume: 0.4,
       excludedBindings: [],
-      // The ground a run is played on, and the settings of the application
-      // each pack ground trains. An upgrade lands on Hyprland, so nothing a
-      // user already had changes until they pick another cabinet.
-      activeProfile: Profiles.defaultId(),
-      profileOptions: root.defaultProfileOptions()
+      // The ground a run is played on. Configurable keys are read from the
+      // application being trained and are deliberately not duplicated here.
+      activeProfile: Profiles.defaultId()
     }
-  }
-
-  readonly property int maxOptionChars: 32
-
-  // Only what was chosen by hand is stored. An option nobody overrode is
-  // absent, so the overlay can tell "the reader picked this" from "this is
-  // what the machine or the upstream says" - and clearing an override is
-  // removing the entry rather than writing the default back over it.
-  function defaultProfileOptions() {
-    var result = Object.create(null)
-    var ids = Profiles.ids()
-    for (var index = 0; index < ids.length; index++) {
-      if (!Object.keys(Profiles.options(ids[index])).length) continue
-      result[ids[index]] = Object.create(null)
-    }
-    return result
-  }
-
-  // Dynamic keys on both levels, so both maps are built on a null prototype
-  // and every name is checked before it is used: the ground against the
-  // profile id character set, the option against what that ground declares.
-  function normalizedProfileOptions(value) {
-    var result = root.defaultProfileOptions()
-    if (!value || typeof value !== "object" || Array.isArray(value)) return result
-    var ids = Object.keys(value).slice(0, 16)
-    for (var index = 0; index < ids.length; index++) {
-      var id = ids[index]
-      if (!Profiles.valid(id) || !Object.prototype.hasOwnProperty.call(result, id)) continue
-      var stored = value[id]
-      if (!stored || typeof stored !== "object" || Array.isArray(stored)) continue
-      var names = Object.keys(Profiles.options(id))
-      for (var name = 0; name < names.length; name++) {
-        // Not `value`: that is this function's parameter, and `var` is scoped
-        // to the function, so assigning it here replaced the map being read
-        // and every ground after the first was silently dropped.
-        var chosen = root.optionValue(stored[names[name]], "")
-        if (chosen) result[id][names[name]] = chosen
-      }
-    }
-    return result
-  }
-
-  // One key press worth of text as a person writes it - " ", "C-b", "ctrl+a" -
-  // never a control character, never long enough to be something else.
-  function optionValue(value, fallback) {
-    if (typeof value !== "string" || !value.length || value.length > root.maxOptionChars)
-      return fallback
-    return /[\u0000-\u001f\u007f]/.test(value) ? fallback : value
   }
 
   function finiteNumber(value, fallback, minimum, maximum) {
@@ -142,7 +92,6 @@ Item {
     result.excludedBindings = Session.excludedList(source.excludedBindings)
     result.activeProfile = Profiles.known(source.activeProfile)
         ? String(source.activeProfile) : Profiles.defaultId()
-    result.profileOptions = root.normalizedProfileOptions(source.profileOptions)
     if (Number(source.schemaVersion) === 2 && Math.abs(result.soundVolume - 0.3) < 0.001)
       result.soundVolume = 0.4
     return result
@@ -191,7 +140,11 @@ Item {
         var previousSchema = Number(value.schemaVersion)
         root.settings = root.normalizedSettings(value)
         root.settingsCorrupt = false
-        if (previousSchema !== root.settings.schemaVersion)
+        // profileOptions was a short-lived manual override. It is ignored by
+        // normalizedSettings and removed from disk so a stale value can never
+        // mask configuration detected later.
+        if (previousSchema !== root.settings.schemaVersion
+            || Object.prototype.hasOwnProperty.call(value, "profileOptions"))
           Qt.callLater(function() { root.saveSettings() })
       } catch (loadError) {
         root.settings = root.defaultSettings()

@@ -26,10 +26,10 @@ costs the reader a menu.
 from __future__ import annotations
 
 import argparse
-import ast
 import json
 import os
 import re
+import shlex
 import stat
 import sys
 from pathlib import Path
@@ -53,31 +53,20 @@ TRAINED_MODES = {"n": "normal", "x": "visual", "v": "visual",
 # left-hand side, so "<Space>" is as valid a spelling as " ". `:help mapleader`
 NOTATION = {"<space>": " ", "<bslash>": "\\", "<tab>": "\t", "<cr>": "\r"}
 
-# Only a top-level literal assignment counts. Anything indented is inside an if,
-# a loop or a function, and reading it would mean deciding whether that branch
-# runs - which is interpreting the configuration.
-LEADER = re.compile(
-    r'^vim\.g\.(mapleader|maplocalleader)\s*=\s*'
-    r'(?:"((?:[^"\\]|\\.)*)"|\'((?:[^\'\\]|\\.)*)\')'
-    r'\s*(?:--.*)?$'
-)
-
 # A line that is about the option but not in a shape this may read. Telling
 # "you never set it" from "you set it somewhere I cannot follow" is the whole
 # difference between "the upstream default applies" and "please check this":
 # the first needs no attention, the second does.
-LEADER_MENTION = re.compile(r'\bvim\.g[.\[]["\']?(mapleader|maplocalleader)\b')
-TMUX_PREFIX_MENTION = re.compile(r'\bset(?:-option)?\b.*\bprefix\b')
+LEADER_MENTION = re.compile(
+    r'\b(?:vim\.g(?:\.(?:mapleader|maplocalleader)|\s*\[)|'
+    r'vim\.api\.nvim_set_var|vim\.cmd)'
+)
+TMUX_PREFIX_MENTION = re.compile(r'\bprefix2?\b')
 
 
 def is_comment(line: str) -> bool:
     stripped = line.lstrip()
     return stripped.startswith("--") or stripped.startswith("#")
-
-# tmux's own syntax, and equally fixed: `set -g prefix C-Space`.
-TMUX_PREFIX = re.compile(
-    r'^set(?:-option)?\s+(?:-[a-zA-Z]+\s+)*(prefix2?)\s+(\S+)\s*(?:#.*)?$'
-)
 
 # The whole contract, written out. Nothing else is opened.
 FILES: dict[str, dict[str, list[str]]] = {
@@ -142,58 +131,280 @@ def read_text(home: Path, relative: str) -> str | None:
         raise Skipped(f"{relative} is not UTF-8") from None
 
 
-def unescape(raw: str) -> str:
-    try:
-        return raw.encode("utf-8").decode("unicode_escape")
-    except UnicodeDecodeError:
-        raise Skipped("unreadable escape") from None
+def long_bracket(text: str, start: int) -> tuple[str, int] | None:
+    """Return a Lua long string/comment body and its exclusive end."""
+    match = re.match(r"\[(=*)\[", text[start:])
+    if not match:
+        return None
+    marker = "]" + match.group(1) + "]"
+    body_start = start + match.end()
+    end = text.find(marker, body_start)
+    if end < 0:
+        return None
+    body = text[body_start:end]
+    # Lua discards the first newline immediately after a long-string opener.
+    if body.startswith("\r\n"):
+        body = body[2:]
+    elif body.startswith("\n"):
+        body = body[1:]
+    return body, end + len(marker)
+
+
+def decode_lua_short(text: str) -> str | None:
+    """Decode one complete Lua single/double quoted literal, without eval."""
+    if len(text) < 2 or text[0] not in "\"'" or text[-1] != text[0]:
+        return None
+    result: list[str] = []
+    index = 1
+    end = len(text) - 1
+    simple = {"a": "\a", "b": "\b", "f": "\f", "n": "\n", "r": "\r",
+              "t": "\t", "v": "\v", "\\": "\\", '"': '"', "'": "'"}
+    while index < end:
+        char = text[index]
+        if char != "\\":
+            if char in "\r\n":
+                return None
+            result.append(char)
+            index += 1
+            continue
+        index += 1
+        if index >= end:
+            return None
+        escaped = text[index]
+        if escaped in simple:
+            result.append(simple[escaped])
+            index += 1
+        elif escaped == "z":
+            index += 1
+            while index < end and text[index].isspace():
+                index += 1
+        elif escaped == "x" and index + 2 < end \
+                and re.fullmatch(r"[0-9A-Fa-f]{2}", text[index + 1:index + 3]):
+            result.append(chr(int(text[index + 1:index + 3], 16)))
+            index += 3
+        elif escaped == "u" and index + 1 < end and text[index + 1] == "{":
+            close = text.find("}", index + 2, end)
+            digits = text[index + 2:close] if close >= 0 else ""
+            if not digits or not re.fullmatch(r"[0-9A-Fa-f]{1,8}", digits):
+                return None
+            try:
+                result.append(chr(int(digits, 16)))
+            except ValueError:
+                return None
+            index = close + 1
+        elif escaped.isdigit():
+            match = re.match(r"\d{1,3}", text[index:end])
+            assert match is not None
+            number = int(match.group(0), 10)
+            if number > 255:
+                return None
+            result.append(chr(number))
+            index += len(match.group(0))
+        elif escaped == "\n":
+            result.append("\n")
+            index += 1
+        elif escaped == "\r" and index + 1 < end and text[index + 1] == "\n":
+            result.append("\n")
+            index += 2
+        else:
+            return None
+    return "".join(result)
 
 
 def lua_string(value: str) -> str | None:
-    """One quoted Lua string, without evaluating any Lua expression."""
+    """One complete short or long Lua string, without evaluating Lua."""
     text = value.strip()
-    if len(text) < 2 or text[0] not in "\"'" or text[-1] != text[0]:
+    if not text:
         return None
-    try:
-        # The accepted subset has Python-compatible quote and backslash
-        # escapes. Anything outside it is skipped rather than guessed.
-        result = ast.literal_eval(text)
-    except (SyntaxError, ValueError):
-        return None
-    return result if isinstance(result, str) else None
+    if text[0] in "\"'":
+        return decode_lua_short(text)
+    found = long_bracket(text, 0)
+    return found[0] if found and found[1] == len(text) else None
 
 
-def split_lua_args(body: str) -> list[str] | None:
-    """Split a single-line call while respecting strings and delimiters."""
+def without_lua_comments(text: str) -> str | None:
+    """Blank comments while preserving strings, offsets and newlines."""
+    output = list(text)
+    index = 0
+    while index < len(text):
+        char = text[index]
+        if char in "\"'":
+            quote = char
+            index += 1
+            while index < len(text):
+                if text[index] == "\\":
+                    index += 2
+                elif text[index] == quote:
+                    index += 1
+                    break
+                else:
+                    index += 1
+            else:
+                return None
+            continue
+        long_open = re.match(r"\[(=*)\[", text[index:]) if char == "[" else None
+        opened = long_bracket(text, index) if long_open else None
+        if long_open and not opened:
+            return None
+        if opened:
+            index = opened[1]
+            continue
+        if text.startswith("--", index):
+            block_open = re.match(r"\[(=*)\[", text[index + 2:])
+            block = long_bracket(text, index + 2) if block_open else None
+            if block_open and not block:
+                return None
+            end = block[1] if block else text.find("\n", index)
+            if end < 0:
+                end = len(text)
+            for position in range(index, end):
+                if output[position] not in "\r\n":
+                    output[position] = " "
+            index = end
+            continue
+        index += 1
+    return "".join(output)
+
+
+def split_lua_args(body: str, separators: str = ",") -> list[str] | None:
+    """Split Lua fields while respecting strings, comments and delimiters."""
+    clean = without_lua_comments(body)
+    if clean is None:
+        return None
     args: list[str] = []
     start = 0
     stack: list[str] = []
-    quote = ""
-    escaped = False
     pairs = {')': '(', ']': '[', '}': '{'}
-    for index, char in enumerate(body):
-        if quote:
-            if escaped:
-                escaped = False
-            elif char == "\\":
-                escaped = True
-            elif char == quote:
-                quote = ""
-            continue
+    index = 0
+    while index < len(clean):
+        char = clean[index]
         if char in "\"'":
             quote = char
-        elif char in "([{":
+            index += 1
+            while index < len(clean):
+                if clean[index] == "\\":
+                    index += 2
+                elif clean[index] == quote:
+                    index += 1
+                    break
+                else:
+                    index += 1
+            else:
+                return None
+            continue
+        opened = long_bracket(clean, index) if char == "[" else None
+        if opened:
+            index = opened[1]
+            continue
+        if char in "([{":
             stack.append(char)
         elif char in ")]}":
             if not stack or stack.pop() != pairs[char]:
                 return None
-        elif char == "," and not stack:
-            args.append(body[start:index].strip())
+        elif char in separators and not stack:
+            args.append(clean[start:index].strip())
             start = index + 1
-    if quote or stack:
+        index += 1
+    if stack:
         return None
-    args.append(body[start:].strip())
+    args.append(clean[start:].strip())
     return args
+
+
+def call_parts(statement: str) -> tuple[str, list[str]] | None:
+    """An exact dotted-name parenthesized call and its top-level arguments."""
+    clean = without_lua_comments(statement)
+    if clean is None:
+        return None
+    match = re.match(r"^([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)\s*\(", clean)
+    if not match:
+        return None
+    open_at = clean.find("(", match.start())
+    stack: list[str] = []
+    pairs = {')': '(', ']': '[', '}': '{'}
+    index = open_at
+    close_at = -1
+    while index < len(clean):
+        char = clean[index]
+        if char in "\"'":
+            quote = char
+            index += 1
+            while index < len(clean):
+                if clean[index] == "\\":
+                    index += 2
+                elif clean[index] == quote:
+                    index += 1
+                    break
+                else:
+                    index += 1
+            else:
+                return None
+            continue
+        opened = long_bracket(clean, index) if char == "[" else None
+        if opened:
+            index = opened[1]
+            continue
+        if char in "([{":
+            stack.append(char)
+        elif char in ")]}":
+            if not stack or stack.pop() != pairs[char]:
+                return None
+            if not stack:
+                close_at = index
+                break
+        index += 1
+    if close_at < 0 or clean[close_at + 1:].strip() not in ("", ";"):
+        return None
+    args = split_lua_args(clean[open_at + 1:close_at])
+    if args and not args[-1]:
+        args.pop()
+    return (match.group(1), args) if args is not None else None
+
+
+def delimiters_balanced(text: str) -> bool:
+    clean = without_lua_comments(text)
+    if clean is None:
+        return False
+    stack: list[str] = []
+    pairs = {')': '(', ']': '[', '}': '{'}
+    index = 0
+    while index < len(clean):
+        char = clean[index]
+        if char in "\"'":
+            quote = char
+            index += 1
+            while index < len(clean):
+                if clean[index] == "\\":
+                    index += 2
+                elif clean[index] == quote:
+                    index += 1
+                    break
+                else:
+                    index += 1
+            continue
+        opened = long_bracket(clean, index) if char == "[" else None
+        if opened:
+            index = opened[1]
+            continue
+        if char in "([{":
+            stack.append(char)
+        elif char in ")]}":
+            if not stack or stack.pop() != pairs[char]:
+                return False
+        index += 1
+    return not stack
+
+
+def complete_statement(lines: list[str], start: int) -> tuple[str, int]:
+    """Collect a bounded statement, allowing Stylua's multiline calls."""
+    statement = lines[start]
+    end = start
+    while end + 1 < len(lines) and len(statement) <= MAX_LINE_CHARS:
+        if delimiters_balanced(statement):
+            break
+        end += 1
+        statement += "\n" + lines[end]
+    return statement, end
 
 
 def literal_modes(value: str) -> list[str] | None:
@@ -207,7 +418,9 @@ def literal_modes(value: str) -> list[str] | None:
         if parts is None:
             return None
         names = []
-        for part in parts:
+        for index, part in enumerate(parts):
+            if not part and index == len(parts) - 1:
+                continue
             name = lua_string(part)
             if name is None:
                 return None
@@ -222,23 +435,62 @@ def literal_modes(value: str) -> list[str] | None:
     return contexts or None
 
 
-def literal_desc(options: str) -> str | None:
-    match = re.search(r'(?:^|[,\s{])desc\s*=\s*("(?:[^"\\]|\\.)*"|\'(?:[^\'\\]|\\.)*\')',
-                      options)
-    if not match:
+def literal_options(options: str) -> tuple[str | None, bool] | None:
+    """Description and buffer-local flag from one literal options table."""
+    text = options.strip()
+    if not text.startswith("{") or not text.endswith("}"):
         return None
-    desc = lua_string(match.group(1))
-    if not desc or len(desc) > MAX_DESC_CHARS or re.search(r"[\x00-\x1f\x7f]", desc):
+    fields = split_lua_args(text[1:-1], ",;")
+    if fields is None:
         return None
-    return desc
+    description: str | None = None
+    buffer_local = False
+    for field in fields:
+        if not field:
+            continue
+        match = re.match(r"^([A-Za-z_]\w*)\s*=\s*(.*)$", field, re.DOTALL)
+        name = match.group(1) if match else ""
+        value = match.group(2) if match else ""
+        if not match:
+            bracket = re.match(
+                r"^\[\s*((?:\"(?:[^\"\\]|\\.)*\")|(?:'(?:[^'\\]|\\.)*'))\s*\]\s*=\s*(.*)$",
+                field, re.DOTALL)
+            if bracket:
+                name = lua_string(bracket.group(1)) or ""
+                value = bracket.group(2)
+        if name in ("buffer", "buf"):
+            buffer_local = True
+        elif name == "desc":
+            found = lua_string(value)
+            if found is None or (description is not None and found != description):
+                return None
+            description = found
+    if description is not None and (not description or len(description) > MAX_DESC_CHARS
+                                    or re.search(r"[\x00-\x1f\x7f]", description)):
+        description = None
+    return description, buffer_local
 
 
-KEYMAP_CALL = re.compile(r'^vim\.keymap\.(set|del)\s*\((.*)\)\s*(?:--.*)?$')
-KEYMAP_MENTION = re.compile(r'\bvim\.keymap\.(set|del)\b')
+KEYMAP_APIS = {
+    "vim.keymap.set": "set",
+    "vim.keymap.del": "del",
+    "vim.api.nvim_set_keymap": "set",
+    "vim.api.nvim_del_keymap": "del",
+    "LazyVim.safe_keymap_set": "set",
+}
+KEYMAP_MENTION = re.compile(
+    r"\b(?:vim\.keymap\.(?:set|del)|vim\.api\.nvim_(?:set|del)_keymap|"
+    r"LazyVim\.safe_keymap_set)\b"
+)
+ALIAS = re.compile(
+    r"^local\s+([A-Za-z_]\w*)\s*=\s*"
+    r"(vim\.keymap\.(?:set|del)|vim\.api\.nvim_(?:set|del)_keymap|"
+    r"LazyVim\.safe_keymap_set)\s*;?\s*$"
+)
 
 
 def read_keymaps(home: Path, files: list[str]) -> tuple[list[dict[str, Any]], dict[str, int]]:
-    """Top-level, single-line literal set/del calls, in file order."""
+    """Top-level literal set/del calls, including balanced multiline forms."""
     bindings: list[dict[str, Any]] = []
     skipped: dict[str, int] = {}
 
@@ -249,23 +501,65 @@ def read_keymaps(home: Path, files: list[str]) -> tuple[list[dict[str, Any]], di
         text = read_text(home, relative)
         if text is None:
             continue
-        for line in text.splitlines():
+        clean_text = without_lua_comments(text)
+        if clean_text is None:
+            drop("unsupported-shape")
+            continue
+        aliases: dict[str, str] = {}
+        invalid_aliases: set[str] = set()
+        lines = clean_text.splitlines()
+        line_index = 0
+        while line_index < len(lines):
+            line = lines[line_index]
             stripped = line.lstrip()
-            if is_comment(line) or not KEYMAP_MENTION.match(stripped):
+            if is_comment(line):
+                line_index += 1
                 continue
             if len(line) > MAX_LINE_CHARS:
                 drop("line-too-long")
+                line_index += 1
                 continue
-            if line[:1].isspace():
+            clean_line = without_lua_comments(line)
+            clean_line = clean_line.strip() if clean_line is not None else ""
+            alias = ALIAS.fullmatch(clean_line) if not line[:1].isspace() else None
+            if alias:
+                name, target = alias.groups()
+                if name not in invalid_aliases:
+                    aliases[name] = target
+                line_index += 1
+                continue
+            reassigned = re.match(r"^(?:local\s+)?([A-Za-z_]\w*)\s*=", clean_line)
+            if reassigned and reassigned.group(1) in aliases:
+                invalid_aliases.add(reassigned.group(1))
+                aliases.pop(reassigned.group(1), None)
+                drop("alias-reassigned")
+                line_index += 1
+                continue
+            called = re.match(r"^([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)\s*\(", stripped)
+            name = called.group(1) if called else ""
+            known = name in KEYMAP_APIS or name in aliases
+            if line[:1].isspace() and (KEYMAP_MENTION.match(stripped) or name in aliases):
                 drop("indented")
+                line_index += 1
                 continue
-            match = KEYMAP_CALL.fullmatch(line)
-            if not match:
+            if not known:
+                if KEYMAP_MENTION.match(stripped):
+                    drop("unsupported-shape")
+                line_index += 1
+                continue
+            statement, statement_end = complete_statement(lines, line_index)
+            line_index = statement_end + 1
+            if len(statement) > MAX_LINE_CHARS:
+                drop("line-too-long")
+                continue
+            parsed = call_parts(statement)
+            if parsed is None:
                 drop("unsupported-shape")
                 continue
-            op = match.group(1)
-            args = split_lua_args(match.group(2))
-            if args is None or len(args) < (4 if op == "set" else 2):
+            function, args = parsed
+            target = aliases.get(function, function)
+            op = KEYMAP_APIS.get(target)
+            if op is None or len(args) not in ((4,) if op == "set" else (2, 3)):
                 drop("unsupported-shape")
                 continue
             modes = literal_modes(args[0])
@@ -278,11 +572,26 @@ def read_keymaps(home: Path, files: list[str]) -> tuple[list[dict[str, Any]], di
                 continue
             record: dict[str, Any] = {"op": op, "contexts": modes, "lhs": lhs}
             if op == "set":
-                desc = literal_desc(args[3])
+                options = literal_options(args[3])
+                if options is None:
+                    drop("dynamic-options")
+                    continue
+                desc, buffer_local = options
+                if buffer_local:
+                    drop("buffer-local")
+                    continue
                 if not desc:
                     drop("missing-description")
                     continue
                 record["desc"] = desc
+            elif len(args) == 3:
+                options = literal_options(args[2])
+                if options is None:
+                    drop("dynamic-options")
+                    continue
+                if options[1]:
+                    drop("buffer-local")
+                    continue
             if len(bindings) >= MAX_BINDINGS:
                 drop("too-many-bindings")
                 continue
@@ -297,25 +606,119 @@ def option_value(value: str) -> str:
     return value
 
 
+def leader_expression(value: str) -> str | None:
+    """A literal key, optionally passed through the exact vim.keycode API."""
+    direct = lua_string(value)
+    if direct is not None:
+        try:
+            return option_value(direct)
+        except Skipped:
+            return None
+    called = call_parts(value)
+    if called and called[0] == "vim.keycode" and len(called[1]) == 1:
+        literal = lua_string(called[1][0])
+    else:
+        match = re.match(r"^vim\.keycode\s+(.+)$", value.strip(), re.DOTALL)
+        literal = lua_string(match.group(1)) if match else None
+    if literal is None:
+        return None
+    try:
+        return option_value(NOTATION.get(literal.lower(), literal))
+    except Skipped:
+        return None
+
+
+def vim_cmd_leader(command: str) -> tuple[str, str] | None:
+    """The one allowed Vimscript statement inside vim.cmd."""
+    match = re.fullmatch(
+        r"\s*let\s+(?:g:)?(mapleader|maplocalleader)\s*=\s*"
+        r"(\"(?:[^\"\\]|\\.)*\"|'(?:[^'\\]|\\.)*')\s*",
+        command, re.DOTALL)
+    if not match:
+        return None
+    value = lua_string(match.group(2))
+    if value is None:
+        return None
+    try:
+        return match.group(1), option_value(value)
+    except Skipped:
+        return None
+
+
+def parse_leader_statement(statement: str) -> tuple[str, str] | None:
+    clean = without_lua_comments(statement)
+    if clean is None:
+        return None
+    clean = clean.strip()
+    if clean.endswith(";"):
+        clean = clean[:-1].rstrip()
+
+    assignment = re.fullmatch(
+        r"vim\.g(?:\.(mapleader|maplocalleader)|\[\s*"
+        r"((?:\"(?:[^\"\\]|\\.)*\")|(?:'(?:[^'\\]|\\.)*'))\s*\])"
+        r"\s*=\s*(.+)", clean, re.DOTALL)
+    if assignment:
+        name = assignment.group(1) or lua_string(assignment.group(2))
+        value = leader_expression(assignment.group(3))
+        if name in ("mapleader", "maplocalleader") and value is not None:
+            return name, value
+        return None
+
+    called = call_parts(clean)
+    if called and called[0] == "vim.api.nvim_set_var" and len(called[1]) == 2:
+        name = lua_string(called[1][0])
+        value = leader_expression(called[1][1])
+        if name in ("mapleader", "maplocalleader") and value is not None:
+            return name, value
+        return None
+    if called and called[0] == "vim.cmd" and len(called[1]) == 1:
+        command = lua_string(called[1][0])
+        return vim_cmd_leader(command) if command is not None else None
+    command_call = re.fullmatch(r"vim\.cmd\s+(.+)", clean, re.DOTALL)
+    if command_call:
+        command = lua_string(command_call.group(1))
+        return vim_cmd_leader(command) if command is not None else None
+    return None
+
+
 def read_leader(home: Path, files: list[str]) -> tuple[dict[str, str], dict[str, str]]:
-    """`vim.g.mapleader` and `vim.g.maplocalleader`, or nothing."""
+    """Statically decidable top-level leader assignments and exact APIs."""
     found: dict[str, set[str]] = {}
     mentioned: set[str] = set()
     for relative in files:
         text = read_text(home, relative)
         if text is None:
             continue
-        for line in text.splitlines():
-            match = LEADER.match(line)
-            if match:
-                raw = match.group(2) if match.group(2) is not None else match.group(3)
-                found.setdefault(match.group(1), set()).add(option_value(unescape(raw)))
-                continue
+        clean_text = without_lua_comments(text)
+        if clean_text is None:
+            for name in ("mapleader", "maplocalleader"):
+                if name in text:
+                    mentioned.add(name)
+            continue
+        lines = clean_text.splitlines()
+        index = 0
+        while index < len(lines):
+            line = lines[index]
             if is_comment(line):
+                index += 1
                 continue
-            mention = LEADER_MENTION.search(line)
-            if mention:
-                mentioned.add(mention.group(1))
+            if not LEADER_MENTION.search(line):
+                index += 1
+                continue
+            for name in ("mapleader", "maplocalleader"):
+                if name in line:
+                    mentioned.add(name)
+            if line[:1].isspace():
+                index += 1
+                continue
+            statement, end = complete_statement(lines, index)
+            index = end + 1
+            for name in ("mapleader", "maplocalleader"):
+                if name in statement:
+                    mentioned.add(name)
+            parsed = parse_leader_statement(statement)
+            if parsed:
+                found.setdefault(parsed[0], set()).add(parsed[1])
 
     options: dict[str, str] = {}
     skipped: dict[str, str] = {}
@@ -334,35 +737,101 @@ def read_leader(home: Path, files: list[str]) -> tuple[dict[str, str], dict[str,
     return options, skipped
 
 
+def tmux_logical_lines(text: str) -> list[str]:
+    """Join the simple backslash continuations accepted by tmux config."""
+    result: list[str] = []
+    pending = ""
+    for physical in text.splitlines():
+        line = pending + physical
+        stripped = line.rstrip()
+        slashes = len(stripped) - len(stripped.rstrip("\\"))
+        if slashes % 2:
+            pending = stripped[:-1] + " "
+            continue
+        result.append(line)
+        pending = ""
+    if pending:
+        result.append(pending)
+    return result
+
+
+def tmux_assignment(line: str) -> tuple[str, str | None] | None:
+    """One global literal set/set-option, tokenized without a shell."""
+    try:
+        tokens = shlex.split(line, comments=True, posix=True)
+    except ValueError:
+        return None
+    if not tokens or tokens[0] not in ("set", "set-option"):
+        return None
+    option_at = next((index for index, token in enumerate(tokens[1:], 1)
+                      if token in ("prefix", "prefix2")), -1)
+    if option_at < 0 or len(tokens) != option_at + 2:
+        return None
+    flags = tokens[1:option_at]
+    letters = "".join(flag[1:] for flag in flags if flag.startswith("-") and len(flag) > 1)
+    if len(flags) != sum(1 for flag in flags if flag.startswith("-") and len(flag) > 1) \
+            or "g" not in letters or any(letter not in "gq" for letter in letters):
+        return None
+    name, value = tokens[option_at], tokens[option_at + 1]
+    if value.lower() == "none" and name == "prefix2":
+        return name, None
+    try:
+        return name, option_value(value)
+    except Skipped:
+        return None
+
+
 def read_tmux_prefix(home: Path, files: list[str]) -> tuple[dict[str, str], dict[str, str]]:
     """`set -g prefix C-Space`, and the spare beside it.
 
     The prefix is what a card shows; prefix2 is what it also accepts, because
     tmux fires on either and marking one wrong would teach something untrue.
     """
-    found: dict[str, set[str]] = {"prefix": set(), "prefix2": set()}
-    mentioned = False
+    found: dict[str, str | None] = {}
+    mentioned: set[str] = set()
+    uncertain = False
+    uncertainty = "configuration may set prefix dynamically"
     for relative in files:
         text = read_text(home, relative)
         if text is None:
             continue
-        for line in text.splitlines():
-            match = TMUX_PREFIX.match(line.strip())
-            if match:
-                found[match.group(1)].add(option_value(match.group(2)))
-            elif not is_comment(line) and TMUX_PREFIX_MENTION.search(line):
-                mentioned = True
+        file_found: dict[str, str | None] = {}
+        for line in tmux_logical_lines(text):
+            if is_comment(line) or not line.strip():
+                continue
+            try:
+                head = shlex.split(line, comments=True, posix=True)
+            except ValueError:
+                head = []
+            if head and head[0] in ("source", "source-file", "if-shell", "run-shell"):
+                uncertain = True
+                continue
+            assignment = tmux_assignment(line)
+            if assignment:
+                mentioned.add(assignment[0])
+                file_found[assignment[0]] = assignment[1]
+            elif head and head[0] in ("set", "set-option") \
+                    and TMUX_PREFIX_MENTION.search(line):
+                for name in ("prefix", "prefix2"):
+                    if re.search(rf"\b{name}\b", line):
+                        mentioned.add(name)
+                uncertain = True
+        for name, value in file_found.items():
+            if name in found and found[name] != value:
+                uncertain = True
+                uncertainty = "fixed config files disagree"
+            else:
+                found[name] = value
 
     options: dict[str, str] = {}
     skipped: dict[str, str] = {}
+    if uncertain:
+        return {}, {"prefix": uncertainty, "prefix2": uncertainty}
     for name in ("prefix", "prefix2"):
-        values = found[name]
-        if len(values) == 1:
-            options[name] = next(iter(values))
-        elif values:
-            skipped[name] = "set more than once"
-        elif name == "prefix":
-            skipped[name] = "set in a shape this cannot read" if mentioned else "never set"
+        if name in found and found[name] is not None:
+            options[name] = str(found[name])
+        elif name == "prefix" and name not in mentioned:
+            skipped[name] = "never set"
         # A machine with no prefix2 is the normal case, not a failure to read.
     return options, skipped
 

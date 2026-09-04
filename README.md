@@ -19,7 +19,7 @@ in an arcade. Each keeps its own deck, its own progress and its own mastery:
 | --- | --- |
 | **Hyprland** | The shortcuts active on your machine, read from the running compositor |
 | **herdr** | The bindings active on your machine, through Omarchy's read-only listing |
-| **tmux** | The running server's documented prefix table; the shipped default table is the fallback |
+| **tmux** | The running server's real prefixes and documented table; a stopped server uses literal local prefix settings plus the shipped table |
 | **VIM** | Operators, motions, text objects and compositions cited against Neovim's runtime help |
 | **NEOVIM** | Neovim's built-in mappings collected from a clean instance |
 | **LazyVim** | LazyVim's published keymaps, calibrated by your leader, extras and literal top-level overrides |
@@ -45,9 +45,9 @@ grounds are there when you want them.
   shows a one-time celebration when every eligible shortcut first reaches 100%.
 - Lets you exclude a shortcut your keyboard cannot press, or one you do not
   want to train, and restore it later with its progress intact.
-- Says where every ground's shortcuts came from. An application ground names
-  its upstream and the day that table was published, and never suggests it
-  read your own configuration.
+- Resolves a ground's configurable keys - LazyVim's leader, tmux's prefix -
+  from the real local configuration, so nobody maintains a second, manual
+  copy of them. The top bar names what was detected and where it came from.
 - Includes English and Simplified Chinese, local feedback/countdown sounds,
   and five palettes: Catppuccin, Tokyo Night, Gruvbox, Everforest and
   Ristretto.
@@ -157,14 +157,29 @@ edits Hyprland configuration during removal.
 
 ### What the application grounds read from your machine
 
-The tables are the upstream defaults. What a machine changed about them is read
-from the small, fixed-shape part of its own configuration: configurable prefix
-keys, LazyVim extras and version, and top-level literal `vim.keymap.set/del`
-calls in `lua/config/keymaps.lua`. No Lua runs, no editor starts and no
-`require` chain is followed. tmux is the one live query: its local socket is
-opened only after `has-session` proves a server is already running; otherwise
-the shipped pack is used without invoking `list-keys`. Anything unreadable is
-skipped and shown rather than guessed.
+The tables are the upstream defaults. Keycade does not ask you to maintain a
+second, manual choice for a configurable leader or prefix. It resolves those
+keys from the small, fixed-shape part of the real local configuration and falls
+back to the upstream default only when no value can be proved. Those keys are
+applied to the deck.
+
+The LazyVim reader accepts common equivalent literal forms: dot or bracket
+`vim.g` assignments, exact `nvim_set_var` / `vim.cmd("let …")` forms and
+literal `vim.keycode` wrappers. In `lua/config/keymaps.lua` it accepts direct
+`vim.keymap.set/del`, the legacy global API, balanced multiline calls, literal
+mode arrays and option tables, and statically allowlisted local aliases.
+Dynamic values, block-local calls, unknown wrappers and `require` chains are
+skipped and counted. No Lua runs and no editor starts.
+
+tmux is the one live query. After `has-session` proves a server already exists,
+Keycade reads its effective `prefix` and `prefix2` with `show-options`, then its
+documented bindings with `list-keys`. With no server, it only parses literal
+global `set` / `set-option` forms in the fixed XDG and `~/.tmux.conf` paths and
+keeps the shipped binding table. tmux fires on either prefix, so both are
+accepted: `C-b` is the one shown on the card whenever it is genuinely enabled,
+and the other stays a valid alternate. A machine that sets a different prefix
+alone is taken at its word. An unreadable prefix falls back to tmux's own `C-b`
+default and the top bar says so rather than hiding it.
 
 ### Application shortcut packs
 

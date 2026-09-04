@@ -211,7 +211,7 @@ Item {
   }
 
   // A pack ground is loaded from data already in memory, so it can only be
-  // asked once the settings that name its leader have arrived.
+  // asked once persisted settings are loaded and its detected config arrives.
   function loadActiveGround() {
     root.groundLoading = true
     if (root.packGround) {
@@ -495,8 +495,7 @@ Item {
   // before that would keep pointing at a detached copy of the defaults.
   function profileCounters() { return Stats.counters(store.stats, root.profileId) }
 
-  // The active ground's configurable keys, as stored. The store normalises
-  // them against what the profile declares, so this is already bounded.
+  // The active ground's configurable keys, resolved from its real config.
   // "leader ␣" / "prefix C-b" - what this ground's configurable keys are set
   // to right now, short enough for a button.
   function optionSummary() {
@@ -507,14 +506,16 @@ Item {
     return parts.join("  ")
   }
 
-  // A space has to be visible to be a readable setting.
+  // A space has to be visible to be a readable detected value, and one that
+  // resolves to nothing - tmux's spare prefix on a machine that sets only
+  // one - has to read as an absence rather than as a blank cell.
   function optionLabel(value) {
     var text = String(value === undefined || value === null ? "" : value)
+    if (!text.length) return "—"
     return text === " " ? "␣" : text
   }
 
-  // One row per configurable key: its name, what it is set to, and what can
-  // be chosen without typing.
+  // One read-only row per configurable key: value and provenance.
   function optionRows() {
     var names = Profiles.optionNames(root.profileId)
     var rows = []
@@ -524,29 +525,27 @@ Item {
         name: name,
         value: root.optionValue(name),
         origin: root.optionOrigin(name),
-        unreadable: root.optionUnreadable(name),
-        choices: Profiles.optionChoices(root.profileId, name)
+        unreadable: root.optionUnreadable(name)
       })
     }
     return rows
   }
 
-  // What the reader chose by hand, and only that. The store keeps nothing else
-  // here, so an absent name means "whatever the machine or upstream says".
-  function profileOverrides() {
-    var stored = store.settings.profileOptions
-    return stored && stored[root.profileId] ? stored[root.profileId] : ({})
+  function detectedOptions() {
+    if (root.profileId === "tmux" && tmuxLive.pack && tmuxLive.options)
+      return tmuxLive.options
+    return appConfig.options || ({})
   }
 
   // Where a value came from, which is what the menu shows and what decides
   // whether anything needs the reader's attention.
-  //   "manual"   chosen here, and it wins
   //   "machine"  read from this ground's own configuration
   //   "default"  the upstream default, because nothing on this machine changed
   //              it - or because whatever did could not be read
   function optionOrigin(name) {
-    if (root.profileOverrides()[name] !== undefined) return "manual"
-    if (appConfig.options[name] !== undefined) return "machine"
+    var detected = root.detectedOptions()
+    if (detected[name] !== undefined && Profiles.optionUsable(detected[name]))
+      return "machine"
     return "default"
   }
 
@@ -554,48 +553,26 @@ Item {
   // at. Any other reason means the machine changed this and the change could
   // not be read, which is the one case worth telling the reader about.
   function optionUnreadable(name) {
+    if (root.profileId === "tmux" && tmuxLive.pack) return false
+    var detected = root.detectedOptions()
+    if (detected[name] !== undefined && !Profiles.optionUsable(detected[name])) return true
     var reason = String(appConfig.skipped[name] || "")
     return Boolean(reason) && reason !== "never assigned" && reason !== "never set"
   }
 
   function optionValue(name) {
-    var overrides = root.profileOverrides()
-    if (overrides[name] !== undefined) return String(overrides[name])
-    if (appConfig.options[name] !== undefined) return String(appConfig.options[name])
-    var defaults = Profiles.options(root.profileId)
-    return defaults[name] === undefined ? "" : String(defaults[name])
+    var resolved = root.profileOptions()
+    return resolved[name] === undefined ? "" : String(resolved[name])
   }
 
-  // What the source is handed: every declared option, already resolved.
+  // What the source is handed: every declared option, resolved automatically.
+  // tmux's C-b is displayed first whenever it is one of the server/config's
+  // actual prefixes; other real prefixes remain accepted as alternates.
   function profileOptions() {
-    var names = Profiles.optionNames(root.profileId)
-    var resolved = ({})
-    for (var index = 0; index < names.length; index++)
-      resolved[names[index]] = root.optionValue(names[index])
-    return resolved
+    return Profiles.resolvedOptions(root.profileId, root.detectedOptions())
   }
 
   // The reader answered; build the table against what it said.
-  // What this ground read from the machine, in one line. It says what was
-  // taken from the configuration rather than leaving the reader to wonder
-  // whether the table matches their install.
-  function groundConfigNotice() {
-    if (!root.packGround) return ""
-    var parts = []
-    var read = []
-    var names = Profiles.optionNames(root.profileId)
-    for (var index = 0; index < names.length; index++) {
-      if (root.optionOrigin(names[index]) === "machine")
-        read.push(names[index] + " " + root.optionLabel(root.optionValue(names[index])))
-      else if (root.optionUnreadable(names[index]))
-        parts.push(i18n.t("packOptionUnreadable", { option: names[index] }))
-    }
-    if (read.length) parts.push(i18n.t("packOptionRead", { options: read.join(" ") }))
-    if (appConfig.extras.length)
-      parts.push(i18n.t("packExtrasOn", { count: appConfig.extras.length }))
-    return parts.join("  ·  ")
-  }
-
   function applyDetectedConfig() {
     if (!root.packGround) {
       root.groundReady()
@@ -646,29 +623,6 @@ Item {
     root.applyEligibility()
     root.resumeAvailable = root.hasResumableSession()
     root.maybeShowHome()
-  }
-
-  // Set one of them. Empty puts the ground's own default back.
-  function setProfileOption(name, value) {
-    if (root.view === "playing") return
-    var options = store.settings.profileOptions || ({})
-    var ground = options[root.profileId] ? options[root.profileId] : ({})
-    var next = ({})
-    Object.keys(ground).forEach(function(key) { next[key] = ground[key] })
-    var chosen = String(value === undefined || value === null ? "" : value)
-    if (chosen) next[String(name)] = chosen
-    else delete next[String(name)]
-    var updated = ({})
-    Object.keys(options).forEach(function(key) { updated[key] = options[key] })
-    updated[root.profileId] = next
-    store.settings.profileOptions = updated
-    store.settings = Object.assign({}, store.settings)
-    store.saveSettings()
-    // The table is rebuilt against the new key, and the deck with it. The
-    // machine has already been read, so this does not ask it again.
-    root.applyDetectedConfig()
-    root.applyEligibility()
-    root.refreshProgressCounts()
   }
 
   // One line for an answer, wherever a list has no room to draw its steps. A
@@ -1507,9 +1461,8 @@ Item {
               }
             }
           }
-          // The ground's configurable keys. Only the grounds that have one
-          // show it, and it is a menu rather than a field because the overlay
-          // holds the keyboard - there is nowhere to type.
+          // Read-only provenance for the ground's configurable keys. Values
+          // come from the real application config, never from a second picker.
           Rectangle {
             id: optionsButton
             visible: Profiles.optionNames(root.profileId).length > 0
@@ -1518,7 +1471,7 @@ Item {
             SafeText {
               id: optionsLabel
               anchors.centerIn: parent
-              text: root.optionSummary() + " ▾"
+              text: root.optionSummary() + " ⓘ"
               color: root.inkColor; font.family: "monospace"; font.bold: true; font.pixelSize: 10
             }
             MouseArea {
@@ -1722,7 +1675,7 @@ Item {
               required property var modelData
               spacing: 6
               Column {
-                width: 96; anchors.verticalCenter: parent.verticalCenter
+                width: 180; anchors.verticalCenter: parent.verticalCenter
                 spacing: 0
                 SafeText {
                   width: parent.width
@@ -1745,43 +1698,14 @@ Item {
                   elide: Text.ElideRight; maximumLineCount: 1
                 }
               }
-              Repeater {
-                model: optionRow.modelData.choices
-                delegate: Rectangle {
-                  id: optionChoice
-                  required property var modelData
-                  readonly property bool current: optionChoice.modelData === optionRow.modelData.value
-                  width: 40; height: 26
-                  color: optionChoice.current ? root.primaryColor : root.screenColor
-                  border.width: 2
-                  border.color: optionChoice.current ? root.primaryColor : root.voidColor
-                  SafeText {
-                    anchors.centerIn: parent; width: parent.width - 6
-                    horizontalAlignment: Text.AlignHCenter; elide: Text.ElideRight; maximumLineCount: 1
-                    text: root.optionLabel(optionChoice.modelData)
-                    color: optionChoice.current ? root.voidColor : root.inkColor
-                    font.family: "monospace"; font.pixelSize: 10; font.bold: true
-                  }
-                  MouseArea {
-                    anchors.fill: parent
-                    onClicked: root.setProfileOption(optionRow.modelData.name, optionChoice.modelData)
-                  }
-                }
-              }
-              // Clearing the override puts the machine's own answer back.
-              Rectangle {
-                anchors.verticalCenter: parent.verticalCenter
-                visible: optionRow.modelData.origin === "manual"
-                width: 34; height: 26
-                color: root.screenColor; border.width: 2; border.color: root.mutedColor
-                SafeText {
-                  anchors.centerIn: parent; text: "↺"; color: root.mutedColor
-                  font.family: "monospace"; font.pixelSize: 12; font.bold: true
-                }
-                MouseArea {
-                  anchors.fill: parent
-                  onClicked: root.setProfileOption(optionRow.modelData.name, "")
-                }
+              SafeText {
+                width: 102; height: 28
+                verticalAlignment: Text.AlignVCenter
+                horizontalAlignment: Text.AlignRight
+                text: root.optionLabel(optionRow.modelData.value)
+                color: optionRow.modelData.unreadable ? root.coinColor : root.primaryColor
+                font.family: "monospace"; font.pixelSize: 11; font.bold: true
+                elide: Text.ElideRight; maximumLineCount: 1
               }
             }
           }

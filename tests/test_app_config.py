@@ -66,6 +66,16 @@ class LeaderTests(unittest.TestCase):
             # "<Space>" is a working spelling and has to mean the space key.
             ('vim.g.mapleader = "<Space>"', " "),
             ('vim.g.mapleader = "\\\\"', "\\"),
+            ('vim.g["mapleader"] = ","', ","),
+            ("vim.g['mapleader'] = ';'", ";"),
+            ('vim.g.mapleader = [[ ]]', " "),
+            ('vim.g.mapleader = vim.keycode("<Space>")', " "),
+            ('vim.g.mapleader = vim.keycode "<Bslash>"', "\\"),
+            ('vim.api.nvim_set_var("mapleader", ",")', ","),
+            ('vim.api.nvim_set_var(\n  "mapleader",\n  ";"\n)', ";"),
+            ('vim.cmd("let mapleader = \',\'")', ","),
+            ('vim.cmd([[let mapleader = ";"]])', ";"),
+            ('vim.cmd([[\nlet mapleader = ","\n]])', ","),
         ):
             with self.subTest(body=body):
                 self.assertEqual(self.leader(body)["options"].get("leader"), expected)
@@ -81,7 +91,7 @@ class LeaderTests(unittest.TestCase):
             ('-- vim.g.mapleader = ","', "never assigned"),
             ('  vim.g.mapleader = ","', "assigned in a shape this cannot read"),
             ('vim.g.mapleader = vim.env.LEADER or " "', "assigned in a shape this cannot read"),
-            ('vim.g["mapleader"] = ","', "assigned in a shape this cannot read"),
+            ('vim.g["mapleader" .. suffix] = ","', "assigned in a shape this cannot read"),
             ('vim.g.mapleader = ","\nvim.g.mapleader = ";"', "assigned more than one value"),
             ("", "never assigned"),
         ):
@@ -109,6 +119,11 @@ class LeaderTests(unittest.TestCase):
         self.home.write(".config/nvim/lua/config/mine.lua", 'vim.g.mapleader = ","')
         found = self.home.snapshot("lazyvim")
         self.assertNotIn("leader", found["options"])
+
+    def test_values_inside_long_comments_are_not_configuration(self):
+        found = self.leader('--[[\nvim.g.mapleader = ","\n]]\n-- nothing active')
+        self.assertNotIn("leader", found["options"])
+        self.assertEqual(found["skipped"]["leader"], "never assigned")
 
 
 class ExtrasAndVersionTests(unittest.TestCase):
@@ -186,15 +201,49 @@ class KeymapTests(unittest.TestCase):
     def test_ignores_comments_and_unrelated_lua(self):
         found = self.keymaps(
             '-- vim.keymap.set("n", "x", rhs, { desc = "No" })\n'
+            '--[[\nvim.keymap.set("n", "z", rhs, { desc = "Also no" })\n]]\n'
             'local x = "vim.keymap.set"\nprint(x)\n')
         self.assertEqual(found["bindings"], [])
         self.assertEqual(found["bindingSkipped"], {})
 
-    def test_a_multiline_call_is_skipped_not_partially_read(self):
+    def test_reads_balanced_multiline_calls(self):
         found = self.keymaps(
             'vim.keymap.set(\n  "n",\n  "gx",\n  rhs,\n  { desc = "Open" }\n)\n')
+        self.assertEqual(found["bindings"], [
+            {"op": "set", "contexts": ["normal"], "lhs": "gx", "desc": "Open"}
+        ])
+        self.assertEqual(found["bindingSkipped"], {})
+
+    def test_reads_legacy_apis_literal_aliases_and_option_spellings(self):
+        found = self.keymaps(
+            'local map = vim.keymap.set\n'
+            'map({ "n", "v", }, [[gZ]], function() return ")" end, '
+            '{ ["desc"] = [[Open thing]]; silent = true })\n'
+            'vim.api.nvim_set_keymap("n", "gx", "<cmd>Open<cr>", { desc = "Open" })\n'
+            'vim.api.nvim_del_keymap("n", "gy")\n'
+            'local safe = LazyVim.safe_keymap_set\n'
+            'safe("n", "gz", require("thing").open, { remap = true, desc = "Safe" })\n')
+        self.assertEqual(found["bindings"], [
+            {"op": "set", "contexts": ["normal", "visual"], "lhs": "gZ",
+             "desc": "Open thing"},
+            {"op": "set", "contexts": ["normal"], "lhs": "gx", "desc": "Open"},
+            {"op": "del", "contexts": ["normal"], "lhs": "gy"},
+            {"op": "set", "contexts": ["normal"], "lhs": "gz", "desc": "Safe"},
+        ])
+
+    def test_reassigned_alias_dynamic_options_and_buffer_maps_are_counted(self):
+        found = self.keymaps(
+            'local map = vim.keymap.set\n'
+            'map = custom_map\n'
+            'map("n", "gx", rhs, { desc = "Not provable" })\n'
+            'vim.keymap.set("n", "gy", rhs, opts)\n'
+            'vim.keymap.set("n", "gz", rhs, { buffer = true, desc = "Local" })\n')
         self.assertEqual(found["bindings"], [])
-        self.assertEqual(found["bindingSkipped"].get("unsupported-shape"), 1)
+        self.assertEqual(found["bindingSkipped"], {
+            "alias-reassigned": 1,
+            "dynamic-options": 1,
+            "buffer-local": 1,
+        })
 
 
 class TmuxTests(unittest.TestCase):
@@ -207,30 +256,51 @@ class TmuxTests(unittest.TestCase):
         return self.home.snapshot("tmux")
 
     def test_reads_the_prefix_omarchy_ships(self):
-        # The shipped table was built against tmux's own C-b, and every Omarchy
-        # machine moves it. This is the read that fixes that on its own.
+        # Omarchy enables C-Space and keeps C-b as prefix2; resolution later
+        # prefers the actually enabled C-b while preserving both answers.
         found = self.prefix("set -g prefix C-Space\nset -g prefix2 C-b\n")
         self.assertEqual(found["options"], {"prefix": "C-Space", "prefix2": "C-b"})
         self.assertEqual(found["skipped"], {})
 
-    def test_the_spare_prefix_is_read_but_is_not_the_one_shown(self):
-        # tmux fires on either, so a card shows the prefix and accepts prefix2
-        # as well - refusing a key tmux itself accepts would teach something
-        # untrue. A machine with no prefix2 is the normal case, not a failure.
+    def test_the_spare_prefix_is_read_when_present(self):
+        # Resolution decides which value is shown; this reader preserves both
+        # effective inputs. No prefix2 is the normal case, not a read failure.
         found = self.prefix("set -g prefix2 C-b\n")
         self.assertNotIn("prefix", found["options"])
         self.assertEqual(found["options"]["prefix2"], "C-b")
         self.assertNotIn("prefix2", self.prefix("set -g prefix C-a")["skipped"])
 
     def test_accepts_the_spellings_tmux_configs_use(self):
-        for body in ("set -g prefix C-a", "set-option -g prefix C-a", "  set -g prefix C-a  "):
+        for body in (
+            "set -g prefix C-a",
+            "set-option -g prefix C-a",
+            "  set -g prefix C-a  ",
+            "set -gq prefix 'C-a' # comment",
+            'set-option -qg prefix "C-a"',
+            "set -q -g prefix \\\nC-a",
+        ):
             with self.subTest(body=body):
                 self.assertEqual(self.prefix(body)["options"]["prefix"], "C-a")
 
-    def test_refuses_what_it_cannot_be_sure_of(self):
+    def test_later_literal_assignment_wins_and_dynamic_loading_falls_back(self):
         self.assertEqual(self.prefix("# set -g prefix C-a")["skipped"]["prefix"], "never set")
-        self.assertEqual(self.prefix("set -g prefix C-a\nset -g prefix C-b")["skipped"]["prefix"],
-                         "set more than once")
+        self.assertEqual(
+            self.prefix("set -g prefix C-a\nset -g prefix C-b")["options"]["prefix"], "C-b")
+        dynamic = self.prefix("set -g prefix C-a\nsource-file ~/.tmux.local.conf")
+        self.assertEqual(dynamic["options"], {})
+        self.assertIn("dynamically", dynamic["skipped"]["prefix"])
+
+    def test_prefix2_none_is_an_explicit_absence(self):
+        found = self.prefix("set -g prefix C-a\nset -g prefix2 None")
+        self.assertEqual(found["options"], {"prefix": "C-a"})
+        self.assertNotIn("prefix2", found["skipped"])
+
+    def test_conflicting_fixed_config_files_are_not_guessed(self):
+        self.home.write(".config/tmux/tmux.conf", "set -g prefix C-a")
+        self.home.write(".tmux.conf", "set -g prefix C-x")
+        found = self.home.snapshot("tmux")
+        self.assertEqual(found["options"], {})
+        self.assertEqual(found["skipped"]["prefix"], "fixed config files disagree")
 
 
 class BoundsTests(unittest.TestCase):

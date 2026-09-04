@@ -91,7 +91,7 @@ NAMED_CHARACTERS = {"LT": "<", "BSLASH": "\\", "BAR": "|"}
 
 MODIFIERS = {"C": CTRL, "A": ALT, "M": ALT, "S": "shift", "D": "command"}
 
-# <leader> and <localleader> are settings, not keys. A pack stores a
+# <leader> and <localleader> are configuration, not keys. A pack stores a
 # placeholder and the runtime resolves it, so someone who moved their leader
 # still trains the mapping rather than a key they never press. These two
 # private-use characters stand in while the notation is being tokenised; they

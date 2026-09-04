@@ -1420,7 +1420,7 @@ TestCase {
     }
   }
 
-  // Leader is a setting in the application being trained, so a pack stores a
+  // Leader is configuration in the application being trained, so a pack stores a
   // placeholder. Someone who moved theirs trains the mapping, not a key they
   // never press.
   // LazyVim's leader, tmux's prefix and herdr's prefix are one idea: a
@@ -1450,10 +1450,30 @@ TestCase {
     compare(TextKey.parseKeySpec("ctrl+notakey"), null)
   }
 
+  function test_tmuxPrefersAnActuallyEnabledCBAndNeverInventsOne() {
+    var omarchy = Profiles.resolvedOptions("tmux", {
+      prefix: "C-Space", prefix2: "C-b"
+    })
+    compare(omarchy.prefix, "C-b")
+    compare(omarchy.prefix2, "C-Space")
+
+    var custom = Profiles.resolvedOptions("tmux", { prefix: "C-a", prefix2: "C-x" })
+    compare(custom.prefix, "C-a")
+    compare(custom.prefix2, "C-x")
+
+    var sole = Profiles.resolvedOptions("tmux", { prefix: "C-a" })
+    compare(sole.prefix, "C-a")
+    compare(sole.prefix2, "")
+
+    var duplicate = Profiles.resolvedOptions("tmux", { prefix2: "C-b" })
+    compare(duplicate.prefix, "C-b")
+    compare(duplicate.prefix2, "")
+  }
+
   // The shipped tmux table was collected against tmux's own default of C-b,
   // but Omarchy's tmux.conf moves the prefix to C-Space - so every Omarchy
-  // machine was being taught the wrong first key. The prefix is a setting now.
-  function test_theTmuxPrefixIsASettingRatherThanABakedInKey() {
+  // machine also enables C-Space. The prefix is detected configuration now.
+  function test_theTmuxPrefixIsDetectedRatherThanBakedIn() {
     var pack = Packs.pack("tmux")
     verify(pack !== null)
     for (var index = 0; index < pack.bindings.length; index++) {
@@ -1481,6 +1501,10 @@ TestCase {
     compare(moved.answer.steps[0].named, "SPACE")
     compare(moved.answer.steps[0].mods, 4)
     compare(moved.id, byDefault.id)
+
+    source.options = ({ prefix: "C-b", prefix2: "C-b" })
+    source.refresh()
+    compare(source.bindings[0].answer.alternates.length, 0)
 
     source.profileId = "lazyvim"
     source.options = ({ leader: " " })
@@ -1630,7 +1654,7 @@ TestCase {
     }
   }
 
-  function test_theLeaderIsResolvedFromSettingsNotBakedIntoThePack() {
+  function test_theLeaderIsResolvedFromDetectedConfigNotBakedIntoThePack() {
     testPack.options = ({ leader: " " })
     testPack.refresh()
     var spaced = null
