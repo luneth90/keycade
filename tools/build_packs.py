@@ -97,6 +97,7 @@ MODIFIERS = {"C": CTRL, "A": ALT, "M": ALT, "S": "shift", "D": "command"}
 # never appear in a pack or on a card.
 LEADER_MARK = "\ue000"
 LOCALLEADER_MARK = "\ue001"
+PREFIX_MARK = "\ue002"
 
 
 class Rejected(Exception):
@@ -120,9 +121,11 @@ def description_key(desc: str) -> str:
 def parse_step(token: str) -> dict:
     """One <...> group, or one bare character, as a TextKey step."""
     if token == LEADER_MARK:
-        return {"leader": True}
+        return {"option": "leader"}
     if token == LOCALLEADER_MARK:
-        return {"localleader": True}
+        return {"option": "localleader"}
+    if token == PREFIX_MARK:
+        return {"option": "prefix"}
     if not token.startswith("<"):
         if len(token) != 1 or ord(token) < 0x20 or ord(token) == 0x7F:
             raise Rejected(f"unreadable character {token!r}")
@@ -292,27 +295,35 @@ def category_from_description(desc: str) -> str:
 
 
 def read_doc_table(site: Path) -> list[dict]:
-    """The generated keymaps page, minus every extras section."""
+    """The generated keymaps page, with each row told where it comes from.
+
+    A section carrying a "Part of [...]" line belongs to an extra: an opt-in
+    bundle LazyVim ships but does not enable. Its keys are real on a machine
+    that turned it on and absent on one that did not, so they are collected
+    with the module name that provides them rather than dropped.
+    """
     text = (site / "docs" / "keymaps.md").read_text(encoding="utf-8")
     start = text.index("<!-- keymaps:start -->")
     block = text[start : text.index("<!-- keymaps:end -->")]
     rows: list[dict] = []
-    section, extras = "", False
+    section, extra = "", ""
     for line in block.splitlines():
         if line.startswith("## "):
-            section, extras = line[3:].strip(), False
+            section, extra = line[3:].strip(), ""
             continue
-        if line.startswith("Part of ["):
-            extras = True
+        match = re.match(r"^Part of \[(.*?)\]", line)
+        if match:
+            extra = match.group(1)
             continue
         match = re.match(r"^\| <code>(.*?)</code> \| (.*?) \| (.*?) \|$", line)
-        if not match or extras:
+        if not match:
             continue
         rows.append({
             "lhs": html.unescape(match.group(1)).replace("&vert;", "|"),
             "desc": match.group(2).strip(),
             "modes": re.findall(r"\*\*([a-z])\*\*", match.group(3)),
             "section": re.sub(r"\[(.*?)\]\(.*?\)", r"\1", section),
+            "extra": extra,
         })
     return rows
 
@@ -356,13 +367,16 @@ def git_head(path: Path) -> dict:
     return {"commit": run("rev-parse", "HEAD"), "date": run("log", "-1", "--format=%cs")}
 
 
-def collect_lazyvim(site: Path, lazyvim: Path, leader: str, localleader: str) -> dict:
+def collect_lazyvim(site: Path, lazyvim: Path, leader: str, localleader: str,
+                    with_extras: bool = False) -> dict:
     rows = read_doc_table(site)
+    if not with_extras:
+        rows = [row for row in rows if not row["extra"]]
     repo_keys = read_repo_keys(lazyvim)
 
     bindings: list[dict] = []
     dropped: dict[str, int] = {}
-    seen: set[str] = set()
+    seen: dict[str, dict] = {}
 
     def drop(reason: str) -> None:
         dropped[reason] = dropped.get(reason, 0) + 1
@@ -399,11 +413,22 @@ def collect_lazyvim(site: Path, lazyvim: Path, leader: str, localleader: str) ->
             category = category_from_description(row["desc"])
         context = TRAINED_MODES[modes[0]]
         local_id = context + "/" + lhs
-        if local_id in seen:
-            drop("duplicate")
+        existing = seen.get(local_id)
+        if existing is not None:
+            # The same key can be provided by the core and by an extra that
+            # replaces it - Telescope's <leader>ff for Snacks', say. It is one
+            # key either way, so it stays one entry and one row of progress,
+            # and it records every source that would put it on the machine.
+            # An entry the core provides is dealt unconditionally, which an
+            # empty list of providers is what says.
+            if existing["extras"] and row["extra"]:
+                if row["extra"] not in existing["extras"]:
+                    existing["extras"].append(row["extra"])
+            else:
+                existing["extras"] = []
+            drop("merged-with-an-existing-key")
             continue
-        seen.add(local_id)
-        bindings.append({
+        entry = {
             "localId": local_id,
             "context": context,
             "notation": lhs,
@@ -411,7 +436,13 @@ def collect_lazyvim(site: Path, lazyvim: Path, leader: str, localleader: str) ->
             "category": category,
             "descKey": description_key(row["desc"]),
             "desc": row["desc"],
-        })
+            # Empty means the core provides it, so it is always dealt. Anything
+            # here is an opt-in bundle, and the entry is dealt only on a machine
+            # whose lazyvim.json turned one of them on.
+            "extras": [row["extra"]] if row["extra"] else [],
+        }
+        seen[local_id] = entry
+        bindings.append(entry)
 
     doc_keys = {row["lhs"] for row in rows}
     return {
@@ -424,6 +455,9 @@ def collect_lazyvim(site: Path, lazyvim: Path, leader: str, localleader: str) ->
         "contexts": sorted({entry["context"] for entry in bindings}),
         "categories": [name for name in LAZYVIM_CATEGORIES
                        if any(entry["category"] == name for entry in bindings)],
+        # Every opt-in bundle this table carries keys for. A machine's
+        # lazyvim.json names the ones it turned on, and only those are dealt.
+        "extras": sorted({name for entry in bindings for name in entry["extras"]}),
         "provenance": {
             "upstream": "LazyVim",
             "authority": "LazyVim.github.io docs/keymaps.md (generated by its lua/build.lua)",
@@ -545,7 +579,14 @@ def collect_tmux(listing: Path) -> dict:
             continue
         prefix, key, desc = match.group(1), match.group(2), match.group(3).strip()
         try:
-            steps = [parse_tmux_key(prefix), parse_tmux_key(key)]
+            # The listing prints the prefix the server was running with. It is
+            # a setting - Omarchy's own tmux.conf moves it to C-Space - so the
+            # pack stores a placeholder and the runtime resolves it.
+            parse_tmux_key(prefix)
+            # "Send the prefix key" is the prefix twice over, so its second key
+            # has to follow the setting as well or it teaches the old one.
+            second = {"option": "prefix"} if key == prefix else parse_tmux_key(key)
+            steps = [{"option": "prefix"}, second]
         except Rejected:
             drop("unreadable-notation")
             continue
@@ -555,7 +596,9 @@ def collect_tmux(listing: Path) -> dict:
         if any(step.get("named") in DEVICE_SPECIAL for step in steps):
             drop("device-special-key")
             continue
-        local_id = "prefix/" + prefix + " " + key
+        # Named by the key alone: the prefix is a setting, and an entry keeps
+        # its identity - and its progress - when that setting changes.
+        local_id = "prefix/" + ("prefix" if key == prefix else key)
         if local_id in seen:
             drop("duplicate")
             continue
@@ -569,7 +612,7 @@ def collect_tmux(listing: Path) -> dict:
         bindings.append({
             "localId": local_id,
             "context": "prefix",
-            "notation": prefix + " " + key,
+            "notation": "prefix " + ("prefix" if key == prefix else key),
             "steps": steps,
             "category": category,
             "descKey": description_key(desc),
@@ -647,6 +690,8 @@ def main() -> None:
     parser.add_argument("--lazyvim", type=Path, help="path to a LazyVim checkout at a tag")
     parser.add_argument("--listing", type=Path,
                         help="tmux: a saved `tmux -f /dev/null list-keys -N -T prefix`")
+    parser.add_argument("--extras", action="store_true",
+                        help="lazyvim: collect the opt-in bundles too")
     parser.add_argument("--leader", default=" ")
     parser.add_argument("--localleader", default="\\")
     args = parser.parse_args()
@@ -658,7 +703,8 @@ def main() -> None:
     elif args.collect:
         if not args.site or not args.lazyvim:
             parser.error("--collect lazyvim needs --site and --lazyvim")
-        pack = collect_lazyvim(args.site, args.lazyvim, args.leader, args.localleader)
+        pack = collect_lazyvim(args.site, args.lazyvim, args.leader, args.localleader,
+                               args.extras)
 
     if args.collect:
         path = PACKS / f"{args.collect}.json"

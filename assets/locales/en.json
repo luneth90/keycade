@@ -136,6 +136,7 @@
   "newLearned": "NEW LEARNED",
   "noBindings": "No eligible shortcuts were found. Add descriptions to your bindings and try again.",
   "noDispatch": "NO DISPATCH",
+  "optionsTitle": "CONFIGURABLE KEYS",
   "packLeader": "leader = {leader}",
   "packNotice": "Official default keymaps · not read from your own configuration",
   "packdesc_add_comment_above": "Add Comment Above",

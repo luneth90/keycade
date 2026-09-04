@@ -32,13 +32,12 @@
  },
  "bindings": [
   {
-   "localId": "prefix/C-b Space",
+   "localId": "prefix/Space",
    "context": "prefix",
-   "notation": "C-b Space",
+   "notation": "prefix Space",
    "steps": [
     {
-     "mods": 4,
-     "text": "b"
+     "option": "prefix"
     },
     {
      "mods": 0,
@@ -50,13 +49,12 @@
    "desc": "Select next layout"
   },
   {
-   "localId": "prefix/C-b !",
+   "localId": "prefix/!",
    "context": "prefix",
-   "notation": "C-b !",
+   "notation": "prefix !",
    "steps": [
     {
-     "mods": 4,
-     "text": "b"
+     "option": "prefix"
     },
     {
      "mods": 0,
@@ -68,13 +66,12 @@
    "desc": "Break pane to a new window"
   },
   {
-   "localId": "prefix/C-b \"",
+   "localId": "prefix/\"",
    "context": "prefix",
-   "notation": "C-b \"",
+   "notation": "prefix \"",
    "steps": [
     {
-     "mods": 4,
-     "text": "b"
+     "option": "prefix"
     },
     {
      "mods": 0,
@@ -86,13 +83,12 @@
    "desc": "Split window vertically"
   },
   {
-   "localId": "prefix/C-b #",
+   "localId": "prefix/#",
    "context": "prefix",
-   "notation": "C-b #",
+   "notation": "prefix #",
    "steps": [
     {
-     "mods": 4,
-     "text": "b"
+     "option": "prefix"
     },
     {
      "mods": 0,
@@ -104,13 +100,12 @@
    "desc": "List all paste buffers"
   },
   {
-   "localId": "prefix/C-b $",
+   "localId": "prefix/$",
    "context": "prefix",
-   "notation": "C-b $",
+   "notation": "prefix $",
    "steps": [
     {
-     "mods": 4,
-     "text": "b"
+     "option": "prefix"
     },
     {
      "mods": 0,
@@ -122,13 +117,12 @@
    "desc": "Rename current session"
   },
   {
-   "localId": "prefix/C-b %",
+   "localId": "prefix/%",
    "context": "prefix",
-   "notation": "C-b %",
+   "notation": "prefix %",
    "steps": [
     {
-     "mods": 4,
-     "text": "b"
+     "option": "prefix"
     },
     {
      "mods": 0,
@@ -140,13 +134,12 @@
    "desc": "Split window horizontally"
   },
   {
-   "localId": "prefix/C-b &",
+   "localId": "prefix/&",
    "context": "prefix",
-   "notation": "C-b &",
+   "notation": "prefix &",
    "steps": [
     {
-     "mods": 4,
-     "text": "b"
+     "option": "prefix"
     },
     {
      "mods": 0,
@@ -158,13 +151,12 @@
    "desc": "Kill current window"
   },
   {
-   "localId": "prefix/C-b '",
+   "localId": "prefix/'",
    "context": "prefix",
-   "notation": "C-b '",
+   "notation": "prefix '",
    "steps": [
     {
-     "mods": 4,
-     "text": "b"
+     "option": "prefix"
     },
     {
      "mods": 0,
@@ -176,13 +168,12 @@
    "desc": "Prompt for window index to select"
   },
   {
-   "localId": "prefix/C-b (",
+   "localId": "prefix/(",
    "context": "prefix",
-   "notation": "C-b (",
+   "notation": "prefix (",
    "steps": [
     {
-     "mods": 4,
-     "text": "b"
+     "option": "prefix"
     },
     {
      "mods": 0,
@@ -194,13 +185,12 @@
    "desc": "Switch to previous client"
   },
   {
-   "localId": "prefix/C-b )",
+   "localId": "prefix/)",
    "context": "prefix",
-   "notation": "C-b )",
+   "notation": "prefix )",
    "steps": [
     {
-     "mods": 4,
-     "text": "b"
+     "option": "prefix"
     },
     {
      "mods": 0,
@@ -212,13 +202,12 @@
    "desc": "Switch to next client"
   },
   {
-   "localId": "prefix/C-b *",
+   "localId": "prefix/*",
    "context": "prefix",
-   "notation": "C-b *",
+   "notation": "prefix *",
    "steps": [
     {
-     "mods": 4,
-     "text": "b"
+     "option": "prefix"
     },
     {
      "mods": 0,
@@ -230,13 +219,12 @@
    "desc": "New floating pane"
   },
   {
-   "localId": "prefix/C-b ,",
+   "localId": "prefix/,",
    "context": "prefix",
-   "notation": "C-b ,",
+   "notation": "prefix ,",
    "steps": [
     {
-     "mods": 4,
-     "text": "b"
+     "option": "prefix"
     },
     {
      "mods": 0,
@@ -248,13 +236,12 @@
    "desc": "Rename current window"
   },
   {
-   "localId": "prefix/C-b -",
+   "localId": "prefix/-",
    "context": "prefix",
-   "notation": "C-b -",
+   "notation": "prefix -",
    "steps": [
     {
-     "mods": 4,
-     "text": "b"
+     "option": "prefix"
     },
     {
      "mods": 0,
@@ -266,13 +253,12 @@
    "desc": "Delete the most recent paste buffer"
   },
   {
-   "localId": "prefix/C-b .",
+   "localId": "prefix/.",
    "context": "prefix",
-   "notation": "C-b .",
+   "notation": "prefix .",
    "steps": [
     {
-     "mods": 4,
-     "text": "b"
+     "option": "prefix"
     },
     {
      "mods": 0,
@@ -284,13 +270,12 @@
    "desc": "Move the current window"
   },
   {
-   "localId": "prefix/C-b /",
+   "localId": "prefix//",
    "context": "prefix",
-   "notation": "C-b /",
+   "notation": "prefix /",
    "steps": [
     {
-     "mods": 4,
-     "text": "b"
+     "option": "prefix"
     },
     {
      "mods": 0,
@@ -302,13 +287,12 @@
    "desc": "Describe key binding"
   },
   {
-   "localId": "prefix/C-b 0",
+   "localId": "prefix/0",
    "context": "prefix",
-   "notation": "C-b 0",
+   "notation": "prefix 0",
    "steps": [
     {
-     "mods": 4,
-     "text": "b"
+     "option": "prefix"
     },
     {
      "mods": 0,
@@ -320,13 +304,12 @@
    "desc": "Select window 0"
   },
   {
-   "localId": "prefix/C-b 1",
+   "localId": "prefix/1",
    "context": "prefix",
-   "notation": "C-b 1",
+   "notation": "prefix 1",
    "steps": [
     {
-     "mods": 4,
-     "text": "b"
+     "option": "prefix"
     },
     {
      "mods": 0,
@@ -338,13 +321,12 @@
    "desc": "Select window 1"
   },
   {
-   "localId": "prefix/C-b 2",
+   "localId": "prefix/2",
    "context": "prefix",
-   "notation": "C-b 2",
+   "notation": "prefix 2",
    "steps": [
     {
-     "mods": 4,
-     "text": "b"
+     "option": "prefix"
     },
     {
      "mods": 0,
@@ -356,13 +338,12 @@
    "desc": "Select window 2"
   },
   {
-   "localId": "prefix/C-b 3",
+   "localId": "prefix/3",
    "context": "prefix",
-   "notation": "C-b 3",
+   "notation": "prefix 3",
    "steps": [
     {
-     "mods": 4,
-     "text": "b"
+     "option": "prefix"
     },
     {
      "mods": 0,
@@ -374,13 +355,12 @@
    "desc": "Select window 3"
   },
   {
-   "localId": "prefix/C-b 4",
+   "localId": "prefix/4",
    "context": "prefix",
-   "notation": "C-b 4",
+   "notation": "prefix 4",
    "steps": [
     {
-     "mods": 4,
-     "text": "b"
+     "option": "prefix"
     },
     {
      "mods": 0,
@@ -392,13 +372,12 @@
    "desc": "Select window 4"
   },
   {
-   "localId": "prefix/C-b 5",
+   "localId": "prefix/5",
    "context": "prefix",
-   "notation": "C-b 5",
+   "notation": "prefix 5",
    "steps": [
     {
-     "mods": 4,
-     "text": "b"
+     "option": "prefix"
     },
     {
      "mods": 0,
@@ -410,13 +389,12 @@
    "desc": "Select window 5"
   },
   {
-   "localId": "prefix/C-b 6",
+   "localId": "prefix/6",
    "context": "prefix",
-   "notation": "C-b 6",
+   "notation": "prefix 6",
    "steps": [
     {
-     "mods": 4,
-     "text": "b"
+     "option": "prefix"
     },
     {
      "mods": 0,
@@ -428,13 +406,12 @@
    "desc": "Select window 6"
   },
   {
-   "localId": "prefix/C-b 7",
+   "localId": "prefix/7",
    "context": "prefix",
-   "notation": "C-b 7",
+   "notation": "prefix 7",
    "steps": [
     {
-     "mods": 4,
-     "text": "b"
+     "option": "prefix"
     },
     {
      "mods": 0,
@@ -446,13 +423,12 @@
    "desc": "Select window 7"
   },
   {
-   "localId": "prefix/C-b 8",
+   "localId": "prefix/8",
    "context": "prefix",
-   "notation": "C-b 8",
+   "notation": "prefix 8",
    "steps": [
     {
-     "mods": 4,
-     "text": "b"
+     "option": "prefix"
     },
     {
      "mods": 0,
@@ -464,13 +440,12 @@
    "desc": "Select window 8"
   },
   {
-   "localId": "prefix/C-b 9",
+   "localId": "prefix/9",
    "context": "prefix",
-   "notation": "C-b 9",
+   "notation": "prefix 9",
    "steps": [
     {
-     "mods": 4,
-     "text": "b"
+     "option": "prefix"
     },
     {
      "mods": 0,
@@ -482,13 +457,12 @@
    "desc": "Select window 9"
   },
   {
-   "localId": "prefix/C-b :",
+   "localId": "prefix/:",
    "context": "prefix",
-   "notation": "C-b :",
+   "notation": "prefix :",
    "steps": [
     {
-     "mods": 4,
-     "text": "b"
+     "option": "prefix"
     },
     {
      "mods": 0,
@@ -500,13 +474,12 @@
    "desc": "Prompt for a command"
   },
   {
-   "localId": "prefix/C-b ;",
+   "localId": "prefix/;",
    "context": "prefix",
-   "notation": "C-b ;",
+   "notation": "prefix ;",
    "steps": [
     {
-     "mods": 4,
-     "text": "b"
+     "option": "prefix"
     },
     {
      "mods": 0,
@@ -518,13 +491,12 @@
    "desc": "Move to the previously active pane"
   },
   {
-   "localId": "prefix/C-b <",
+   "localId": "prefix/<",
    "context": "prefix",
-   "notation": "C-b <",
+   "notation": "prefix <",
    "steps": [
     {
-     "mods": 4,
-     "text": "b"
+     "option": "prefix"
     },
     {
      "mods": 0,
@@ -536,13 +508,12 @@
    "desc": "Display window menu"
   },
   {
-   "localId": "prefix/C-b =",
+   "localId": "prefix/=",
    "context": "prefix",
-   "notation": "C-b =",
+   "notation": "prefix =",
    "steps": [
     {
-     "mods": 4,
-     "text": "b"
+     "option": "prefix"
     },
     {
      "mods": 0,
@@ -554,13 +525,12 @@
    "desc": "Choose a paste buffer from a list"
   },
   {
-   "localId": "prefix/C-b >",
+   "localId": "prefix/>",
    "context": "prefix",
-   "notation": "C-b >",
+   "notation": "prefix >",
    "steps": [
     {
-     "mods": 4,
-     "text": "b"
+     "option": "prefix"
     },
     {
      "mods": 0,
@@ -572,13 +542,12 @@
    "desc": "Display pane menu"
   },
   {
-   "localId": "prefix/C-b ?",
+   "localId": "prefix/?",
    "context": "prefix",
-   "notation": "C-b ?",
+   "notation": "prefix ?",
    "steps": [
     {
-     "mods": 4,
-     "text": "b"
+     "option": "prefix"
     },
     {
      "mods": 0,
@@ -590,13 +559,12 @@
    "desc": "List key bindings"
   },
   {
-   "localId": "prefix/C-b C",
+   "localId": "prefix/C",
    "context": "prefix",
-   "notation": "C-b C",
+   "notation": "prefix C",
    "steps": [
     {
-     "mods": 4,
-     "text": "b"
+     "option": "prefix"
     },
     {
      "mods": 0,
@@ -608,13 +576,12 @@
    "desc": "Customize options"
   },
   {
-   "localId": "prefix/C-b D",
+   "localId": "prefix/D",
    "context": "prefix",
-   "notation": "C-b D",
+   "notation": "prefix D",
    "steps": [
     {
-     "mods": 4,
-     "text": "b"
+     "option": "prefix"
     },
     {
      "mods": 0,
@@ -626,13 +593,12 @@
    "desc": "Choose and detach a client from a list"
   },
   {
-   "localId": "prefix/C-b E",
+   "localId": "prefix/E",
    "context": "prefix",
-   "notation": "C-b E",
+   "notation": "prefix E",
    "steps": [
     {
-     "mods": 4,
-     "text": "b"
+     "option": "prefix"
     },
     {
      "mods": 0,
@@ -644,13 +610,12 @@
    "desc": "Spread panes out evenly"
   },
   {
-   "localId": "prefix/C-b L",
+   "localId": "prefix/L",
    "context": "prefix",
-   "notation": "C-b L",
+   "notation": "prefix L",
    "steps": [
     {
-     "mods": 4,
-     "text": "b"
+     "option": "prefix"
     },
     {
      "mods": 0,
@@ -662,13 +627,12 @@
    "desc": "Switch to the last client"
   },
   {
-   "localId": "prefix/C-b M",
+   "localId": "prefix/M",
    "context": "prefix",
-   "notation": "C-b M",
+   "notation": "prefix M",
    "steps": [
     {
-     "mods": 4,
-     "text": "b"
+     "option": "prefix"
     },
     {
      "mods": 0,
@@ -680,13 +644,12 @@
    "desc": "Clear the marked pane"
   },
   {
-   "localId": "prefix/C-b [",
+   "localId": "prefix/[",
    "context": "prefix",
-   "notation": "C-b [",
+   "notation": "prefix [",
    "steps": [
     {
-     "mods": 4,
-     "text": "b"
+     "option": "prefix"
     },
     {
      "mods": 0,
@@ -698,13 +661,12 @@
    "desc": "Enter copy mode"
   },
   {
-   "localId": "prefix/C-b ]",
+   "localId": "prefix/]",
    "context": "prefix",
-   "notation": "C-b ]",
+   "notation": "prefix ]",
    "steps": [
     {
-     "mods": 4,
-     "text": "b"
+     "option": "prefix"
     },
     {
      "mods": 0,
@@ -716,13 +678,12 @@
    "desc": "Paste the most recent paste buffer"
   },
   {
-   "localId": "prefix/C-b c",
+   "localId": "prefix/c",
    "context": "prefix",
-   "notation": "C-b c",
+   "notation": "prefix c",
    "steps": [
     {
-     "mods": 4,
-     "text": "b"
+     "option": "prefix"
     },
     {
      "mods": 0,
@@ -734,13 +695,12 @@
    "desc": "Create a new window"
   },
   {
-   "localId": "prefix/C-b d",
+   "localId": "prefix/d",
    "context": "prefix",
-   "notation": "C-b d",
+   "notation": "prefix d",
    "steps": [
     {
-     "mods": 4,
-     "text": "b"
+     "option": "prefix"
     },
     {
      "mods": 0,
@@ -752,13 +712,12 @@
    "desc": "Detach the current client"
   },
   {
-   "localId": "prefix/C-b f",
+   "localId": "prefix/f",
    "context": "prefix",
-   "notation": "C-b f",
+   "notation": "prefix f",
    "steps": [
     {
-     "mods": 4,
-     "text": "b"
+     "option": "prefix"
     },
     {
      "mods": 0,
@@ -770,13 +729,12 @@
    "desc": "Search for a pane"
   },
   {
-   "localId": "prefix/C-b i",
+   "localId": "prefix/i",
    "context": "prefix",
-   "notation": "C-b i",
+   "notation": "prefix i",
    "steps": [
     {
-     "mods": 4,
-     "text": "b"
+     "option": "prefix"
     },
     {
      "mods": 0,
@@ -788,13 +746,12 @@
    "desc": "Display window information"
   },
   {
-   "localId": "prefix/C-b l",
+   "localId": "prefix/l",
    "context": "prefix",
-   "notation": "C-b l",
+   "notation": "prefix l",
    "steps": [
     {
-     "mods": 4,
-     "text": "b"
+     "option": "prefix"
     },
     {
      "mods": 0,
@@ -806,13 +763,12 @@
    "desc": "Select the previously current window"
   },
   {
-   "localId": "prefix/C-b m",
+   "localId": "prefix/m",
    "context": "prefix",
-   "notation": "C-b m",
+   "notation": "prefix m",
    "steps": [
     {
-     "mods": 4,
-     "text": "b"
+     "option": "prefix"
     },
     {
      "mods": 0,
@@ -824,13 +780,12 @@
    "desc": "Toggle the marked pane"
   },
   {
-   "localId": "prefix/C-b n",
+   "localId": "prefix/n",
    "context": "prefix",
-   "notation": "C-b n",
+   "notation": "prefix n",
    "steps": [
     {
-     "mods": 4,
-     "text": "b"
+     "option": "prefix"
     },
     {
      "mods": 0,
@@ -842,13 +797,12 @@
    "desc": "Select the next window"
   },
   {
-   "localId": "prefix/C-b o",
+   "localId": "prefix/o",
    "context": "prefix",
-   "notation": "C-b o",
+   "notation": "prefix o",
    "steps": [
     {
-     "mods": 4,
-     "text": "b"
+     "option": "prefix"
     },
     {
      "mods": 0,
@@ -860,13 +814,12 @@
    "desc": "Select the next pane"
   },
   {
-   "localId": "prefix/C-b p",
+   "localId": "prefix/p",
    "context": "prefix",
-   "notation": "C-b p",
+   "notation": "prefix p",
    "steps": [
     {
-     "mods": 4,
-     "text": "b"
+     "option": "prefix"
     },
     {
      "mods": 0,
@@ -878,13 +831,12 @@
    "desc": "Select the previous window"
   },
   {
-   "localId": "prefix/C-b q",
+   "localId": "prefix/q",
    "context": "prefix",
-   "notation": "C-b q",
+   "notation": "prefix q",
    "steps": [
     {
-     "mods": 4,
-     "text": "b"
+     "option": "prefix"
     },
     {
      "mods": 0,
@@ -896,13 +848,12 @@
    "desc": "Display pane numbers"
   },
   {
-   "localId": "prefix/C-b r",
+   "localId": "prefix/r",
    "context": "prefix",
-   "notation": "C-b r",
+   "notation": "prefix r",
    "steps": [
     {
-     "mods": 4,
-     "text": "b"
+     "option": "prefix"
     },
     {
      "mods": 0,
@@ -914,13 +865,12 @@
    "desc": "Redraw the current client"
   },
   {
-   "localId": "prefix/C-b s",
+   "localId": "prefix/s",
    "context": "prefix",
-   "notation": "C-b s",
+   "notation": "prefix s",
    "steps": [
     {
-     "mods": 4,
-     "text": "b"
+     "option": "prefix"
     },
     {
      "mods": 0,
@@ -932,13 +882,12 @@
    "desc": "Choose a session from a list"
   },
   {
-   "localId": "prefix/C-b t",
+   "localId": "prefix/t",
    "context": "prefix",
-   "notation": "C-b t",
+   "notation": "prefix t",
    "steps": [
     {
-     "mods": 4,
-     "text": "b"
+     "option": "prefix"
     },
     {
      "mods": 0,
@@ -950,13 +899,12 @@
    "desc": "Show a clock"
   },
   {
-   "localId": "prefix/C-b w",
+   "localId": "prefix/w",
    "context": "prefix",
-   "notation": "C-b w",
+   "notation": "prefix w",
    "steps": [
     {
-     "mods": 4,
-     "text": "b"
+     "option": "prefix"
     },
     {
      "mods": 0,
@@ -968,13 +916,12 @@
    "desc": "Choose a window from a list"
   },
   {
-   "localId": "prefix/C-b x",
+   "localId": "prefix/x",
    "context": "prefix",
-   "notation": "C-b x",
+   "notation": "prefix x",
    "steps": [
     {
-     "mods": 4,
-     "text": "b"
+     "option": "prefix"
     },
     {
      "mods": 0,
@@ -986,13 +933,12 @@
    "desc": "Kill the active pane"
   },
   {
-   "localId": "prefix/C-b z",
+   "localId": "prefix/z",
    "context": "prefix",
-   "notation": "C-b z",
+   "notation": "prefix z",
    "steps": [
     {
-     "mods": 4,
-     "text": "b"
+     "option": "prefix"
     },
     {
      "mods": 0,
@@ -1004,13 +950,12 @@
    "desc": "Zoom the active pane"
   },
   {
-   "localId": "prefix/C-b {",
+   "localId": "prefix/{",
    "context": "prefix",
-   "notation": "C-b {",
+   "notation": "prefix {",
    "steps": [
     {
-     "mods": 4,
-     "text": "b"
+     "option": "prefix"
     },
     {
      "mods": 0,
@@ -1022,13 +967,12 @@
    "desc": "Swap the active pane with the pane above"
   },
   {
-   "localId": "prefix/C-b }",
+   "localId": "prefix/}",
    "context": "prefix",
-   "notation": "C-b }",
+   "notation": "prefix }",
    "steps": [
     {
-     "mods": 4,
-     "text": "b"
+     "option": "prefix"
     },
     {
      "mods": 0,
@@ -1040,13 +984,12 @@
    "desc": "Swap the active pane with the pane below"
   },
   {
-   "localId": "prefix/C-b ~",
+   "localId": "prefix/~",
    "context": "prefix",
-   "notation": "C-b ~",
+   "notation": "prefix ~",
    "steps": [
     {
-     "mods": 4,
-     "text": "b"
+     "option": "prefix"
     },
     {
      "mods": 0,
@@ -1058,13 +1001,12 @@
    "desc": "Show messages"
   },
   {
-   "localId": "prefix/C-b Up",
+   "localId": "prefix/Up",
    "context": "prefix",
-   "notation": "C-b Up",
+   "notation": "prefix Up",
    "steps": [
     {
-     "mods": 4,
-     "text": "b"
+     "option": "prefix"
     },
     {
      "mods": 0,
@@ -1076,13 +1018,12 @@
    "desc": "Select the pane above the active pane"
   },
   {
-   "localId": "prefix/C-b Down",
+   "localId": "prefix/Down",
    "context": "prefix",
-   "notation": "C-b Down",
+   "notation": "prefix Down",
    "steps": [
     {
-     "mods": 4,
-     "text": "b"
+     "option": "prefix"
     },
     {
      "mods": 0,
@@ -1094,13 +1035,12 @@
    "desc": "Select the pane below the active pane"
   },
   {
-   "localId": "prefix/C-b Left",
+   "localId": "prefix/Left",
    "context": "prefix",
-   "notation": "C-b Left",
+   "notation": "prefix Left",
    "steps": [
     {
-     "mods": 4,
-     "text": "b"
+     "option": "prefix"
     },
     {
      "mods": 0,
@@ -1112,13 +1052,12 @@
    "desc": "Select the pane to the left of the active pane"
   },
   {
-   "localId": "prefix/C-b Right",
+   "localId": "prefix/Right",
    "context": "prefix",
-   "notation": "C-b Right",
+   "notation": "prefix Right",
    "steps": [
     {
-     "mods": 4,
-     "text": "b"
+     "option": "prefix"
     },
     {
      "mods": 0,
@@ -1130,13 +1069,12 @@
    "desc": "Select the pane to the right of the active pane"
   },
   {
-   "localId": "prefix/C-b M-1",
+   "localId": "prefix/M-1",
    "context": "prefix",
-   "notation": "C-b M-1",
+   "notation": "prefix M-1",
    "steps": [
     {
-     "mods": 4,
-     "text": "b"
+     "option": "prefix"
     },
     {
      "mods": 8,
@@ -1148,13 +1086,12 @@
    "desc": "Set the even-horizontal layout"
   },
   {
-   "localId": "prefix/C-b M-2",
+   "localId": "prefix/M-2",
    "context": "prefix",
-   "notation": "C-b M-2",
+   "notation": "prefix M-2",
    "steps": [
     {
-     "mods": 4,
-     "text": "b"
+     "option": "prefix"
     },
     {
      "mods": 8,
@@ -1166,13 +1103,12 @@
    "desc": "Set the even-vertical layout"
   },
   {
-   "localId": "prefix/C-b M-3",
+   "localId": "prefix/M-3",
    "context": "prefix",
-   "notation": "C-b M-3",
+   "notation": "prefix M-3",
    "steps": [
     {
-     "mods": 4,
-     "text": "b"
+     "option": "prefix"
     },
     {
      "mods": 8,
@@ -1184,13 +1120,12 @@
    "desc": "Set the main-horizontal layout"
   },
   {
-   "localId": "prefix/C-b M-4",
+   "localId": "prefix/M-4",
    "context": "prefix",
-   "notation": "C-b M-4",
+   "notation": "prefix M-4",
    "steps": [
     {
-     "mods": 4,
-     "text": "b"
+     "option": "prefix"
     },
     {
      "mods": 8,
@@ -1202,13 +1137,12 @@
    "desc": "Set the main-vertical layout"
   },
   {
-   "localId": "prefix/C-b M-5",
+   "localId": "prefix/M-5",
    "context": "prefix",
-   "notation": "C-b M-5",
+   "notation": "prefix M-5",
    "steps": [
     {
-     "mods": 4,
-     "text": "b"
+     "option": "prefix"
     },
     {
      "mods": 8,
@@ -1220,13 +1154,12 @@
    "desc": "Select the tiled layout"
   },
   {
-   "localId": "prefix/C-b M-6",
+   "localId": "prefix/M-6",
    "context": "prefix",
-   "notation": "C-b M-6",
+   "notation": "prefix M-6",
    "steps": [
     {
-     "mods": 4,
-     "text": "b"
+     "option": "prefix"
     },
     {
      "mods": 8,
@@ -1238,13 +1171,12 @@
    "desc": "Set the main-horizontal-mirrored layout"
   },
   {
-   "localId": "prefix/C-b M-7",
+   "localId": "prefix/M-7",
    "context": "prefix",
-   "notation": "C-b M-7",
+   "notation": "prefix M-7",
    "steps": [
     {
-     "mods": 4,
-     "text": "b"
+     "option": "prefix"
     },
     {
      "mods": 8,
@@ -1256,13 +1188,12 @@
    "desc": "Set the main-vertical-mirrored layout"
   },
   {
-   "localId": "prefix/C-b M-n",
+   "localId": "prefix/M-n",
    "context": "prefix",
-   "notation": "C-b M-n",
+   "notation": "prefix M-n",
    "steps": [
     {
-     "mods": 4,
-     "text": "b"
+     "option": "prefix"
     },
     {
      "mods": 8,
@@ -1274,13 +1205,12 @@
    "desc": "Select the next window with an alert"
   },
   {
-   "localId": "prefix/C-b M-o",
+   "localId": "prefix/M-o",
    "context": "prefix",
-   "notation": "C-b M-o",
+   "notation": "prefix M-o",
    "steps": [
     {
-     "mods": 4,
-     "text": "b"
+     "option": "prefix"
     },
     {
      "mods": 8,
@@ -1292,13 +1222,12 @@
    "desc": "Rotate through the panes in reverse"
   },
   {
-   "localId": "prefix/C-b M-p",
+   "localId": "prefix/M-p",
    "context": "prefix",
-   "notation": "C-b M-p",
+   "notation": "prefix M-p",
    "steps": [
     {
-     "mods": 4,
-     "text": "b"
+     "option": "prefix"
     },
     {
      "mods": 8,
@@ -1310,13 +1239,12 @@
    "desc": "Select the previous window with an alert"
   },
   {
-   "localId": "prefix/C-b M-Up",
+   "localId": "prefix/M-Up",
    "context": "prefix",
-   "notation": "C-b M-Up",
+   "notation": "prefix M-Up",
    "steps": [
     {
-     "mods": 4,
-     "text": "b"
+     "option": "prefix"
     },
     {
      "mods": 8,
@@ -1328,13 +1256,12 @@
    "desc": "Resize the pane up by 5"
   },
   {
-   "localId": "prefix/C-b M-Down",
+   "localId": "prefix/M-Down",
    "context": "prefix",
-   "notation": "C-b M-Down",
+   "notation": "prefix M-Down",
    "steps": [
     {
-     "mods": 4,
-     "text": "b"
+     "option": "prefix"
     },
     {
      "mods": 8,
@@ -1346,13 +1273,12 @@
    "desc": "Resize the pane down by 5"
   },
   {
-   "localId": "prefix/C-b M-Left",
+   "localId": "prefix/M-Left",
    "context": "prefix",
-   "notation": "C-b M-Left",
+   "notation": "prefix M-Left",
    "steps": [
     {
-     "mods": 4,
-     "text": "b"
+     "option": "prefix"
     },
     {
      "mods": 8,
@@ -1364,13 +1290,12 @@
    "desc": "Resize the pane left by 5"
   },
   {
-   "localId": "prefix/C-b M-Right",
+   "localId": "prefix/M-Right",
    "context": "prefix",
-   "notation": "C-b M-Right",
+   "notation": "prefix M-Right",
    "steps": [
     {
-     "mods": 4,
-     "text": "b"
+     "option": "prefix"
     },
     {
      "mods": 8,
@@ -1382,17 +1307,15 @@
    "desc": "Resize the pane right by 5"
   },
   {
-   "localId": "prefix/C-b C-b",
+   "localId": "prefix/prefix",
    "context": "prefix",
-   "notation": "C-b C-b",
+   "notation": "prefix prefix",
    "steps": [
     {
-     "mods": 4,
-     "text": "b"
+     "option": "prefix"
     },
     {
-     "mods": 4,
-     "text": "b"
+     "option": "prefix"
     }
    ],
    "category": "misc",
@@ -1400,13 +1323,12 @@
    "desc": "Send the prefix key"
   },
   {
-   "localId": "prefix/C-b C-o",
+   "localId": "prefix/C-o",
    "context": "prefix",
-   "notation": "C-b C-o",
+   "notation": "prefix C-o",
    "steps": [
     {
-     "mods": 4,
-     "text": "b"
+     "option": "prefix"
     },
     {
      "mods": 4,
@@ -1418,13 +1340,12 @@
    "desc": "Rotate through the panes"
   },
   {
-   "localId": "prefix/C-b C-z",
+   "localId": "prefix/C-z",
    "context": "prefix",
-   "notation": "C-b C-z",
+   "notation": "prefix C-z",
    "steps": [
     {
-     "mods": 4,
-     "text": "b"
+     "option": "prefix"
     },
     {
      "mods": 4,
@@ -1436,13 +1357,12 @@
    "desc": "Suspend the current client"
   },
   {
-   "localId": "prefix/C-b C-Up",
+   "localId": "prefix/C-Up",
    "context": "prefix",
-   "notation": "C-b C-Up",
+   "notation": "prefix C-Up",
    "steps": [
     {
-     "mods": 4,
-     "text": "b"
+     "option": "prefix"
     },
     {
      "mods": 4,
@@ -1454,13 +1374,12 @@
    "desc": "Resize the pane up"
   },
   {
-   "localId": "prefix/C-b C-Down",
+   "localId": "prefix/C-Down",
    "context": "prefix",
-   "notation": "C-b C-Down",
+   "notation": "prefix C-Down",
    "steps": [
     {
-     "mods": 4,
-     "text": "b"
+     "option": "prefix"
     },
     {
      "mods": 4,
@@ -1472,13 +1391,12 @@
    "desc": "Resize the pane down"
   },
   {
-   "localId": "prefix/C-b C-Left",
+   "localId": "prefix/C-Left",
    "context": "prefix",
-   "notation": "C-b C-Left",
+   "notation": "prefix C-Left",
    "steps": [
     {
-     "mods": 4,
-     "text": "b"
+     "option": "prefix"
     },
     {
      "mods": 4,
@@ -1490,13 +1408,12 @@
    "desc": "Resize the pane left"
   },
   {
-   "localId": "prefix/C-b C-Right",
+   "localId": "prefix/C-Right",
    "context": "prefix",
-   "notation": "C-b C-Right",
+   "notation": "prefix C-Right",
    "steps": [
     {
-     "mods": 4,
-     "text": "b"
+     "option": "prefix"
     },
     {
      "mods": 4,

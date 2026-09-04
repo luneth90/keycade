@@ -20,17 +20,18 @@ Item {
   id: root
 
   property string profileId: ""
-  // Resolved into the placeholder steps a pack stores for them. Both are
-  // settings in the application being trained, not keys, so a user who moved
-  // their leader still trains the mapping rather than a key they never press.
-  property string leader: " "
-  property string localleader: "\\"
+  // The ground's configurable keys, by the names its profile declares:
+  // { leader: " ", localleader: "\\" } for LazyVim, { prefix: "C-b" } for
+  // tmux. They are settings in the application being trained, not keys, so
+  // someone who moved theirs trains the mapping rather than a key they never
+  // press. Anything absent here falls back to the profile's own default.
+  property var options: ({})
 
   readonly property int maxBindings: 512
   readonly property int maxSteps: 8
   readonly property int maxLocalIdChars: 128
   readonly property int maxDescriptionChars: 512
-  readonly property int maxLeaderChars: 8
+  readonly property int maxOptionChars: 32
 
   property var bindings: []
   property string fingerprint: ""
@@ -51,12 +52,23 @@ Item {
     return text.replace(/[\u0000-\u001f\u007f-\u009f\u200e\u200f\u202a-\u202e\u2066-\u2069]/g, " ")
   }
 
-  // A pack stores { leader: true } rather than a character, so the answer
-  // follows the setting instead of whatever the table was built with.
+  // What a named option resolves to, as a person would write it.
+  function optionValue(name) {
+    var defaults = Profiles.options(root.profileId)
+    var stored = root.options && root.options[name] !== undefined ? root.options[name] : undefined
+    var value = stored !== undefined ? stored : defaults[name]
+    return value === undefined ? "" : String(value)
+  }
+
+  // A pack stores { option: "leader" } rather than the key it was built with,
+  // so the answer follows the setting.
   function resolvedStep(step) {
     if (!step || typeof step !== "object" || Array.isArray(step)) return null
-    if (step.leader === true) return TextKey.normalizedStep({ mods: 0, text: root.leader })
-    if (step.localleader === true) return TextKey.normalizedStep({ mods: 0, text: root.localleader })
+    if (step.option !== undefined) {
+      var name = root.safeText(step.option, 32)
+      if (!name) return null
+      return TextKey.parseKeySpec(root.optionValue(name))
+    }
     return TextKey.normalizedStep(step)
   }
 
@@ -122,10 +134,12 @@ Item {
       root.fail("Pack exceeded its entry limit")
       return
     }
-    if (root.leader.length > root.maxLeaderChars
-        || root.localleader.length > root.maxLeaderChars) {
-      root.fail("Leader exceeded its limit")
-      return
+    var declared = Object.keys(Profiles.options(root.profileId))
+    for (var option = 0; option < declared.length; option++) {
+      if (String(root.optionValue(declared[option])).length > root.maxOptionChars) {
+        root.fail("Option " + declared[option] + " exceeded its limit")
+        return
+      }
     }
 
     var categories = Array.isArray(pack.categories) ? pack.categories : root.packCategories(pack)

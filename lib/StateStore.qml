@@ -71,41 +71,50 @@ Item {
     }
   }
 
-  readonly property int maxLeaderChars: 8
+  readonly property int maxOptionChars: 32
 
+  // Each ground declares the configurable keys its table refers to - LazyVim's
+  // leader and localleader, tmux's prefix. Nothing here knows those names.
   function defaultProfileOptions() {
     var result = Object.create(null)
     var ids = Profiles.ids()
     for (var index = 0; index < ids.length; index++) {
       var defaults = Profiles.options(ids[index])
-      if (!Object.keys(defaults).length) continue
-      result[ids[index]] = { leader: defaults.leader, localleader: defaults.localleader }
+      var names = Object.keys(defaults)
+      if (!names.length) continue
+      var entry = Object.create(null)
+      for (var name = 0; name < names.length; name++)
+        entry[names[name]] = String(defaults[names[name]])
+      result[ids[index]] = entry
     }
     return result
   }
 
-  // Dynamic keys, so the map is built on a null prototype and every name is
-  // checked against the profile id character set before it is used.
+  // Dynamic keys on both levels, so both maps are built on a null prototype
+  // and every name is checked before it is used: the ground against the
+  // profile id character set, the option against what that ground declares.
   function normalizedProfileOptions(value) {
     var result = root.defaultProfileOptions()
     if (!value || typeof value !== "object" || Array.isArray(value)) return result
-    var names = Object.keys(value).slice(0, 16)
-    for (var index = 0; index < names.length; index++) {
-      var name = names[index]
-      if (!Profiles.valid(name) || !Object.prototype.hasOwnProperty.call(result, name)) continue
-      var stored = value[name]
+    var ids = Object.keys(value).slice(0, 16)
+    for (var index = 0; index < ids.length; index++) {
+      var id = ids[index]
+      if (!Profiles.valid(id) || !Object.prototype.hasOwnProperty.call(result, id)) continue
+      var stored = value[id]
       if (!stored || typeof stored !== "object" || Array.isArray(stored)) continue
-      result[name] = {
-        leader: root.leaderValue(stored.leader, result[name].leader),
-        localleader: root.leaderValue(stored.localleader, result[name].localleader)
+      var names = Object.keys(result[id])
+      for (var name = 0; name < names.length; name++) {
+        result[id][names[name]] =
+            root.optionValue(stored[names[name]], result[id][names[name]])
       }
     }
     return result
   }
 
-  // A leader is one key press worth of text, never a control character.
-  function leaderValue(value, fallback) {
-    if (typeof value !== "string" || !value.length || value.length > root.maxLeaderChars)
+  // One key press worth of text as a person writes it - " ", "C-b", "ctrl+a" -
+  // never a control character, never long enough to be something else.
+  function optionValue(value, fallback) {
+    if (typeof value !== "string" || !value.length || value.length > root.maxOptionChars)
       return fallback
     return /[\u0000-\u001f\u007f]/.test(value) ? fallback : value
   }

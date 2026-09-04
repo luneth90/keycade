@@ -39,14 +39,17 @@ class NotationTests(unittest.TestCase):
                 with self.assertRaises(build_packs.Rejected):
                     build_packs.parse_notation(notation)
 
-    def test_leader_becomes_a_placeholder_rather_than_a_character(self):
-        # A pack must not bake in the leader the table was built with: someone
-        # who moved theirs still has to be training the mapping.
+    def test_a_configurable_key_becomes_a_placeholder_not_a_character(self):
+        # A pack must not bake in the key the table was built with: LazyVim's
+        # leader, tmux's prefix and herdr's prefix are all settings, and
+        # someone who moved theirs still has to be training the mapping.
         steps = build_packs.parse_notation(build_packs.LEADER_MARK + "ff")
-        self.assertEqual(steps[0], {"leader": True})
+        self.assertEqual(steps[0], {"option": "leader"})
         self.assertEqual(steps[1:], [{"mods": 0, "text": "f"}, {"mods": 0, "text": "f"}])
         local = build_packs.parse_notation(build_packs.LOCALLEADER_MARK + "r")
-        self.assertEqual(local[0], {"localleader": True})
+        self.assertEqual(local[0], {"option": "localleader"})
+        self.assertEqual(build_packs.parse_notation(build_packs.PREFIX_MARK)[0],
+                         {"option": "prefix"})
 
     def test_case_survives_without_a_modifier_and_is_folded_with_one(self):
         self.assertEqual(build_packs.parse_notation("gG"),
@@ -74,6 +77,24 @@ class PackTests(unittest.TestCase):
         self.assertTrue(generated.startswith(".pragma library"))
         for forbidden in ("FileView", "XMLHttpRequest", "Qt.include", "import "):
             self.assertNotIn(forbidden, generated)
+
+    def test_a_pack_never_bakes_in_a_configurable_key(self):
+        # The tmux table was collected against tmux's own default of C-b, but
+        # Omarchy's tmux.conf moves the prefix to C-Space. A baked-in prefix
+        # taught the wrong first key on every Omarchy machine.
+        declared = {"lazyvim": {"leader", "localleader"}, "tmux": {"prefix"}}
+        for name, pack in self.packs.items():
+            with self.subTest(pack=name):
+                used = {step["option"] for entry in pack["bindings"]
+                        for step in entry["steps"] if step.get("option")}
+                self.assertTrue(used.issubset(declared[name]), used)
+                if name == "tmux":
+                    # Every tmux binding is the prefix and then a key.
+                    for entry in pack["bindings"]:
+                        self.assertEqual(entry["steps"][0], {"option": "prefix"})
+                        # And the identity never names the key it resolves to,
+                        # so moving the prefix keeps the entry's progress.
+                        self.assertNotIn("C-b", entry["localId"])
 
     def test_every_pack_declares_its_own_categories(self):
         # Not a shared table: one ground sorts by which-key group, the next by
@@ -121,7 +142,7 @@ class PackTests(unittest.TestCase):
                 self.assertEqual(len(ids), len(set(ids)))
                 for entry in pack["bindings"]:
                     for step in entry["steps"]:
-                        if step.get("leader") or step.get("localleader"):
+                        if step.get("option"):
                             continue
                         # Esc saves the run and leaves, so no ground answers
                         # with it; the device cluster is the same rule the

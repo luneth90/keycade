@@ -260,6 +260,7 @@
   "newLearned": "新学会",
   "noBindings": "没有找到可训练的快捷键。请为快捷键添加说明后重试。",
   "noDispatch": "不派发动作",
+  "optionsTitle": "可配置的前缀键",
   "packLeader": "leader = {leader}",
   "packNotice": "官方默认键位 · 并非读取你本机的配置",
   "packdesc_add_comment_above": "在上方添加注释",

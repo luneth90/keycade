@@ -75,6 +75,7 @@ Item {
   property bool soundMenuOpen: false
   property bool excludedMenuOpen: false
   property bool themeMenuOpen: false
+  property bool optionsMenuOpen: false
   property var excludedRows: []
   property int staleExcludedCount: 0
   property bool excludeStampVisible: false
@@ -171,18 +172,8 @@ Item {
   // asked once the settings that name its leader have arrived.
   function loadActiveGround() {
     if (root.packGround) {
-      var defaults = Profiles.options(root.profileId)
-      var stored = store.settings.profileOptions && store.settings.profileOptions[root.profileId]
-          ? store.settings.profileOptions[root.profileId] : ({})
       packs.profileId = root.profileId
-      // A ground that names no leader keeps the source's own defaults rather
-      // than being handed the string "undefined", which is neither a leader
-      // nor short enough to be one.
-      if (defaults.leader !== undefined)
-        packs.leader = String(stored.leader === undefined ? defaults.leader : stored.leader)
-      if (defaults.localleader !== undefined)
-        packs.localleader = String(stored.localleader === undefined
-                                   ? defaults.localleader : stored.localleader)
+      packs.options = root.profileOptions()
       packs.refresh()
       return
     }
@@ -418,6 +409,7 @@ Item {
     store.settings = Object.assign({}, store.settings)
     store.saveSettings()
     root.themeMenuOpen = false
+    root.optionsMenuOpen = false
   }
 
   function toggleSound() {
@@ -455,6 +447,72 @@ Item {
   // record is created the first time it records anything, and a binding taken
   // before that would keep pointing at a detached copy of the defaults.
   function profileCounters() { return Stats.counters(store.stats, root.profileId) }
+
+  // The active ground's configurable keys, as stored. The store normalises
+  // them against what the profile declares, so this is already bounded.
+  // "leader ␣" / "prefix C-b" - what this ground's configurable keys are set
+  // to right now, short enough for a button.
+  function optionSummary() {
+    var names = Profiles.optionNames(root.profileId)
+    var options = root.profileOptions()
+    var defaults = Profiles.options(root.profileId)
+    var parts = []
+    for (var index = 0; index < names.length; index++) {
+      var value = options[names[index]] !== undefined
+          ? options[names[index]] : defaults[names[index]]
+      parts.push(names[index] + " " + root.optionLabel(value))
+    }
+    return parts.join("  ")
+  }
+
+  // A space has to be visible to be a readable setting.
+  function optionLabel(value) {
+    var text = String(value === undefined || value === null ? "" : value)
+    return text === " " ? "␣" : text
+  }
+
+  // One row per configurable key: its name, what it is set to, and what can
+  // be chosen without typing.
+  function optionRows() {
+    var names = Profiles.optionNames(root.profileId)
+    var options = root.profileOptions()
+    var defaults = Profiles.options(root.profileId)
+    var rows = []
+    for (var index = 0; index < names.length; index++) {
+      var name = names[index]
+      rows.push({
+        name: name,
+        value: options[name] !== undefined ? options[name] : defaults[name],
+        choices: Profiles.optionChoices(root.profileId, name)
+      })
+    }
+    return rows
+  }
+
+  function profileOptions() {
+    var stored = store.settings.profileOptions
+    return stored && stored[root.profileId] ? stored[root.profileId] : ({})
+  }
+
+  // Set one of them. Empty puts the ground's own default back.
+  function setProfileOption(name, value) {
+    if (root.view === "playing") return
+    var options = store.settings.profileOptions || ({})
+    var ground = options[root.profileId] ? options[root.profileId] : ({})
+    var next = ({})
+    Object.keys(ground).forEach(function(key) { next[key] = ground[key] })
+    next[String(name)] = String(value === undefined || value === null ? "" : value)
+    var updated = ({})
+    Object.keys(options).forEach(function(key) { updated[key] = options[key] })
+    updated[root.profileId] = next
+    store.settings.profileOptions = updated
+    store.settings = Object.assign({}, store.settings)
+    store.saveSettings()
+    // The table is rebuilt against the new key, and the deck with it.
+    root.loadActiveGround()
+    root.applyEligibility()
+    root.refreshProgressCounts()
+  }
 
   // One line for an answer, wherever a list has no room to draw its steps. A
   // chord renders exactly as it always did; a sequence puts a gap between its
@@ -1228,6 +1286,7 @@ Item {
                 root.soundMenuOpen = false
                 root.languageMenuOpen = false
                 root.themeMenuOpen = false
+                root.optionsMenuOpen = false
               }
             }
           }
@@ -1249,6 +1308,33 @@ Item {
                 root.languageMenuOpen = false
                 root.excludedMenuOpen = false
                 root.themeMenuOpen = false
+                root.optionsMenuOpen = false
+              }
+            }
+          }
+          // The ground's configurable keys. Only the grounds that have one
+          // show it, and it is a menu rather than a field because the overlay
+          // holds the keyboard - there is nowhere to type.
+          Rectangle {
+            id: optionsButton
+            visible: Profiles.optionNames(root.profileId).length > 0
+            width: Math.max(112, optionsLabel.implicitWidth + 22); height: 36
+            color: root.screenColor; border.width: 3; border.color: root.voidColor
+            SafeText {
+              id: optionsLabel
+              anchors.centerIn: parent
+              text: root.optionSummary() + " ▾"
+              color: root.inkColor; font.family: "monospace"; font.bold: true; font.pixelSize: 10
+            }
+            MouseArea {
+              anchors.fill: parent
+              onClicked: {
+                root.optionsMenuOpen = !root.optionsMenuOpen
+                root.languageMenuOpen = false
+                root.soundMenuOpen = false
+                root.excludedMenuOpen = false
+                root.themeMenuOpen = false
+                root.optionsMenuOpen = false
               }
             }
           }
@@ -1263,6 +1349,7 @@ Item {
                 root.soundMenuOpen = false
                 root.excludedMenuOpen = false
                 root.themeMenuOpen = false
+                root.optionsMenuOpen = false
               }
             }
           }
@@ -1411,6 +1498,63 @@ Item {
               color: root.screenColor; border.width: 2; border.color: root.mutedColor
               SafeText { anchors.centerIn: parent; text: i18n.t("excludedClearStale"); color: root.inkColor; font.family: "monospace"; font.pixelSize: 9; font.bold: true }
               MouseArea { anchors.fill: parent; onClicked: root.clearStaleExclusions() }
+            }
+          }
+        }
+      }
+
+      Rectangle {
+        id: optionsMenu
+        x: Math.max(4, topbar.x + topControls.x + optionsButton.x + (optionsButton.width - width) / 2)
+        y: topbar.y + topbar.height + 8
+        width: 232
+        height: root.optionRows().length * 30 + 34
+        visible: root.optionsMenuOpen && Profiles.optionNames(root.profileId).length > 0
+        z: 100
+        color: root.cabinetColor; border.width: 3; border.color: root.primaryColor
+        Column {
+          anchors.fill: parent; anchors.margins: 6; spacing: 4
+          SafeText {
+            width: parent.width
+            text: i18n.t("optionsTitle"); color: root.mutedColor
+            font.family: "monospace"; font.pixelSize: 9; font.bold: true; font.letterSpacing: 2
+            elide: Text.ElideRight; maximumLineCount: 1
+          }
+          Repeater {
+            model: root.optionRows()
+            delegate: Row {
+              id: optionRow
+              required property var modelData
+              spacing: 6
+              SafeText {
+                width: 72; anchors.verticalCenter: parent.verticalCenter
+                text: optionRow.modelData.name; color: root.mutedColor
+                font.family: "monospace"; font.pixelSize: 10; font.bold: true
+                elide: Text.ElideRight; maximumLineCount: 1
+              }
+              Repeater {
+                model: optionRow.modelData.choices
+                delegate: Rectangle {
+                  id: optionChoice
+                  required property var modelData
+                  readonly property bool current: optionChoice.modelData === optionRow.modelData.value
+                  width: 40; height: 26
+                  color: optionChoice.current ? root.primaryColor : root.screenColor
+                  border.width: 2
+                  border.color: optionChoice.current ? root.primaryColor : root.voidColor
+                  SafeText {
+                    anchors.centerIn: parent; width: parent.width - 6
+                    horizontalAlignment: Text.AlignHCenter; elide: Text.ElideRight; maximumLineCount: 1
+                    text: root.optionLabel(optionChoice.modelData)
+                    color: optionChoice.current ? root.voidColor : root.inkColor
+                    font.family: "monospace"; font.pixelSize: 10; font.bold: true
+                  }
+                  MouseArea {
+                    anchors.fill: parent
+                    onClicked: root.setProfileOption(optionRow.modelData.name, optionChoice.modelData)
+                  }
+                }
+              }
             }
           }
         }

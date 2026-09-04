@@ -1337,8 +1337,7 @@ TestCase {
   PackSource { id: testPack; profileId: "lazyvim" }
 
   function test_theShippedPackLoadsWithinItsLimits() {
-    testPack.leader = " "
-    testPack.localleader = "\\"
+    testPack.options = ({ leader: " " })
     testPack.refresh()
     compare(testPack.error, "")
     verify(testPack.bindings.length > 100)
@@ -1363,8 +1362,72 @@ TestCase {
   // Leader is a setting in the application being trained, so a pack stores a
   // placeholder. Someone who moved theirs trains the mapping, not a key they
   // never press.
+  // LazyVim's leader, tmux's prefix and herdr's prefix are one idea: a
+  // configurable key every other binding hangs off. One parser reads all
+  // three, in the spellings a person actually writes.
+  function test_aConfigurablePrefixIsReadInEverySpellingPeopleUse() {
+    compare(TextKey.parseKeySpec(" ").named, "SPACE")
+    compare(TextKey.parseKeySpec(",").text, ",")
+    compare(TextKey.parseKeySpec("<Space>").named, "SPACE")
+    compare(TextKey.parseKeySpec("Space").named, "SPACE")
+
+    var control = TextKey.parseKeySpec("C-b")
+    compare(control.mods, 4)
+    compare(control.text, "b")
+    compare(TextKey.parseKeySpec("ctrl+a").mods, 4)
+    compare(TextKey.parseKeySpec("ctrl+a").text, "a")
+    compare(TextKey.parseKeySpec("CTRL+A").text, "a")
+    compare(TextKey.parseKeySpec("C-Space").named, "SPACE")
+    compare(TextKey.parseKeySpec("ctrl+space").mods, 4)
+    compare(TextKey.parseKeySpec("M-x").mods, 8)
+    compare(TextKey.parseKeySpec("alt+x").mods, 8)
+
+    // Unreadable ones return null, and the caller keeps its default.
+    compare(TextKey.parseKeySpec(""), null)
+    compare(TextKey.parseKeySpec("C-"), null)
+    compare(TextKey.parseKeySpec("NotAKey"), null)
+    compare(TextKey.parseKeySpec("ctrl+notakey"), null)
+  }
+
+  // The shipped tmux table was collected against tmux's own default of C-b,
+  // but Omarchy's tmux.conf moves the prefix to C-Space - so every Omarchy
+  // machine was being taught the wrong first key. The prefix is a setting now.
+  function test_theTmuxPrefixIsASettingRatherThanABakedInKey() {
+    var pack = Packs.pack("tmux")
+    verify(pack !== null)
+    for (var index = 0; index < pack.bindings.length; index++) {
+      var steps = pack.bindings[index].steps
+      compare(steps[0].option, "prefix",
+              pack.bindings[index].localId + " does not start with the prefix option")
+      // And its identity does not contain the prefix, so moving it keeps the
+      // entry - and its progress - intact.
+      verify(pack.bindings[index].localId.indexOf("C-b") === -1)
+    }
+
+    var source = testPack
+    source.profileId = "tmux"
+    source.options = ({})
+    source.refresh()
+    compare(source.error, "")
+    verify(source.bindings.length > 50)
+    var byDefault = source.bindings[0]
+    compare(byDefault.answer.steps[0].mods, 4)
+    compare(byDefault.answer.steps[0].text, "b")
+
+    source.options = ({ prefix: "C-Space" })
+    source.refresh()
+    var moved = source.bindings[0]
+    compare(moved.answer.steps[0].named, "SPACE")
+    compare(moved.answer.steps[0].mods, 4)
+    compare(moved.id, byDefault.id)
+
+    source.profileId = "lazyvim"
+    source.options = ({ leader: " " })
+    source.refresh()
+  }
+
   function test_theLeaderIsResolvedFromSettingsNotBakedIntoThePack() {
-    testPack.leader = " "
+    testPack.options = ({ leader: " " })
     testPack.refresh()
     var spaced = null
     for (var index = 0; index < testPack.bindings.length; index++) {
@@ -1373,7 +1436,7 @@ TestCase {
     verify(spaced !== null)
     compare(spaced.answer.steps[0].named, "SPACE")
 
-    testPack.leader = ","
+    testPack.options = ({ leader: "," })
     testPack.refresh()
     var comma = null
     for (var second = 0; second < testPack.bindings.length; second++) {
@@ -1383,7 +1446,7 @@ TestCase {
     compare(comma.answer.steps[0].text, ",")
     // The entry keeps its identity across the change, so progress survives it.
     compare(comma.id, spaced.id)
-    testPack.leader = " "
+    testPack.options = ({ leader: " " })
     testPack.refresh()
   }
 
@@ -1475,7 +1538,7 @@ TestCase {
   // description is the prompt a card asks the keys for, so it has to be
   // readable in the language the rest of the screen is in.
   function test_packDescriptionsAreReadableInBothLanguages() {
-    testPack.leader = " "
+    testPack.options = ({ leader: " " })
     testPack.refresh()
     var sample = null
     for (var index = 0; index < testPack.bindings.length; index++) {
@@ -1516,7 +1579,7 @@ TestCase {
     verify(row.answer !== undefined, "a set-aside Hyprland bind carries no answer")
     compare(AnswerMatcher.stepLabels(row.answer)[0].join(" + "), "SUPER + 2")
 
-    testPack.leader = " "
+    testPack.options = ({ leader: " " })
     testPack.refresh()
     var packResult = PackEligibility.filter(testPack.bindings, {
       profile: "lazyvim",
@@ -1541,7 +1604,7 @@ TestCase {
   }
 
   function test_aRunOnAPackGroundGoesThroughTheSameMachinery() {
-    testPack.leader = " "
+    testPack.options = ({ leader: " " })
     testPack.refresh()
     var stats = Stats.defaults()
     var deck = Scheduler.build(testPack.bindings, stats, 24,
