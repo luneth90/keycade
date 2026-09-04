@@ -71,6 +71,7 @@
   "blocked": "INPUT GUARD BLOCKED",
   "closing": "Release held modifiers to close safely",
   "noBindings": "No eligible shortcuts were found. Add descriptions to your bindings and try again.",
+  "combo": "COMBO",
   "excludeAction": "✕ EXCLUDE",
   "excludedMenu": "EXCLUDED {count}",
   "excludedTitle": "SHORTCUTS YOU EXCLUDED",

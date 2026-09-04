@@ -48,6 +48,9 @@ Item {
   property real energy: 1
   property int lastCountdownBeat: 0
   property int countdownSeconds: 0
+  // A run-local streak of first-try hits. It is display only: it never reaches
+  // stats or the scheduler, which grade recall and spacing rather than speed.
+  property int combo: 0
   property bool cardLocked: false
   property bool correctionRequired: false
   property bool cardErrorSoundPlayed: false
@@ -536,6 +539,7 @@ Item {
     root.newLearned = 0
     root.masteredGained = 0
     root.reactions = []
+    root.combo = 0
     root.runResults = ({})
     root.pendingReinforcements = ({})
     root.reviewSuggestions = []
@@ -668,6 +672,8 @@ Item {
       var transition = Stats.recordFirstTry(store.stats, root.currentBinding.id, true,
                                             reaction, root.activeRunId, Date.now())
       if (transition.masteredGained) root.masteredGained += 1
+      root.combo += 1
+      if (root.combo % 5 === 0) sounds.playCombo()
     }
     root.runResults[root.currentBinding.id] = hitResult
     refreshProgressCounts()
@@ -685,6 +691,7 @@ Item {
   }
 
   function missCurrent(reason, received) {
+    root.combo = 0
     if (root.cardLocked) return
     cardTimer.stop()
     sounds.stopCountdown()
@@ -1518,6 +1525,40 @@ Item {
   Component {
     id: playCard
     Item {
+      Row {
+        id: comboBadge
+        anchors.left: parent.left
+        anchors.top: parent.top
+        anchors.leftMargin: 22
+        anchors.topMargin: 22
+        spacing: 8
+        visible: root.combo >= 2
+        opacity: 1
+        SafeText {
+          anchors.verticalCenter: parent.verticalCenter
+          text: i18n.t("combo")
+          color: root.coinColor
+          font.family: "monospace"; font.pixelSize: 11; font.bold: true; font.letterSpacing: 2
+        }
+        DotNumber {
+          anchors.verticalCenter: parent.verticalCenter
+          value: String(root.combo)
+          cell: 3
+          gap: 1
+          color: root.coinColor
+        }
+        SequentialAnimation {
+          id: comboPulse
+          NumberAnimation { target: comboBadge; property: "opacity"; to: 0.35; duration: 70 }
+          NumberAnimation { target: comboBadge; property: "opacity"; to: 1; duration: 200 }
+        }
+        Connections {
+          target: root
+          function onComboChanged() {
+            if (root.combo >= 2 && !root.reducedMotion) comboPulse.restart()
+          }
+        }
+      }
       DotNumber {
         anchors.right: parent.right
         anchors.top: parent.top
@@ -1534,8 +1575,9 @@ Item {
         anchors.margins: 28
         spacing: 10
         SafeText {
-          // Narrowed so a long category line cannot run under the countdown.
-          width: parent.width - 88; anchors.horizontalCenter: parent.horizontalCenter
+          // Narrowed so a long category line cannot run under the combo badge
+          // on one side or the countdown on the other.
+          width: parent.width - 260; anchors.horizontalCenter: parent.horizontalCenter
           horizontalAlignment: Text.AlignHCenter
           elide: Text.ElideRight; maximumLineCount: 1
           text: (root.currentBinding ? i18n.t("category_" + root.currentBinding.category) + " · " : "")

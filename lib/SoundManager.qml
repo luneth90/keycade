@@ -37,6 +37,14 @@ Item {
     ejectSound.play()
   }
 
+  // Its own path as well: a combo milestone lands on the same beat as the
+  // correct-answer sound, and playFeedback would have one cancel the other.
+  function playCombo() {
+    if (!root.feedbackEnabled) return
+    comboSound.stop()
+    comboSound.play()
+  }
+
   function playCountdown(finalBeat) {
     if (!root.countdownEnabled) return
     if (finalBeat) countdownFinalSound.play()
@@ -64,6 +72,12 @@ Item {
     id: ejectSound
     source: Qt.resolvedUrl("../assets/sfx/eject.wav")
     volume: root.volume * 0.45
+  }
+
+  SoundEffect {
+    id: comboSound
+    source: Qt.resolvedUrl("../assets/sfx/combo.wav")
+    volume: root.volume * 0.4
   }
 
   SoundEffect {

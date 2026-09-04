@@ -71,6 +71,7 @@
   "blocked": "输入保护未就绪",
   "closing": "松开仍按住的修饰键后安全退出",
   "noBindings": "没有找到可训练的快捷键。请为快捷键添加说明后重试。",
+  "combo": "连击",
   "excludeAction": "✕ 排除此键",
   "excludedMenu": "已排除 {count}",
   "excludedTitle": "你排除的快捷键",
