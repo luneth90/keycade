@@ -6,6 +6,8 @@ Item {
 
   property bool feedbackEnabled: true
   property bool countdownEnabled: true
+  // Every source file is normalised to a 0.85 peak, so the per-effect trims
+  // below carry the whole mix rather than compensating for the recordings.
   property real volume: 0.4
   property double lastFeedbackAt: 0
   property int feedbackCooldownMs: 180
@@ -79,19 +81,19 @@ Item {
   SoundEffect {
     id: ejectSound
     source: Qt.resolvedUrl("../assets/sfx/eject.wav")
-    volume: root.volume * 0.22
+    volume: root.volume * 0.11
   }
 
   SoundEffect {
     id: comboSound
     source: Qt.resolvedUrl("../assets/sfx/combo.wav")
-    volume: root.volume * 0.4
+    volume: root.volume * 0.16
   }
 
   SoundEffect {
     id: masterySound
     source: Qt.resolvedUrl("../assets/sfx/mastery.wav")
-    volume: root.volume * 0.5
+    volume: root.volume * 0.2
   }
 
   SoundEffect {
