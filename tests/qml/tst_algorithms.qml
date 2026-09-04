@@ -1,6 +1,7 @@
 import QtQuick
 import QtTest
 import "../../lib"
+import "../../lib/sources"
 import "../../lib/AnswerMatcher.js" as AnswerMatcher
 import "../../lib/InputNormalizer.js" as Normalizer
 import "../../lib/Profiles.js" as Profiles
@@ -15,6 +16,7 @@ import "../../lib/DotFont.js" as DotFont
 import "../../lib/Palettes.js" as Palettes
 import "../fixtures/canonical-keys.js" as CanonicalKeys
 import "../fixtures/text-keys.js" as TextKeys
+import "../../lib/sources/pack/Eligibility.js" as PackEligibility
 
 TestCase {
   name: "KeycadeAlgorithms"
@@ -644,7 +646,12 @@ TestCase {
     compare(Profiles.qualify("Hyprland", "x"), "")
     compare(Profiles.qualify("__proto__", "x"), "")
     verify(Profiles.known("hyprland"))
-    verify(!Profiles.known("lazyvim"))
+    verify(Profiles.known("lazyvim"))
+    verify(!Profiles.known("tmux"))
+    // A ground either reads the machine or carries a table; the two take
+    // different sources and judge answers differently.
+    verify(!Profiles.isPack("hyprland"))
+    verify(Profiles.isPack("lazyvim"))
   }
 
   // The eligible model carries both: the local id is what an exclusion names
@@ -1295,6 +1302,150 @@ TestCase {
     var result = Eligibility.filter([item], {})
     compare(AnswerMatcher.stepCount(result.eligible[0].answer), 1)
     compare(AnswerMatcher.judgeMode(result.eligible[0].answer), "keysym")
+  }
+
+  // --- packs: the compiled-in table of an application-level ground ---
+
+  PackSource { id: testPack; profileId: "lazyvim" }
+
+  function test_theShippedPackLoadsWithinItsLimits() {
+    testPack.leader = " "
+    testPack.localleader = "\\"
+    testPack.refresh()
+    compare(testPack.error, "")
+    verify(testPack.bindings.length > 100)
+    compare(testPack.rejected, 0)
+    verify(testPack.sourceLabel.length > 0)
+
+    var seen = ({})
+    for (var index = 0; index < testPack.bindings.length; index++) {
+      var item = testPack.bindings[index]
+      compare(Profiles.profileOf(item.id), "lazyvim")
+      compare(item.id, "lazyvim/" + item.localId)
+      verify(item.actionName.length > 0)
+      verify(!seen[item.id])
+      seen[item.id] = true
+      var steps = AnswerMatcher.stepCount(item.answer)
+      verify(steps >= 1 && steps <= 8)
+      compare(AnswerMatcher.judgeMode(item.answer), "text")
+      verify(["normal", "visual", "insert", "operator"].indexOf(item.answer.context) !== -1)
+    }
+  }
+
+  // Leader is a setting in the application being trained, so a pack stores a
+  // placeholder. Someone who moved theirs trains the mapping, not a key they
+  // never press.
+  function test_theLeaderIsResolvedFromSettingsNotBakedIntoThePack() {
+    testPack.leader = " "
+    testPack.refresh()
+    var spaced = null
+    for (var index = 0; index < testPack.bindings.length; index++) {
+      if (testPack.bindings[index].localId === "normal/<leader>ff") spaced = testPack.bindings[index]
+    }
+    verify(spaced !== null)
+    compare(spaced.answer.steps[0].named, "SPACE")
+
+    testPack.leader = ","
+    testPack.refresh()
+    var comma = null
+    for (var second = 0; second < testPack.bindings.length; second++) {
+      if (testPack.bindings[second].localId === "normal/<leader>ff") comma = testPack.bindings[second]
+    }
+    verify(comma !== null)
+    compare(comma.answer.steps[0].text, ",")
+    // The entry keeps its identity across the change, so progress survives it.
+    compare(comma.id, spaced.id)
+    testPack.leader = " "
+    testPack.refresh()
+  }
+
+  // The generator bounded the table. This side bounds it again, because
+  // "the generator checked it" is not something this side can verify.
+  function test_thePackSourceRefusesWhatItCannotJudge() {
+    var categories = ["find"]
+    compare(testPack.acceptedBinding(null, categories), null)
+    compare(testPack.acceptedBinding({ localId: "", desc: "x", category: "find",
+                                       context: "normal", steps: [{ text: "f" }] }, categories), null)
+    compare(testPack.acceptedBinding({ localId: "a", desc: "", category: "find",
+                                       context: "normal", steps: [{ text: "f" }] }, categories), null)
+    compare(testPack.acceptedBinding({ localId: "a", desc: "x", category: "nope",
+                                       context: "normal", steps: [{ text: "f" }] }, categories), null)
+    compare(testPack.acceptedBinding({ localId: "a", desc: "x", category: "find",
+                                       context: "command", steps: [{ text: "f" }] }, categories), null)
+    compare(testPack.acceptedBinding({ localId: "a", desc: "x", category: "find",
+                                       context: "normal", steps: [] }, categories), null)
+    // An answer with one unreadable step is not a partially good answer.
+    compare(testPack.acceptedBinding({ localId: "a", desc: "x", category: "find", context: "normal",
+                                       steps: [{ text: "f" }, { named: "NotAKey" }] }, categories), null)
+    // Esc saves the run and leaves, on every ground.
+    compare(testPack.acceptedBinding({ localId: "a", desc: "x", category: "find", context: "normal",
+                                       steps: [{ named: "Esc" }] }, categories), null)
+    var tooMany = []
+    for (var index = 0; index < 9; index++) tooMany.push({ text: "a" })
+    compare(testPack.acceptedBinding({ localId: "a", desc: "x", category: "find",
+                                       context: "normal", steps: tooMany }, categories), null)
+    // And what it does accept comes back fully formed.
+    var good = testPack.acceptedBinding({ localId: "normal/x", desc: "Find", category: "find",
+                                          context: "normal", steps: [{ mods: 0, text: "f" }] }, categories)
+    compare(good.id, "lazyvim/normal/x")
+    compare(good.actionName, "Find")
+    compare(AnswerMatcher.stepCount(good.answer), 1)
+  }
+
+  // Setting an entry aside is one mechanism across every ground: an entry in
+  // settings.json, namespaced by ground, naming the local id.
+  function test_packEntriesAreSetAsideThroughTheSameExclusionList() {
+    var bindings = [
+      { id: "lazyvim/normal/a", localId: "normal/a", category: "find", actionName: "A" },
+      { id: "lazyvim/normal/b", localId: "normal/b", category: "git", actionName: "B" }
+    ]
+    var result = PackEligibility.filter(bindings, {
+      profile: "lazyvim",
+      excludedBindings: ["lazyvim:normal/b"]
+    })
+    compare(result.eligible.length, 1)
+    compare(result.eligible[0].localId, "normal/a")
+    compare(result.excluded.length, 1)
+    compare(result.excluded[0].reason, "user-excluded")
+    // The Hyprland ground's own list is not consumed here.
+    compare(PackEligibility.filter(bindings, {
+      profile: "lazyvim", excludedBindings: ["hyprland:normal/b"]
+    }).eligible.length, 2)
+    compare(PackEligibility.categories(bindings).join(","), "find,git")
+  }
+
+  // A run on a pack ground, end to end: the deck comes from the pack, the
+  // scheduler keys on qualified ids, the counters land in that ground's own
+  // record, and the answers are typed rather than held.
+  function test_aRunOnAPackGroundGoesThroughTheSameMachinery() {
+    testPack.leader = " "
+    testPack.refresh()
+    var stats = Stats.defaults()
+    var deck = Scheduler.build(testPack.bindings, stats, 24,
+                               { now: 1000, runId: 1, profile: "lazyvim" })
+    compare(deck.length, 24)
+    for (var index = 0; index < deck.length; index++)
+      compare(Profiles.profileOf(deck[index].binding.id), "lazyvim")
+
+    // Typing the first card's answer answers it, one step at a time.
+    var answer = deck[0].binding.answer
+    var state = AnswerMatcher.begin()
+    var verdict = ""
+    for (var step = 0; step < answer.steps.length; step++)
+      verdict = AnswerMatcher.advance(state, answer, textEvent(answer.steps[step]), {})
+    compare(verdict, "hit")
+
+    Stats.recordGuided(stats, deck[0].binding.id, 1, 1000)
+    Stats.recordFirstTry(stats, deck[0].binding.id, true, 900, 1, 2000)
+    Scheduler.markCovered(testPack.bindings, stats, deck[0].binding.id)
+    Stats.completeRun(stats, "lazyvim")
+
+    // The Hyprland ground's counters are untouched by any of it.
+    compare(Stats.runsOf(stats, "lazyvim"), 1)
+    compare(Stats.runsOf(stats, "hyprland"), 0)
+    verify(Stats.counters(stats, "lazyvim").coverageCursor !== 0)
+    compare(Stats.counters(stats, "hyprland").coverageCursor, 0)
+    compare(Object.keys(stats.bindings)[0].slice(0, 8), "lazyvim/")
   }
 
   function test_builtinActionsHaveLocaleKeysAndCustomTextStaysRaw() {

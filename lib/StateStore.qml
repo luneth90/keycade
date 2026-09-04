@@ -4,6 +4,7 @@ import Quickshell.Io
 import "Stats.js" as Stats
 import "Session.js" as Session
 import "Palettes.js" as Palettes
+import "Profiles.js" as Profiles
 
 Item {
   id: root
@@ -61,8 +62,52 @@ Item {
       feedbackSound: true,
       countdownSound: true,
       soundVolume: 0.4,
-      excludedBindings: []
+      excludedBindings: [],
+      // The ground a run is played on, and the settings of the application
+      // each pack ground trains. An upgrade lands on Hyprland, so nothing a
+      // user already had changes until they pick another cabinet.
+      activeProfile: Profiles.defaultId(),
+      profileOptions: root.defaultProfileOptions()
     }
+  }
+
+  readonly property int maxLeaderChars: 8
+
+  function defaultProfileOptions() {
+    var result = Object.create(null)
+    var ids = Profiles.ids()
+    for (var index = 0; index < ids.length; index++) {
+      var defaults = Profiles.options(ids[index])
+      if (!Object.keys(defaults).length) continue
+      result[ids[index]] = { leader: defaults.leader, localleader: defaults.localleader }
+    }
+    return result
+  }
+
+  // Dynamic keys, so the map is built on a null prototype and every name is
+  // checked against the profile id character set before it is used.
+  function normalizedProfileOptions(value) {
+    var result = root.defaultProfileOptions()
+    if (!value || typeof value !== "object" || Array.isArray(value)) return result
+    var names = Object.keys(value).slice(0, 16)
+    for (var index = 0; index < names.length; index++) {
+      var name = names[index]
+      if (!Profiles.valid(name) || !Object.prototype.hasOwnProperty.call(result, name)) continue
+      var stored = value[name]
+      if (!stored || typeof stored !== "object" || Array.isArray(stored)) continue
+      result[name] = {
+        leader: root.leaderValue(stored.leader, result[name].leader),
+        localleader: root.leaderValue(stored.localleader, result[name].localleader)
+      }
+    }
+    return result
+  }
+
+  // A leader is one key press worth of text, never a control character.
+  function leaderValue(value, fallback) {
+    if (typeof value !== "string" || !value.length || value.length > root.maxLeaderChars)
+      return fallback
+    return /[\u0000-\u001f\u007f]/.test(value) ? fallback : value
   }
 
   function finiteNumber(value, fallback, minimum, maximum) {
@@ -86,6 +131,9 @@ Item {
     // bump would make an older Keycade reject the whole file and quarantine
     // every setting, while staying put only costs it the exclusions.
     result.excludedBindings = Session.excludedList(source.excludedBindings)
+    result.activeProfile = Profiles.known(source.activeProfile)
+        ? String(source.activeProfile) : Profiles.defaultId()
+    result.profileOptions = root.normalizedProfileOptions(source.profileOptions)
     if (Number(source.schemaVersion) === 2 && Math.abs(result.soundVolume - 0.3) < 0.001)
       result.soundVolume = 0.4
     return result

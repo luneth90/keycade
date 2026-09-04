@@ -15,6 +15,7 @@ import "lib/Palettes.js" as Palettes
 import "lib/sources/hyprland/Eligibility.js" as Eligibility
 import "lib/sources/hyprland/Categorizer.js" as Categorizer
 import "lib/sources/hyprland/ActionLocalizer.js" as Actions
+import "lib/sources/pack/Eligibility.js" as PackEligibility
 
 Item {
   id: root
@@ -87,9 +88,15 @@ Item {
   readonly property var currentAnswer: currentBinding ? currentBinding.answer : null
   readonly property var answerSteps: AnswerMatcher.stepLabels(root.currentAnswer)
   readonly property int runCardLimit: 24
-  // The only training ground that exists today. Everything below reaches its
-  // rules through the profile rather than assuming them.
-  readonly property string profileId: Profiles.defaultId()
+  // The ground this run is played on. Everything below reaches its rules
+  // through the profile rather than assuming them, so the only thing that
+  // changes when a cabinet is picked is this string.
+  readonly property string profileId: Profiles.known(store.settings.activeProfile)
+      ? String(store.settings.activeProfile) : Profiles.defaultId()
+  readonly property bool packGround: Profiles.isPack(root.profileId)
+  // A pack ground answers loaded() the moment it is asked; a machine ground
+  // has to go and collect. Above this line the two are the same thing.
+  readonly property var activeSource: root.packGround ? packs : keybinds
   // Long enough to read the stamp, not long enough to feel like a penalty.
   // 300 ms measured worse than it sounds: the 110 ms fade eats a third of it,
   // so the words were legible for under two tenths of a second.
@@ -129,7 +136,7 @@ Item {
     i18n.locale = root.requestedLocale
         || (i18n.supported.indexOf(savedLocale) !== -1 ? savedLocale : "en")
     guard.begin()
-    keybinds.refresh()
+    root.loadActiveGround()
     Qt.callLater(function() { keyCatcher.forceActiveFocus() })
   }
 
@@ -163,8 +170,26 @@ Item {
     guard.requestClose()
   }
 
+  // A pack ground is loaded from data already in memory, so it can only be
+  // asked once the settings that name its leader have arrived.
+  function loadActiveGround() {
+    if (root.packGround) {
+      var defaults = Profiles.options(root.profileId)
+      var stored = store.settings.profileOptions && store.settings.profileOptions[root.profileId]
+          ? store.settings.profileOptions[root.profileId] : ({})
+      packs.profileId = root.profileId
+      packs.leader = String(stored.leader === undefined ? defaults.leader : stored.leader)
+      packs.localleader = String(stored.localleader === undefined
+                                 ? defaults.localleader : stored.localleader)
+      packs.refresh()
+      return
+    }
+    keybinds.refresh()
+  }
+
   function maybeShowHome() {
-    if (!root.opened || root.view !== "loading" || !root.guardReady || keybinds.loading || !store.ready) return
+    if (!root.opened || root.view !== "loading" || !root.guardReady
+        || root.activeSource.loading || !store.ready) return
     var savedLocale = String(store.settings.locale || "en")
     if (i18n.supported.indexOf(savedLocale) === -1) {
       store.settings.locale = "en"
@@ -212,13 +237,18 @@ Item {
   // through it, so the mastery denominator - which is the size of this set -
   // moves with them instead of at the next launch.
   function applyEligibility() {
-    var result = Eligibility.filter(keybinds.bindings, {
-      appleKeyboard: keybinds.appleKeyboard,
-      keymapAuthoritative: keybinds.keymapAuthoritative,
-      keycodeMap: keybinds.keycodeMap,
-      excludedBindings: store.settings.excludedBindings,
-      profile: root.profileId
-    })
+    var result = root.packGround
+        ? PackEligibility.filter(packs.bindings, {
+            excludedBindings: store.settings.excludedBindings,
+            profile: root.profileId
+          })
+        : Eligibility.filter(keybinds.bindings, {
+            appleKeyboard: keybinds.appleKeyboard,
+            keymapAuthoritative: keybinds.keymapAuthoritative,
+            keycodeMap: keybinds.keycodeMap,
+            excludedBindings: store.settings.excludedBindings,
+            profile: root.profileId
+          })
     var rows = []
     var matched = Session.safeMap()
     for (var i = 0; i < result.excluded.length; i++) {
@@ -346,6 +376,40 @@ Item {
     root.applyEligibility()
   }
 
+  // Picking a cabinet. Not offered mid-run: a deck belongs to one ground, and
+  // swapping under it would mix two decks and two run counters.
+  function selectProfile(id) {
+    if (root.view === "playing" || !Profiles.known(id) || id === root.profileId) return
+    store.settings.activeProfile = String(id)
+    store.settings = Object.assign({}, store.settings)
+    store.saveSettings()
+    root.eligibleBindings = []
+    root.excludedRows = []
+    root.staleExcludedCount = 0
+    root.trainingLockedOut = false
+    root.excludedMenuOpen = false
+    root.view = "loading"
+    root.errorMessage = ""
+    root.loadActiveGround()
+    // A machine ground answers through its own signal; a pack ground is
+    // already in memory and has answered by the time refresh() returns.
+    root.maybeShowHome()
+  }
+
+  // What the ground says about itself. A pack names its upstream and the day
+  // that table was published, so nothing on screen suggests it read your
+  // machine; the Hyprland ground reads the machine and says nothing.
+  function groundNotice() {
+    if (!root.packGround) return ""
+    return [packs.sourceLabel, i18n.t("packNotice")].filter(Boolean).join("  ·  ")
+  }
+
+  function profileMastery(id) {
+    var counts = Stats.counts(store.stats, id === root.profileId ? root.eligibleBindings : [],
+                              Date.now(), root.activeRunId)
+    return counts.total ? Math.round(counts.mastered / counts.total * 100) : 0
+  }
+
   function categorySummary() {
     var counts = {}
     for (var i = 0; i < root.eligibleBindings.length; i++) {
@@ -353,7 +417,8 @@ Item {
       counts[name] = Number(counts[name] || 0) + 1
     }
     var labels = []
-    var order = Categorizer.categories()
+    var order = root.packGround ? PackEligibility.categories(root.eligibleBindings)
+                                : Categorizer.categories()
     for (var j = 0; j < order.length; j++) {
       if (counts[order[j]]) labels.push(i18n.t("category_" + order[j]) + " " + counts[order[j]])
     }
@@ -404,7 +469,10 @@ Item {
 
   // The reproduced keymap decides judging when it is available; without it the
   // matcher keeps comparing characters exactly as before.
+  // The reproduced keymap decides judging on the Hyprland ground; the text
+  // mode compares characters and has no use for it.
   function matchOptions() {
+    if (root.packGround) return ({})
     return {
       appleKeyboard: keybinds.appleKeyboard,
       keycodeMap: keybinds.keymapAuthoritative ? keybinds.keycodeMap : null
@@ -419,6 +487,14 @@ Item {
   // One line for an answer, wherever a list has no room to draw its steps. A
   // chord renders exactly as it always did; a sequence puts a gap between its
   // steps rather than a plus, because they are typed one after another.
+  // A pack entry carries its own description; a Hyprland bind has one derived
+  // from the dispatcher and looked up in the language pack.
+  function actionName(binding) {
+    if (!binding) return ""
+    return root.packGround ? String(binding.actionName || "")
+                           : Actions.actionName(binding, i18n)
+  }
+
   function answerDisplay(binding) {
     var groups = AnswerMatcher.stepLabels(binding ? binding.answer : null)
     return groups.map(function(keys) { return keys.join(" + ") }).join("  ")
@@ -875,6 +951,14 @@ Item {
       guard.fail(message)
     }
   }
+  PackSource {
+    id: packs
+    onLoaded: root.maybeShowHome()
+    onFailed: function(message) {
+      root.errorMessage = message
+      guard.fail(message)
+    }
+  }
 
   InputGuard {
     id: guard
@@ -1287,7 +1371,7 @@ Item {
                     }
                     SafeText {
                       width: 230; elide: Text.ElideRight; maximumLineCount: 1
-                      text: Actions.actionName(excludedRow.modelData, i18n)
+                      text: root.actionName(excludedRow.modelData)
                       color: root.mutedColor; font.pixelSize: 11
                     }
                   }
@@ -1618,7 +1702,8 @@ Item {
         spacing: 18
         SafeText {
           width: parent.width; horizontalAlignment: Text.AlignHCenter
-          text: root.view === "home" ? i18n.t("ready") : (keybinds.loading ? i18n.t("loading") : i18n.t("acquiring"))
+          text: root.view === "home" ? i18n.t("ready")
+                : (root.activeSource.loading ? i18n.t("loading") : i18n.t("acquiring"))
           color: root.successColor; font.family: "monospace"; font.bold: true; font.pixelSize: 13; font.letterSpacing: 2
         }
         SafeText {
@@ -1655,6 +1740,63 @@ Item {
           text: root.categorySummary(); color: root.secondaryColor
           font.family: "monospace"; font.pixelSize: 11; font.bold: true
           wrapMode: Text.WordWrap
+        }
+        // Choosing a cabinet, which is what a training ground is. A ground is
+        // picked here rather than from the top bar: the menus up there are
+        // preferences that can change mid-run, and this one decides the deck.
+        SafeText {
+          width: parent.width; horizontalAlignment: Text.AlignHCenter
+          visible: root.view === "home"
+          text: i18n.t("groundLabel")
+          color: root.mutedColor; font.family: "monospace"; font.pixelSize: 10
+          font.bold: true; font.letterSpacing: 3
+        }
+        Row {
+          anchors.horizontalCenter: parent.horizontalCenter
+          spacing: 10
+          visible: root.view === "home"
+          Repeater {
+            model: Profiles.ids()
+            delegate: Rectangle {
+              id: groundDatum
+              required property var modelData
+              readonly property bool current: groundDatum.modelData === root.profileId
+              width: Math.max(132, groundName.implicitWidth + 34); height: 42
+              color: groundDatum.current ? root.screenColor : root.voidColor
+              border.width: groundDatum.current ? 3 : 2
+              border.color: groundDatum.current ? root.primaryColor : root.mutedColor
+              Column {
+                anchors.centerIn: parent
+                spacing: 1
+                SafeText {
+                  id: groundName
+                  anchors.horizontalCenter: parent.horizontalCenter
+                  text: i18n.t("profile_" + groundDatum.modelData)
+                  color: groundDatum.current ? root.inkColor : root.mutedColor
+                  font.family: "monospace"; font.pixelSize: 12; font.bold: true; font.letterSpacing: 1
+                }
+                SafeText {
+                  anchors.horizontalCenter: parent.horizontalCenter
+                  text: groundDatum.current ? root.progressCounts.mastered + "/" + root.progressCounts.total : "—"
+                  color: groundDatum.current ? root.successColor : root.mutedColor
+                  font.family: "monospace"; font.pixelSize: 10; font.bold: true
+                }
+              }
+              MouseArea {
+                anchors.fill: parent
+                onClicked: root.selectProfile(groundDatum.modelData)
+              }
+            }
+          }
+        }
+        // A pack ground says where its table came from, in full, so nothing
+        // here can be read as "these are the keymaps on your machine".
+        SafeText {
+          width: parent.width; horizontalAlignment: Text.AlignHCenter
+          visible: root.view === "home" && root.packGround
+          text: root.groundNotice()
+          color: root.coinColor; font.family: "monospace"; font.pixelSize: 10
+          wrapMode: Text.WordWrap; maximumLineCount: 2; elide: Text.ElideRight
         }
         Rectangle {
           width: 240; height: 48; anchors.horizontalCenter: parent.horizontalCenter
@@ -1734,14 +1876,16 @@ Item {
           anchors.horizontalCenter: parent.horizontalCenter
           horizontalAlignment: Text.AlignHCenter
           elide: Text.ElideRight; maximumLineCount: 1
-          text: (root.currentBinding ? i18n.t("category_" + root.currentBinding.category) + " · " : "")
+          text: (root.currentAnswer && root.currentAnswer.context
+                 ? i18n.t("context_" + root.currentAnswer.context) + " · " : "")
+                + (root.currentBinding ? i18n.t("category_" + root.currentBinding.category) + " · " : "")
                 + i18n.t(root.correctionRequired ? "correction" : root.currentCard && root.currentCard.remedial ? "remedial" : root.currentCard && root.currentCard.tier === "guided" ? "guided" : root.currentCard && root.currentCard.tier === "maintenance" ? "maintenance" : "learning")
           color: root.currentCard && root.currentCard.tier === "maintenance" ? root.coinColor : root.secondaryColor
           font.family: "monospace"; font.pixelSize: 12; font.bold: true; font.letterSpacing: 2
         }
         SafeText {
           width: parent.width; height: 82; verticalAlignment: Text.AlignVCenter; horizontalAlignment: Text.AlignHCenter
-          text: root.currentBinding ? Actions.actionName(root.currentBinding, i18n) : ""
+          text: root.currentBinding ? root.actionName(root.currentBinding) : ""
           color: root.inkColor; font.pixelSize: 27; font.bold: true; wrapMode: Text.WordWrap
           maximumLineCount: 2; elide: Text.ElideRight; clip: true
         }

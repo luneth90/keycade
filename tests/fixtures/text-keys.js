@@ -41,7 +41,6 @@ var pairs = [
   ["<Return>", [{ "mods": 0, "named": "CR" }]],
   ["<Enter>", [{ "mods": 0, "named": "CR" }]],
   ["<Tab>", [{ "mods": 0, "named": "TAB" }]],
-  ["<S-Tab>", [{ "mods": 0, "named": "TAB" }]],
   ["<Esc>", [{ "mods": 0, "named": "ESC" }]],
   ["<Space>", [{ "mods": 0, "named": "SPACE" }]],
   ["<BS>", [{ "mods": 0, "named": "BS" }]],
@@ -61,6 +60,9 @@ var pairs = [
 // and never guessed at.
 //
 //   <D-…>      Command, a key no Linux keyboard has
+//   <S-Tab>    Shift on a named key: Shift is folded into a character
+//              everywhere else and cannot be folded into this one, and Qt
+//              reports Backtab and Tab as the same key
 //   <C-S-…>    Shift beside another modifier: it is folded into the character
 //              everywhere else, and the two spellings would judge the same
 //   <Plug>…    an internal mapping target, never something a user types
@@ -68,6 +70,7 @@ var pairs = [
 //              carry - the same rule the Hyprland ground applies
 var rejected = [
   "<D-s>",
+  "<S-Tab>",
   "<C-S-w>",
   "<Plug>(comment_toggle)",
   "<F5>",
