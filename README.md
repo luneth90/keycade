@@ -107,28 +107,6 @@ Upstream defaults form the core table; user configuration files are inspected so
 
 tmux is the only service queried dynamically: once `has-session` confirms an active server, `show-options` retrieves `prefix` and `prefix2`, and `list-keys` fetches live bindings. When no server is running, Keycade parses global `set` directives in `~/.config/tmux/tmux.conf` and `~/.tmux.conf` while preserving default bindings. Both prefixes are accepted; if `C-b` is present, it is favored on the prompt card.
 
-### Shortcut Packs
-
-Built-in tables for LazyVim, tmux, VIM, and NEOVIM are static artifacts generated on a maintainer's machine and committed as human-reviewable JSON. No scraping or remote network fetching occurs at runtime on the user's machine.
-
-When upstream distributions update, regenerate the tables and inspect the resulting JSON diff:
-
-```bash
-git clone https://github.com/LazyVim/LazyVim.github.io ../LazyVim.github.io
-git clone https://github.com/LazyVim/LazyVim ../LazyVim && git -C ../LazyVim checkout v16.0.0
-python3 tools/build_packs.py --collect lazyvim --site ../LazyVim.github.io --lazyvim ../LazyVim
-
-printf '# tmux %s\n' "$(tmux -V | awk '{print $2}')" > /tmp/tmux-keys.txt
-tmux -L keycade-build -f /dev/null list-keys -N -T prefix >> /tmp/tmux-keys.txt
-tmux -L keycade-build kill-server
-python3 tools/build_packs.py --collect tmux --listing /tmp/tmux-keys.txt
-
-python3 tools/build_packs.py --collect vim --runtime /usr/share/nvim/runtime \
-  --runtime-version 'NVIM v0.12.5'
-```
-
-> **Note**: The `-f /dev/null` flag is mandatory for tmux: without it, tmux will read your personal `tmux.conf` and contaminate default dataset generation.
-
 ### Tests & Screenshots
 
 ```bash

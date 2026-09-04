@@ -107,28 +107,6 @@ omarchy plugin remove luneth90.keycade
 
 tmux 是唯一的运行时动态查询：在通过 `has-session` 校验服务存活后，依次通过 `show-options` 读取实际生效的 `prefix` / `prefix2` 并用 `list-keys` 读取键位。若无正在运行的 server，则仅安全解析 `~/.config/tmux/tmux.conf` 与 `~/.tmux.conf` 中的全局 `set` 选项，键位沿用内置标准表。两个前缀均可触发，若包含默认前缀 `C-b` 则优先展示在题目卡上。
 
-### 词条数据包维护
-
-LazyVim、tmux、VIM 与 NEOVIM 的内置数据表均为静态资源，由维护者在干净环境下预先采集并以可审查的 JSON 形式提交入库。用户机器上从不执行采集逻辑，运行时也无需连接外部网络。
-
-当上游版本发布更新时，重新运行采集脚本并检查 JSON 的 git diff 对账：
-
-```bash
-git clone https://github.com/LazyVim/LazyVim.github.io ../LazyVim.github.io
-git clone https://github.com/LazyVim/LazyVim ../LazyVim && git -C ../LazyVim checkout v16.0.0
-python3 tools/build_packs.py --collect lazyvim --site ../LazyVim.github.io --lazyvim ../LazyVim
-
-printf '# tmux %s\n' "$(tmux -V | awk '{print $2}')" > /tmp/tmux-keys.txt
-tmux -L keycade-build -f /dev/null list-keys -N -T prefix >> /tmp/tmux-keys.txt
-tmux -L keycade-build kill-server
-python3 tools/build_packs.py --collect tmux --listing /tmp/tmux-keys.txt
-
-python3 tools/build_packs.py --collect vim --runtime /usr/share/nvim/runtime \
-  --runtime-version 'NVIM v0.12.5'
-```
-
-> **注意**：采集 tmux 数据时 `-f /dev/null` 参数必不可少，否则 tmux 会静默加载个人 `tmux.conf` 导致污染通用默认键位。
-
 ### 自动化测试与截图
 
 ```bash
