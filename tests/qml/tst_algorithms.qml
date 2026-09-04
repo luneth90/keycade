@@ -1446,6 +1446,38 @@ TestCase {
     compare(Packs.pack("hyprland"), null)
   }
 
+  // A pack ships the upstream's English; the language packs answer it. The
+  // description is the prompt a card asks the keys for, so it has to be
+  // readable in the language the rest of the screen is in.
+  function test_packDescriptionsAreReadableInBothLanguages() {
+    testPack.leader = " "
+    testPack.refresh()
+    var sample = null
+    for (var index = 0; index < testPack.bindings.length; index++) {
+      if (testPack.bindings[index].localId === "normal/<C-h>") sample = testPack.bindings[index]
+    }
+    verify(sample !== null)
+    compare(sample.descKey, "packdesc_go_to_left_window")
+    compare(sample.actionName, "Go to Left Window")
+
+    testI18n.locale = "en"
+    compare(testI18n.t(sample.descKey), "Go to Left Window")
+    testI18n.locale = "zh-CN"
+    compare(testI18n.t(sample.descKey), "切换到左侧窗口")
+
+    // Every entry the pack ships is answered in both languages.
+    for (var second = 0; second < testPack.bindings.length; second++) {
+      var key = testPack.bindings[second].descKey
+      verify(key.length > 0, testPack.bindings[second].localId + " carries no description key")
+      verify(testI18n.messages[key] !== undefined, key + " has no Chinese")
+    }
+
+    // Wording upstream has rewritten answers to no key, so the card keeps the
+    // English rather than showing a translation of the old wording.
+    compare(testI18n.messages["packdesc_a_description_nobody_wrote"], undefined)
+    testI18n.locale = "en"
+  }
+
   function test_aRunOnAPackGroundGoesThroughTheSameMachinery() {
     testPack.leader = " "
     testPack.refresh()

@@ -103,6 +103,20 @@ class Rejected(Exception):
     """The notation names something no pack entry may carry."""
 
 
+# A pack ships the upstream's own words. They are English, and the trainer is
+# not: the description is the prompt a card asks you to recall the keys for.
+# So each entry carries a key derived from that English text, and the language
+# packs answer it. Deriving the key from the text rather than from the entry's
+# id is deliberate - when upstream rewrites a description the key changes with
+# it, and the card falls back to the new English rather than showing a
+# translation of the old wording.
+def description_key(desc: str) -> str:
+    slug = re.sub(r"_+", "_", re.sub(r"[^a-z0-9]+", "_", desc.lower())).strip("_")
+    if not slug:
+        raise Rejected(f"description has no key: {desc!r}")
+    return "packdesc_" + slug
+
+
 def parse_step(token: str) -> dict:
     """One <...> group, or one bare character, as a TextKey step."""
     if token == LEADER_MARK:
@@ -395,6 +409,7 @@ def collect_lazyvim(site: Path, lazyvim: Path, leader: str, localleader: str) ->
             "notation": lhs,
             "steps": steps,
             "category": category,
+            "descKey": description_key(row["desc"]),
             "desc": row["desc"],
         })
 
@@ -557,6 +572,7 @@ def collect_tmux(listing: Path) -> dict:
             "notation": prefix + " " + key,
             "steps": steps,
             "category": category,
+            "descKey": description_key(desc),
             "desc": desc,
         })
 

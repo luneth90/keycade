@@ -156,6 +156,34 @@ class PackTests(unittest.TestCase):
         self.assertRegex(lazyvim["tag"], r"^v\d+\.\d+\.\d+$")
         self.assertIsInstance(lazyvim["inCheckoutOnly"], list)
 
+    def test_every_description_is_answered_by_both_language_packs(self):
+        # The description is the prompt a card asks the keys for, so a missing
+        # translation is a Chinese user reading English. A re-collect that
+        # brings new upstream wording fails here until it is translated,
+        # rather than shipping half a language.
+        english = json.loads((ROOT / "assets/locales/en.json").read_text(encoding="utf-8"))
+        chinese = json.loads((ROOT / "assets/locales/zh-CN.json").read_text(encoding="utf-8"))
+        for name, pack in self.packs.items():
+            for entry in pack["bindings"]:
+                with self.subTest(pack=name, entry=entry["localId"]):
+                    key = entry["descKey"]
+                    self.assertEqual(key, build_packs.description_key(entry["desc"]))
+                    self.assertIn(key, english)
+                    self.assertIn(key, chinese)
+                    self.assertEqual(english[key], entry["desc"])
+                    # A translation that is still the English text is not one.
+                    self.assertNotEqual(chinese[key], entry["desc"])
+
+    def test_no_translation_outlives_the_description_it_was_written_for(self):
+        # The key is derived from the English text, so rewritten wording gets a
+        # new key and falls back to English. A key nothing uses any more is a
+        # translation of wording that is gone, and it does not stay.
+        used = {entry["descKey"] for pack in self.packs.values() for entry in pack["bindings"]}
+        for locale in ("en", "zh-CN"):
+            data = json.loads((ROOT / f"assets/locales/{locale}.json").read_text(encoding="utf-8"))
+            stale = {k for k in data if k.startswith("packdesc_")} - used
+            self.assertEqual(stale, set(), f"{locale} carries translations nothing uses")
+
     def test_every_pack_category_has_a_locale_string(self):
         english = json.loads((ROOT / "assets/locales/en.json").read_text(encoding="utf-8"))
         chinese = json.loads((ROOT / "assets/locales/zh-CN.json").read_text(encoding="utf-8"))

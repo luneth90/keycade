@@ -86,6 +86,10 @@ Item {
       id: Profiles.qualify(root.profileId, localId),
       category: category,
       actionName: description,
+      // The upstream's own English, and the key a language pack answers with
+      // a translation of it. An entry whose key no pack answers keeps the
+      // English, which is what a rewritten description upstream produces.
+      descKey: root.safeText(record.descKey, 128),
       notation: root.safeText(record.notation, root.maxLocalIdChars),
       answer: { judgeMode: "text", context: context, steps: steps }
     }

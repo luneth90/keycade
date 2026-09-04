@@ -463,8 +463,13 @@ Item {
   // from the dispatcher and looked up in the language pack.
   function actionName(binding) {
     if (!binding) return ""
-    return root.packGround ? String(binding.actionName || "")
-                           : Actions.actionName(binding, i18n)
+    if (!root.packGround) return Actions.actionName(binding, i18n)
+    // A pack ships the upstream's English. Show the translation when the
+    // language pack has one, and the English when it does not - which is what
+    // an upstream that rewrote its description leaves behind.
+    var key = String(binding.descKey || "")
+    if (key && i18n.messages && i18n.messages[key] !== undefined) return i18n.t(key)
+    return String(binding.actionName || "")
   }
 
   function answerDisplay(binding) {
@@ -1803,19 +1808,27 @@ Item {
             elide: Text.ElideRight; maximumLineCount: 1
           }
         }
-        Rectangle {
-          width: 240; height: 48; anchors.horizontalCenter: parent.horizontalCenter
+        // Continuing and starting over sit beside each other rather than
+        // stacked. Two rows of buttons cost 51 pixels the card does not have
+        // once a ground names where its table came from, and they were never
+        // a sequence anyway - they are two ways to begin.
+        Row {
+          anchors.horizontalCenter: parent.horizontalCenter
+          spacing: 10
           visible: root.view === "home" && !root.trainingLockedOut
-          color: root.primaryColor; border.width: 4; border.color: root.voidColor
-          SafeText { anchors.centerIn: parent; text: "▶  " + i18n.t(root.resumeAvailable ? "resumeRun" : "startRun"); color: root.voidColor; font.family: "monospace"; font.bold: true; font.pixelSize: 15 }
-          MouseArea { anchors.fill: parent; onClicked: root.startPrimary() }
-        }
-        Rectangle {
-          width: 240; height: 38; anchors.horizontalCenter: parent.horizontalCenter
-          visible: root.view === "home" && root.resumeAvailable
-          color: root.screenColor; border.width: 2; border.color: root.mutedColor
-          SafeText { anchors.centerIn: parent; text: i18n.t("startFresh"); color: root.mutedColor; font.family: "monospace"; font.bold: true; font.pixelSize: 11 }
-          MouseArea { anchors.fill: parent; onClicked: root.startRun() }
+          Rectangle {
+            width: root.resumeAvailable ? 200 : 240; height: 46
+            color: root.primaryColor; border.width: 4; border.color: root.voidColor
+            SafeText { anchors.centerIn: parent; width: parent.width - 16; horizontalAlignment: Text.AlignHCenter; elide: Text.ElideRight; text: "▶  " + i18n.t(root.resumeAvailable ? "resumeRun" : "startRun"); color: root.voidColor; font.family: "monospace"; font.bold: true; font.pixelSize: 15 }
+            MouseArea { anchors.fill: parent; onClicked: root.startPrimary() }
+          }
+          Rectangle {
+            width: 160; height: 46
+            visible: root.resumeAvailable
+            color: root.screenColor; border.width: 2; border.color: root.mutedColor
+            SafeText { anchors.centerIn: parent; width: parent.width - 12; horizontalAlignment: Text.AlignHCenter; elide: Text.ElideRight; text: i18n.t("startFresh"); color: root.mutedColor; font.family: "monospace"; font.bold: true; font.pixelSize: 12 }
+            MouseArea { anchors.fill: parent; onClicked: root.startRun() }
+          }
         }
       }
     }
