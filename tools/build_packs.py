@@ -60,6 +60,7 @@ TARGET = ROOT / "lib" / "Packs.js"
 GENERATOR_VERSION = "1"
 
 # Mirrors lib/TextKey.js. Both are held to tests/fixtures/text-keys.js.
+SHIFT = 1
 CTRL = 4
 ALT = 8
 SUPER = 64
@@ -168,10 +169,12 @@ def parse_step(token: str) -> dict:
         return {"mods": mods, "text": NAMED_CHARACTERS[upper]}
     if upper in NAMED_KEYS:
         if shifted:
-            # Qt reports Backtab and Tab as one key, so <S-Tab> and <Tab>
-            # would judge the same. Refuse rather than teach a key press the
-            # trainer cannot tell apart.
-            raise Rejected("Shift on a named key is ambiguous")
+            # A named key has no character for Shift to fold into, so it is a
+            # modifier here. Tab is the exception: Qt reports Backtab and Tab
+            # as one key, so <S-Tab> and <Tab> would judge the same.
+            if NAMED_KEYS[upper] == "TAB":
+                raise Rejected("Shift on Tab cannot be told from Tab")
+            mods |= SHIFT
         return {"mods": mods, "named": NAMED_KEYS[upper]}
     if len(body) == 1:
         if shifted:
@@ -547,7 +550,11 @@ def parse_tmux_key(token: str) -> dict:
     upper = token.upper()
     if upper in TMUX_NAMED:
         if shifted:
-            raise Rejected("Shift on a named key is ambiguous")
+            # A named key carries Shift as a modifier; only Tab cannot, since
+            # Qt reports Backtab and Tab as one key. See lib/TextKey.js.
+            if TMUX_NAMED[upper] == "TAB":
+                raise Rejected("Shift on Tab cannot be told from Tab")
+            mods |= SHIFT
         return {"mods": mods, "named": TMUX_NAMED[upper]}
     if len(token) == 1:
         if shifted:

@@ -1,0 +1,283 @@
+#!/usr/bin/python3
+"""Emit the herdr keybindings this machine actually has.
+
+herdr is Omarchy's terminal multiplexer, and Omarchy ships a tool that already
+resolves its bindings:
+
+    omarchy-menu-herdr-keybindings --print
+
+That tool runs `herdr --default-config` - the vendor binary printing its own
+defaults - and merges the user's `config.toml` over it with awk. It executes
+none of the user's code, it lives at a fixed root-owned path, and its output is
+plain text with the prefix already resolved to whatever this machine set. That
+puts it in the same trust class as `hyprctl binds`, which is why this ground
+reads the machine rather than shipping a table.
+
+So there is no prefix setting here and no packaged fallback: if the listing
+cannot be read, the ground has nothing to teach and says so. A guessed prefix
+would make every card wrong in a way nobody could see.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import re
+import signal
+import subprocess
+import sys
+from typing import Any
+
+SCHEMA_VERSION = 1
+LISTING_COMMAND = "/usr/share/omarchy/bin/omarchy-menu-herdr-keybindings"
+COMMAND_TIMEOUT_SECONDS = 5.0
+MAX_STDOUT_BYTES = 256 * 1024
+MAX_LINES = 512
+MAX_BINDINGS = 512
+MAX_DESC_CHARS = 512
+MAX_LOCAL_ID_CHARS = 128
+MAX_PAYLOAD_BYTES = 512 * 1024
+
+# Mirrors lib/TextKey.js, which judges what this produces.
+SHIFT = 1
+CTRL = 4
+ALT = 8
+SUPER = 64
+MODIFIERS = {"CTRL": CTRL, "ALT": ALT, "SUPER": SUPER, "SHIFT": "shift"}
+
+NAMED = {
+    "SPACE": "SPACE", "ENTER": "CR", "RETURN": "CR", "TAB": "TAB", "ESC": "ESC",
+    "ESCAPE": "ESC", "BACKSPACE": "BS", "UP": "UP", "DOWN": "DOWN", "LEFT": "LEFT",
+    "RIGHT": "RIGHT", "HOME": "HOME", "END": "END", "PAGEUP": "PAGEUP",
+    "PAGEDOWN": "PAGEDOWN", "INSERT": "INSERT", "DELETE": "DEL",
+}
+
+# A compact keyboard is not guaranteed to carry these - the same rule every
+# other ground applies.
+DEVICE_SPECIAL = {"HOME", "END", "PAGEUP", "PAGEDOWN", "INSERT", "DEL"}
+
+CATEGORIES = ["pane", "tab", "workspace", "copy", "session", "misc"]
+
+CATEGORY_WORDS = [
+    (r"\bpane\b|sidebar|scrollback", "pane"),
+    (r"\btab\b", "tab"),
+    (r"workspace|worktree", "workspace"),
+    (r"copy|paste|clipboard", "copy"),
+    (r"detach|session|client|settings|config|help|notification|goto", "session"),
+]
+
+
+class Rejected(Exception):
+    """The line names something no card can ask for."""
+
+
+def parse_chord(text: str) -> dict:
+    """"CTRL + ALT + LEFT" as one step."""
+    mods = 0
+    shifted = False
+    parts = [part.strip() for part in text.split("+") if part.strip()]
+    if not parts:
+        raise Rejected("empty chord")
+    for part in parts[:-1]:
+        name = part.upper()
+        if name not in MODIFIERS:
+            raise Rejected(f"unknown modifier {part!r}")
+        value = MODIFIERS[name]
+        if value == "shift":
+            shifted = True
+        else:
+            mods |= value
+    key = parts[-1]
+    upper = key.upper()
+    if upper in NAMED:
+        if shifted:
+            # A named key has no character for Shift to be folded into, so it
+            # is a modifier here like any other - Shift+Left is its own chord.
+            # Tab is the exception: Qt reports Backtab and Tab as one key, so
+            # the two would judge the same and it is refused instead.
+            if NAMED[upper] == "TAB":
+                raise Rejected("Shift on Tab cannot be told from Tab")
+            mods |= SHIFT
+        return {"mods": mods, "named": NAMED[upper]}
+    if len(key) != 1:
+        raise Rejected(f"unknown key {key!r}")
+    if shifted:
+        if key.upper() == key.lower():
+            raise Rejected("Shift on a character that does not shift")
+        return {"mods": mods, "text": key.upper()}
+    # The listing prints every key upper-cased for display - herdr's own config
+    # says `settings = "prefix+s"` where the listing shows "PREFIX + S". Taking
+    # that literally would ask for Shift on every letter, because Shift is
+    # folded into the character in this judging mode. A letter the listing did
+    # not name SHIFT on is the lower-case key.
+    if key.isalpha():
+        return {"mods": mods, "text": key.lower()}
+    return {"mods": mods, "text": key}
+
+
+def category_for(desc: str) -> str:
+    lowered = desc.lower()
+    for pattern, name in CATEGORY_WORDS:
+        if re.search(pattern, lowered):
+            return name
+    return "misc"
+
+
+def description_key(desc: str) -> str:
+    slug = re.sub(r"_+", "_", re.sub(r"[^a-z0-9]+", "_", desc.lower())).strip("_")
+    return "herdrdesc_" + slug if slug else ""
+
+
+def run_listing() -> str:
+    """The vendor's own listing, by absolute path with a rebuilt environment."""
+    with subprocess.Popen(
+        [LISTING_COMMAND, "--print"],
+        stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL,
+        env={"PATH": "/usr/bin", "HOME": os.environ.get("HOME", "")},
+        start_new_session=True,
+    ) as process:
+        try:
+            raw = process.stdout.read(MAX_STDOUT_BYTES + 1)
+            process.wait(timeout=COMMAND_TIMEOUT_SECONDS)
+        except Exception:
+            os.killpg(process.pid, signal.SIGKILL)
+            raise
+    if len(raw) > MAX_STDOUT_BYTES:
+        raise RuntimeError("listing exceeded its limit")
+    if process.returncode != 0:
+        raise RuntimeError(f"listing exited with {process.returncode}")
+    return raw.decode("utf-8", "replace")
+
+
+def snapshot(text: str) -> dict[str, Any]:
+    prefix: dict | None = None
+    bindings: list[dict] = []
+    dropped: dict[str, int] = {}
+    seen: set[str] = set()
+
+    def drop(reason: str) -> None:
+        dropped[reason] = dropped.get(reason, 0) + 1
+
+    for line in text.splitlines()[:MAX_LINES]:
+        if "→" not in line:
+            continue
+        combo, _, desc = line.partition("→")
+        combo, desc = combo.strip(), desc.strip()[:MAX_DESC_CHARS]
+
+        # The first line declares what the prefix resolved to on this machine.
+        if combo == "PREFIX":
+            try:
+                prefix = parse_chord(desc)
+            except Rejected:
+                drop("unreadable-prefix")
+            continue
+
+        if not desc:
+            drop("missing-description")
+            continue
+
+        context = "default"
+        if combo.startswith("NAVIGATE + "):
+            # Navigate mode is a state you open first, so its keys are asked
+            # with the mode named on the card rather than as a sequence.
+            context, combo = "navigate", combo[len("NAVIGATE + "):]
+
+        # "A / B" is one action with two bindings. Only the first is dealt; the
+        # answer model has no room for alternatives yet.
+        alternates = [part.strip() for part in combo.split(" / ") if part.strip()]
+        if not alternates:
+            drop("no-binding")
+            continue
+        chosen = alternates[0]
+
+        # "1..9" abbreviates nine bindings; it is not a key anyone presses.
+        if ".." in chosen:
+            drop("range-notation")
+            continue
+
+        steps: list[dict] = []
+        try:
+            if chosen == "PREFIX" or chosen.startswith("PREFIX + "):
+                if prefix is None:
+                    drop("prefix-not-declared")
+                    continue
+                steps.append(dict(prefix))
+                rest = chosen[len("PREFIX + "):] if chosen != "PREFIX" else ""
+                if rest:
+                    steps.append(parse_chord(rest))
+            else:
+                steps.append(parse_chord(chosen))
+        except Rejected:
+            drop("unreadable-notation")
+            continue
+
+        if any(step.get("named") == "ESC" for step in steps):
+            drop("escape-in-answer")
+            continue
+        if any(step.get("named") in DEVICE_SPECIAL for step in steps):
+            drop("device-special-key")
+            continue
+
+        local_id = (context + "/" + chosen)[:MAX_LOCAL_ID_CHARS]
+        if local_id in seen or len(bindings) >= MAX_BINDINGS:
+            drop("duplicate")
+            continue
+        seen.add(local_id)
+        key = description_key(desc)
+        if not key:
+            drop("missing-description")
+            continue
+        bindings.append({
+            "localId": local_id,
+            "context": context,
+            "notation": chosen,
+            "steps": steps,
+            "category": category_for(desc),
+            "descKey": key,
+            "desc": desc,
+            "extras": [],
+        })
+
+    return {
+        "schemaVersion": SCHEMA_VERSION,
+        "profile": "herdr",
+        "judgeMode": "text",
+        "contexts": sorted({entry["context"] for entry in bindings}),
+        "categories": [name for name in CATEGORIES
+                       if any(entry["category"] == name for entry in bindings)],
+        "extras": [],
+        "prefix": prefix,
+        "dropped": dict(sorted(dropped.items())),
+        "bindings": bindings,
+    }
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--listing", default=None,
+                        help="read a saved listing instead of running the tool (tests)")
+    arguments = parser.parse_args()
+
+    try:
+        if arguments.listing:
+            with open(arguments.listing, encoding="utf-8") as handle:
+                text = handle.read(MAX_STDOUT_BYTES + 1)
+        else:
+            text = run_listing()
+        payload = snapshot(text)
+        if not payload["bindings"]:
+            raise RuntimeError("listing named no trainable binding")
+    except Exception as error:  # noqa: BLE001 - one line out, never a traceback
+        payload = {"schemaVersion": SCHEMA_VERSION, "type": "error",
+                   "error": type(error).__name__}
+
+    line = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
+    if len(line.encode("utf-8")) > MAX_PAYLOAD_BYTES:
+        line = json.dumps({"schemaVersion": SCHEMA_VERSION, "type": "error",
+                           "error": "payload exceeds its limit"})
+    sys.stdout.write(line + "\n")
+
+
+if __name__ == "__main__":
+    main()

@@ -28,8 +28,7 @@
   "generator": "tools/build_packs.py@1"
  },
  "dropped": {
-  "device-special-key": 2,
-  "unreadable-notation": 4
+  "device-special-key": 2
  },
  "bindings": [
   {
@@ -1505,6 +1504,78 @@
    "category": "pane",
    "descKey": "packdesc_resize_the_pane_right",
    "desc": "Resize the pane right",
+   "extras": []
+  },
+  {
+   "localId": "prefix/S-Up",
+   "context": "prefix",
+   "notation": "prefix S-Up",
+   "steps": [
+    {
+     "option": "prefix"
+    },
+    {
+     "mods": 1,
+     "named": "UP"
+    }
+   ],
+   "category": "window",
+   "descKey": "packdesc_move_the_visible_part_of_the_window_up",
+   "desc": "Move the visible part of the window up",
+   "extras": []
+  },
+  {
+   "localId": "prefix/S-Down",
+   "context": "prefix",
+   "notation": "prefix S-Down",
+   "steps": [
+    {
+     "option": "prefix"
+    },
+    {
+     "mods": 1,
+     "named": "DOWN"
+    }
+   ],
+   "category": "window",
+   "descKey": "packdesc_move_the_visible_part_of_the_window_down",
+   "desc": "Move the visible part of the window down",
+   "extras": []
+  },
+  {
+   "localId": "prefix/S-Left",
+   "context": "prefix",
+   "notation": "prefix S-Left",
+   "steps": [
+    {
+     "option": "prefix"
+    },
+    {
+     "mods": 1,
+     "named": "LEFT"
+    }
+   ],
+   "category": "window",
+   "descKey": "packdesc_move_the_visible_part_of_the_window_left",
+   "desc": "Move the visible part of the window left",
+   "extras": []
+  },
+  {
+   "localId": "prefix/S-Right",
+   "context": "prefix",
+   "notation": "prefix S-Right",
+   "steps": [
+    {
+     "option": "prefix"
+    },
+    {
+     "mods": 1,
+     "named": "RIGHT"
+    }
+   ],
+   "category": "window",
+   "descKey": "packdesc_move_the_visible_part_of_the_window_right",
+   "desc": "Move the visible part of the window right",
    "extras": []
   }
  ]

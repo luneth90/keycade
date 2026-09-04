@@ -93,9 +93,11 @@ Item {
   readonly property string profileId: Profiles.known(store.settings.activeProfile)
       ? String(store.settings.activeProfile) : Profiles.defaultId()
   readonly property bool packGround: Profiles.isPack(root.profileId)
+  readonly property bool herdrGround: root.profileId === "herdr"
   // A pack ground answers loaded() the moment it is asked; a machine ground
   // has to go and collect. Above this line the two are the same thing.
-  readonly property var activeSource: root.packGround ? packs : keybinds
+  readonly property var activeSource: root.packGround ? packs
+                                    : root.herdrGround ? herdr : keybinds
   // Long enough to read the stamp, not long enough to feel like a penalty.
   // 300 ms measured worse than it sounds: the 110 ms fade eats a third of it,
   // so the words were legible for under two tenths of a second.
@@ -178,6 +180,10 @@ Item {
       appConfig.refresh()
       return
     }
+    if (root.herdrGround) {
+      herdr.refresh()
+      return
+    }
     keybinds.refresh()
   }
 
@@ -227,8 +233,8 @@ Item {
   // through it, so the mastery denominator - which is the size of this set -
   // moves with them instead of at the next launch.
   function applyEligibility() {
-    var result = root.packGround
-        ? PackEligibility.filter(packs.bindings, {
+    var result = root.packGround || root.herdrGround
+        ? PackEligibility.filter(root.activeSource.bindings, {
             excludedBindings: store.settings.excludedBindings,
             profile: root.profileId
           })
@@ -437,7 +443,7 @@ Item {
   // The reproduced keymap decides judging on the Hyprland ground; the text
   // mode compares characters and has no use for it.
   function matchOptions() {
-    if (root.packGround) return ({})
+    if (root.packGround || root.herdrGround) return ({})
     return {
       appleKeyboard: keybinds.appleKeyboard,
       keycodeMap: keybinds.keymapAuthoritative ? keybinds.keycodeMap : null
@@ -588,7 +594,7 @@ Item {
   // from the dispatcher and looked up in the language pack.
   function actionName(binding) {
     if (!binding) return ""
-    if (!root.packGround) return Actions.actionName(binding, i18n)
+    if (!root.packGround && !root.herdrGround) return Actions.actionName(binding, i18n)
     // A pack ships the upstream's English. Show the translation when the
     // language pack has one, and the English when it does not - which is what
     // an upstream that rewrote its description leaves behind.
@@ -1056,6 +1062,16 @@ Item {
     onFailed: function(message) {
       root.errorMessage = message
       guard.fail(message)
+    }
+  }
+  HerdrSource {
+    id: herdr
+    onLoaded: root.maybeShowHome()
+    onFailed: function(message) {
+      // A ground that could not be read has nothing to teach. It says so on
+      // the home screen rather than dealing cards built on a guess.
+      root.applyEligibility()
+      root.maybeShowHome()
     }
   }
   AppConfigSource {

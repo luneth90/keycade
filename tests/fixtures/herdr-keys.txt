@@ -1,0 +1,49 @@
+PREFIX                           → CTRL + A
+PREFIX + ?                       → Help
+PREFIX + S                       → Settings
+PREFIX + D                       → Detach
+PREFIX + Q                       → Reload config
+PREFIX + O                       → Open notification target
+PREFIX + W                       → Workspace picker
+PREFIX + G                       → Goto
+PREFIX + SHIFT + C               → New workspace
+PREFIX + SHIFT + G               → New worktree
+PREFIX + SHIFT + R               → Rename workspace
+PREFIX + SHIFT + K               → Close workspace
+PREFIX + SHIFT + P / ALT + UP    → Previous workspace
+PREFIX + SHIFT + N / ALT + DOWN  → Next workspace
+CTRL + V                         → Remote image paste
+PREFIX + C                       → New tab
+PREFIX + R                       → Rename tab
+PREFIX + P / ALT + LEFT          → Previous tab
+PREFIX + N / ALT + RIGHT         → Next tab
+ALT + SHIFT + LEFT               → Move tab previous
+ALT + SHIFT + RIGHT              → Move tab next
+PREFIX + 1..9 / ALT + 1..9       → Switch tab
+PREFIX + K                       → Close tab
+PREFIX + SHIFT + O               → Rename pane
+PREFIX + E                       → Edit scrollback
+CTRL + ALT + LEFT                → Focus pane left
+CTRL + ALT + DOWN                → Focus pane down
+CTRL + ALT + UP                  → Focus pane up
+CTRL + ALT + RIGHT               → Focus pane right
+PREFIX + TAB                     → Cycle pane next
+PREFIX + SHIFT + TAB             → Cycle pane previous
+PREFIX + ;                       → Last pane
+PREFIX + V / ALT + SHIFT + ENTER → Split vertical
+PREFIX + H / ALT + ENTER         → Split horizontal
+PREFIX + X / ALT + ESC           → Close pane
+PREFIX + Z                       → Zoom
+PREFIX + CTRL + LEFT / PREFIX + CTRL + DOWN / PREFIX + CTRL + UP / PREFIX + CTRL + RIGHT → Resize mode
+CTRL + ALT + SHIFT + LEFT        → Resize pane left
+CTRL + ALT + SHIFT + DOWN        → Resize pane down
+CTRL + ALT + SHIFT + UP          → Resize pane up
+CTRL + ALT + SHIFT + RIGHT       → Resize pane right
+PREFIX + B                       → Toggle sidebar
+NAVIGATE + UP                    → Workspace up
+NAVIGATE + DOWN                  → Workspace down
+NAVIGATE + H                     → Pane left
+NAVIGATE + J                     → Pane down
+NAVIGATE + K                     → Pane up
+NAVIGATE + L                     → Pane right
+PREFIX + [                       → Copy mode
