@@ -8,13 +8,25 @@
 
 ![全部快捷键已掌握庆祝画面](docs/screenshots/keycade-mastery-zh-CN.png)
 
-Keycade 是一个面向 Hyprland 的原生 Omarchy 快捷键训练器。它读取当前电脑上
-真正生效的快捷键，并将它们编成简短的自适应回忆练习。正确输入只在本地识别，
-不会派发或执行原快捷键动作。
+Keycade 是一个原生 Omarchy 快捷键训练器。它把快捷键编成简短的自适应回忆练习。
+正确输入只在本地识别，不会派发或执行原快捷键动作。
+
+它带三个**训练场**，在首页像街机选机台一样切换。每个训练场各有自己的牌组、
+自己的进度、自己的掌握度：
+
+| 训练场 | 快捷键从哪来 |
+| --- | --- |
+| **Hyprland** | 你这台机器上真正生效的快捷键，从运行中的合成器读取 |
+| **LazyVim** | LazyVim 官方发布的默认键位，随插件分发 |
+| **tmux** | tmux 自带的默认键位表，随插件分发 |
+
+新装和升级后都停在 Hyprland；另外两个想练的时候再选。
 
 ## 核心功能
 
 - 训练当前 Hyprland 会话中的真实快捷键，而不是固定的通用题库。
+- 也训练需要连打的应用级快捷键——`<leader>ff`、`gcc`、`C-b %`——卡片按步显示，
+  打对一步亮一步。
 - 使用 Exclusive 焦点与 Wayland Shortcuts Inhibitor 保护全屏练习输入，避免
   触发桌面动作。
 - 将未学、到期、薄弱和已掌握快捷键组成一局连续的 24 张卡，不设置人为波次。
@@ -24,6 +36,8 @@ Keycade 是一个面向 Hyprland 的原生 Omarchy 快捷键训练器。它读�
 - 本地保存学习进度、恢复中断对局、显示总掌握进度，并在首次达到 100% 时展示
   一次性恭喜结算。
 - 可以排除键盘按不出、或者不想练的快捷键，随时一键恢复，进度不丢。
+- 每个训练场都写明快捷键来自哪里。应用级训练场标注上游名称与该表发布日期，
+  绝不暗示它读了你自己的配置。
 - 内置英语和简体中文、本地反馈/倒计时音效，以及五套配色：Catppuccin、
   Tokyo Night、Gruvbox、Everforest、Ristretto。
 - 街机质感：点阵倒计时与计数、屏幕扫描线、跑马灯边框，以及只作展示、
@@ -88,6 +102,8 @@ omarchy restart shell
   带修饰键的 Esc 组合（例如 `Super + Esc`）会被当作普通快捷键处理，
   不会跟系统里同样用到 Esc 的绑定（比如 Super + Esc 打开系统菜单）冲突，
   练习到这个组合时也能正常答题。
+- 在首页选训练场——Hyprland、LazyVim、tmux——再按回车。对局中不能换训练场：
+  一副牌属于它是从哪个训练场发的，进度也是。
 - 使用顶部菜单切换语言、声音、音量和配色。内置五套配色，选择会被记住。
 - 遇到键盘按不出、或者干脆不想练的快捷键，点顶栏的 `✕ 排除此键`：它会永久离开
   训练题库，也不再计入掌握进度——键盘上没有的键不会再卡住一整局，也不会再挡住
@@ -109,6 +125,28 @@ omarchy plugin remove luneth90.keycade
 有意不提供在卸载时删除用户状态或修改 Hyprland 配置的脚本。
 
 ## 开发与测试
+
+### 应用级词条包
+
+LazyVim 与 tmux 的键位表是**在维护者机器上采集、以可 review 的 JSON 提交进仓库**
+的静态数据。用户机器上不发生任何采集：运行时不读文件、不起进程、不连 socket、
+不联网。
+
+上游发新版时重新采集，然后看 JSON 的 git diff 对账：
+
+```bash
+git clone https://github.com/LazyVim/LazyVim.github.io ../LazyVim.github.io
+git clone https://github.com/LazyVim/LazyVim ../LazyVim && git -C ../LazyVim checkout v16.0.0
+python3 tools/build_packs.py --collect lazyvim --site ../LazyVim.github.io --lazyvim ../LazyVim
+
+printf '# tmux %s\n' "$(tmux -V | awk '{print $2}')" > /tmp/tmux-keys.txt
+tmux -L keycade-build -f /dev/null list-keys -N -T prefix >> /tmp/tmux-keys.txt
+tmux -L keycade-build kill-server
+python3 tools/build_packs.py --collect tmux --listing /tmp/tmux-keys.txt
+```
+
+`-f /dev/null` 不能省：不加它 tmux 会拉起 server 并 source 你自己的 `tmux.conf`，
+采到的就是你的键位，而不是人人都有的默认键位。
 
 ```bash
 python3 -m unittest discover -s tests -p 'test_*.py' -v

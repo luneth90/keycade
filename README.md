@@ -8,14 +8,27 @@
 
 ![All shortcuts mastered celebration](docs/screenshots/keycade-mastery-en.png)
 
-Keycade is a native Omarchy shortcut trainer for Hyprland. It reads the
-shortcuts active on your machine and turns them into short, adaptive recall
-runs. Correct input is recognized locally and never dispatches the original
-shortcut action.
+Keycade is a native Omarchy shortcut trainer. It turns shortcuts into short,
+adaptive recall runs. Correct input is recognized locally and never dispatches
+the original shortcut action.
+
+It trains three **training grounds**, picked on the home screen like a cabinet
+in an arcade. Each keeps its own deck, its own progress and its own mastery:
+
+| Ground | Where its shortcuts come from |
+| --- | --- |
+| **Hyprland** | The shortcuts active on your machine, read from the running compositor |
+| **LazyVim** | LazyVim's own published default keymaps, shipped with the plugin |
+| **tmux** | tmux's own default key table, shipped with the plugin |
+
+Hyprland is what you get on a fresh install and after an upgrade; the other
+two are there when you want them.
 
 ## Core features
 
 - Trains your active Hyprland shortcuts instead of a fixed generic list.
+- Also trains application shortcuts that come in sequences - `<leader>ff`,
+  `gcc`, `C-b %` - showing each step and lighting it as you type it.
 - Uses a protected full-screen overlay with Exclusive focus and Wayland
   Shortcuts Inhibitor, so training input does not trigger desktop actions.
 - Builds one continuous 24-card run from new, due, weak, and mastered
@@ -29,6 +42,9 @@ shortcut action.
   shows a one-time celebration when every eligible shortcut first reaches 100%.
 - Lets you exclude a shortcut your keyboard cannot press, or one you do not
   want to train, and restore it later with its progress intact.
+- Says where every ground's shortcuts came from. An application ground names
+  its upstream and the day that table was published, and never suggests it
+  read your own configuration.
 - Includes English and Simplified Chinese, local feedback/countdown sounds,
   and five palettes: Catppuccin, Tokyo Night, Gruvbox, Everforest and
   Ristretto.
@@ -39,7 +55,10 @@ shortcut action.
 
 Function-row, XF86 media/device, Print/Pause/SysRq, dedicated
 Home/End/Insert/Page/Delete, ambiguous, unsafe, and unsupported bindings are
-excluded: a compact keyboard is not guaranteed to carry them.
+excluded: a compact keyboard is not guaranteed to carry them. A shortcut whose
+answer is a bare Esc is excluded too - releasing Esc saves the run and leaves,
+so that card could never be cleared. Esc held with a modifier is a different
+gesture, decided on release, and stays trainable.
 
 ## Requirements
 
@@ -95,6 +114,9 @@ The restart is required — updating alone does not reliably reload Keycade.
 
 - Launch with `Super + Shift + K`, or run
   `omarchy-shell shell summon luneth90.keycade '{}'`.
+- Pick a training ground on the home screen - Hyprland, LazyVim or tmux -
+  then press Enter. A ground cannot be changed mid-run: a deck belongs to the
+  ground it was dealt from, and so does its progress.
 - Press Enter to start or continue a run.
 - Release Esc to save the current run and exit safely. This only fires for a
   bare Esc; Esc held with a modifier (e.g. `Super + Esc`) is treated as a
@@ -128,6 +150,29 @@ Keycade intentionally does not provide a script that deletes user state or
 edits Hyprland configuration during removal.
 
 ## Development
+
+### Application shortcut packs
+
+The LazyVim and tmux tables are static data collected on a maintainer's
+machine and committed as reviewable JSON. Nothing is collected on a user's
+machine: at run time Keycade reads no file, starts no process, opens no socket
+and fetches nothing for them.
+
+When an upstream moves, re-collect and read the JSON diff:
+
+```bash
+git clone https://github.com/LazyVim/LazyVim.github.io ../LazyVim.github.io
+git clone https://github.com/LazyVim/LazyVim ../LazyVim && git -C ../LazyVim checkout v16.0.0
+python3 tools/build_packs.py --collect lazyvim --site ../LazyVim.github.io --lazyvim ../LazyVim
+
+printf '# tmux %s\n' "$(tmux -V | awk '{print $2}')" > /tmp/tmux-keys.txt
+tmux -L keycade-build -f /dev/null list-keys -N -T prefix >> /tmp/tmux-keys.txt
+tmux -L keycade-build kill-server
+python3 tools/build_packs.py --collect tmux --listing /tmp/tmux-keys.txt
+```
+
+The `-f /dev/null` is not optional: without it tmux starts a server, sources
+your own `tmux.conf`, and collects your keys instead of the defaults.
 
 ```bash
 python3 -m unittest discover -s tests -p 'test_*.py' -v
