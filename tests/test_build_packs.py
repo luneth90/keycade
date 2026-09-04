@@ -82,7 +82,8 @@ class PackTests(unittest.TestCase):
         # The tmux table was collected against tmux's own default of C-b, but
         # Omarchy's tmux.conf moves the prefix to C-Space. A baked-in prefix
         # taught the wrong first key on every Omarchy machine.
-        declared = {"lazyvim": {"leader", "localleader"}, "tmux": {"prefix"}, "neovim": set()}
+        declared = {"lazyvim": {"leader", "localleader"}, "tmux": {"prefix"},
+                    "neovim": set(), "vim": set()}
         for name, pack in self.packs.items():
             with self.subTest(pack=name):
                 used = {step["option"] for entry in pack["bindings"]
@@ -154,6 +155,23 @@ class PackTests(unittest.TestCase):
                     self.assertTrue(1 <= len(entry["steps"]) <= 8)
                     self.assertIn(entry["context"], pack["contexts"])
                     self.assertIn(entry["category"], pack["categories"])
+                    self.assertLessEqual(len(entry.get("alternates", [])), 4)
+                    for alternate in entry.get("alternates", []):
+                        self.assertTrue(1 <= len(alternate) <= 8)
+
+    def test_vim_grammar_is_cited_and_keeps_equivalent_spellings(self):
+        pack = self.packs["vim"]
+        self.assertGreater(len(pack["bindings"]), 100)
+        by_notation = {entry["notation"]: entry for entry in pack["bindings"]}
+        self.assertEqual(by_notation["D"]["alternates"],
+                         [[{"mods": 0, "text": "d"}, {"mods": 0, "text": "$"}]])
+        self.assertEqual(by_notation["S"]["alternates"],
+                         [[{"mods": 0, "text": "c"}, {"mods": 0, "text": "c"}]])
+        self.assertEqual(by_notation["<lt>"]["steps"], [{"mods": 0, "text": "<"}])
+        for entry in pack["bindings"]:
+            self.assertTrue(entry.get("helpTag"), entry["localId"])
+            if entry["category"] == "textobject":
+                self.assertEqual(entry["context"], "operator")
 
     def test_pack_entries_are_unique_and_answerable(self):
         for name, pack in self.packs.items():

@@ -1,0 +1,2425 @@
+{
+ "schemaVersion": 1,
+ "profile": "vim",
+ "judgeMode": "text",
+ "contexts": [
+  "normal",
+  "operator"
+ ],
+ "categories": [
+  "operator",
+  "motion",
+  "textobject",
+  "edit",
+  "search",
+  "mark",
+  "misc"
+ ],
+ "extras": [],
+ "provenance": {
+  "upstream": "Vim/Neovim",
+  "authority": "prompts authored for this trainer; every entry cites a :help tag, and the build refuses any tag the runtime documentation does not define",
+  "source": {
+   "url": "https://github.com/neovim/neovim",
+   "commit": "",
+   "tag": "NVIM v0.12.5",
+   "date": "2026-09-04",
+   "checksum": "cf102dc742040283d07b4954e111c3947bffda2b0944a8129c57057e6e47fa7d"
+  },
+  "generatedAt": "2026-09-04",
+  "generator": "tools/build_packs.py@1"
+ },
+ "dropped": {},
+ "bindings": [
+  {
+   "localId": "normal/d",
+   "context": "normal",
+   "notation": "d",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "d"
+    }
+   ],
+   "alternates": [],
+   "category": "operator",
+   "descKey": "packdesc_vim_delete_over_a_motion_into_a_register",
+   "desc": "Delete over a motion, into a register",
+   "helpTag": "d",
+   "extras": []
+  },
+  {
+   "localId": "normal/c",
+   "context": "normal",
+   "notation": "c",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "c"
+    }
+   ],
+   "alternates": [],
+   "category": "operator",
+   "descKey": "packdesc_vim_delete_over_a_motion_and_start_insert",
+   "desc": "Delete over a motion and start insert",
+   "helpTag": "c",
+   "extras": []
+  },
+  {
+   "localId": "normal/y",
+   "context": "normal",
+   "notation": "y",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "y"
+    }
+   ],
+   "alternates": [],
+   "category": "operator",
+   "descKey": "packdesc_vim_yank_over_a_motion_into_a_register",
+   "desc": "Yank over a motion into a register",
+   "helpTag": "y",
+   "extras": []
+  },
+  {
+   "localId": "normal/>",
+   "context": "normal",
+   "notation": ">",
+   "steps": [
+    {
+     "mods": 0,
+     "text": ">"
+    }
+   ],
+   "alternates": [],
+   "category": "operator",
+   "descKey": "packdesc_vim_indent_over_a_motion",
+   "desc": "Indent over a motion",
+   "helpTag": ">",
+   "extras": []
+  },
+  {
+   "localId": "normal/<lt>",
+   "context": "normal",
+   "notation": "<lt>",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "<"
+    }
+   ],
+   "alternates": [],
+   "category": "operator",
+   "descKey": "packdesc_vim_unindent_over_a_motion",
+   "desc": "Unindent over a motion",
+   "helpTag": "<",
+   "extras": []
+  },
+  {
+   "localId": "normal/=",
+   "context": "normal",
+   "notation": "=",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "="
+    }
+   ],
+   "alternates": [],
+   "category": "operator",
+   "descKey": "packdesc_vim_reindent_over_a_motion",
+   "desc": "Reindent over a motion",
+   "helpTag": "=",
+   "extras": []
+  },
+  {
+   "localId": "normal/gu",
+   "context": "normal",
+   "notation": "gu",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "g"
+    },
+    {
+     "mods": 0,
+     "text": "u"
+    }
+   ],
+   "alternates": [],
+   "category": "operator",
+   "descKey": "packdesc_vim_lower_case_over_a_motion",
+   "desc": "Lower-case over a motion",
+   "helpTag": "gu",
+   "extras": []
+  },
+  {
+   "localId": "normal/gU",
+   "context": "normal",
+   "notation": "gU",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "g"
+    },
+    {
+     "mods": 0,
+     "text": "U"
+    }
+   ],
+   "alternates": [],
+   "category": "operator",
+   "descKey": "packdesc_vim_upper_case_over_a_motion",
+   "desc": "Upper-case over a motion",
+   "helpTag": "gU",
+   "extras": []
+  },
+  {
+   "localId": "normal/g~",
+   "context": "normal",
+   "notation": "g~",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "g"
+    },
+    {
+     "mods": 0,
+     "text": "~"
+    }
+   ],
+   "alternates": [],
+   "category": "operator",
+   "descKey": "packdesc_vim_swap_case_over_a_motion",
+   "desc": "Swap case over a motion",
+   "helpTag": "g~",
+   "extras": []
+  },
+  {
+   "localId": "normal/gq",
+   "context": "normal",
+   "notation": "gq",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "g"
+    },
+    {
+     "mods": 0,
+     "text": "q"
+    }
+   ],
+   "alternates": [],
+   "category": "operator",
+   "descKey": "packdesc_vim_reflow_over_a_motion",
+   "desc": "Reflow over a motion",
+   "helpTag": "gq",
+   "extras": []
+  },
+  {
+   "localId": "normal/!",
+   "context": "normal",
+   "notation": "!",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "!"
+    }
+   ],
+   "alternates": [],
+   "category": "operator",
+   "descKey": "packdesc_vim_filter_a_motion_through_an_external_command",
+   "desc": "Filter a motion through an external command",
+   "helpTag": "!",
+   "extras": []
+  },
+  {
+   "localId": "normal/zf",
+   "context": "normal",
+   "notation": "zf",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "z"
+    },
+    {
+     "mods": 0,
+     "text": "f"
+    }
+   ],
+   "alternates": [],
+   "category": "operator",
+   "descKey": "packdesc_vim_fold_over_a_motion",
+   "desc": "Fold over a motion",
+   "helpTag": "zf",
+   "extras": []
+  },
+  {
+   "localId": "normal/w",
+   "context": "normal",
+   "notation": "w",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "w"
+    }
+   ],
+   "alternates": [],
+   "category": "motion",
+   "descKey": "packdesc_vim_forward_to_the_start_of_the_next_word",
+   "desc": "Forward to the start of the next word",
+   "helpTag": "w",
+   "extras": []
+  },
+  {
+   "localId": "normal/W",
+   "context": "normal",
+   "notation": "W",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "W"
+    }
+   ],
+   "alternates": [],
+   "category": "motion",
+   "descKey": "packdesc_vim_forward_to_the_next_word_ignoring_punctuation",
+   "desc": "Forward to the next WORD, ignoring punctuation",
+   "helpTag": "W",
+   "extras": []
+  },
+  {
+   "localId": "normal/e",
+   "context": "normal",
+   "notation": "e",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "e"
+    }
+   ],
+   "alternates": [],
+   "category": "motion",
+   "descKey": "packdesc_vim_forward_to_the_end_of_this_word",
+   "desc": "Forward to the end of this word",
+   "helpTag": "e",
+   "extras": []
+  },
+  {
+   "localId": "normal/ge",
+   "context": "normal",
+   "notation": "ge",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "g"
+    },
+    {
+     "mods": 0,
+     "text": "e"
+    }
+   ],
+   "alternates": [],
+   "category": "motion",
+   "descKey": "packdesc_vim_back_to_the_end_of_the_previous_word",
+   "desc": "Back to the end of the previous word",
+   "helpTag": "ge",
+   "extras": []
+  },
+  {
+   "localId": "normal/b",
+   "context": "normal",
+   "notation": "b",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "b"
+    }
+   ],
+   "alternates": [],
+   "category": "motion",
+   "descKey": "packdesc_vim_back_to_the_start_of_the_previous_word",
+   "desc": "Back to the start of the previous word",
+   "helpTag": "b",
+   "extras": []
+  },
+  {
+   "localId": "normal/B",
+   "context": "normal",
+   "notation": "B",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "B"
+    }
+   ],
+   "alternates": [],
+   "category": "motion",
+   "descKey": "packdesc_vim_back_to_the_previous_word_ignoring_punctuation",
+   "desc": "Back to the previous WORD, ignoring punctuation",
+   "helpTag": "B",
+   "extras": []
+  },
+  {
+   "localId": "normal/0",
+   "context": "normal",
+   "notation": "0",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "0"
+    }
+   ],
+   "alternates": [],
+   "category": "motion",
+   "descKey": "packdesc_vim_to_the_first_column_of_the_line",
+   "desc": "To the first column of the line",
+   "helpTag": "0",
+   "extras": []
+  },
+  {
+   "localId": "normal/^",
+   "context": "normal",
+   "notation": "^",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "^"
+    }
+   ],
+   "alternates": [],
+   "category": "motion",
+   "descKey": "packdesc_vim_to_the_first_non_blank_of_the_line",
+   "desc": "To the first non-blank of the line",
+   "helpTag": "^",
+   "extras": []
+  },
+  {
+   "localId": "normal/$",
+   "context": "normal",
+   "notation": "$",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "$"
+    }
+   ],
+   "alternates": [],
+   "category": "motion",
+   "descKey": "packdesc_vim_to_the_end_of_the_line",
+   "desc": "To the end of the line",
+   "helpTag": "$",
+   "extras": []
+  },
+  {
+   "localId": "normal/g_",
+   "context": "normal",
+   "notation": "g_",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "g"
+    },
+    {
+     "mods": 0,
+     "text": "_"
+    }
+   ],
+   "alternates": [],
+   "category": "motion",
+   "descKey": "packdesc_vim_to_the_last_non_blank_of_the_line",
+   "desc": "To the last non-blank of the line",
+   "helpTag": "g_",
+   "extras": []
+  },
+  {
+   "localId": "normal/{",
+   "context": "normal",
+   "notation": "{",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "{"
+    }
+   ],
+   "alternates": [],
+   "category": "motion",
+   "descKey": "packdesc_vim_back_one_paragraph",
+   "desc": "Back one paragraph",
+   "helpTag": "{",
+   "extras": []
+  },
+  {
+   "localId": "normal/}",
+   "context": "normal",
+   "notation": "}",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "}"
+    }
+   ],
+   "alternates": [],
+   "category": "motion",
+   "descKey": "packdesc_vim_forward_one_paragraph",
+   "desc": "Forward one paragraph",
+   "helpTag": "}",
+   "extras": []
+  },
+  {
+   "localId": "normal/(",
+   "context": "normal",
+   "notation": "(",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "("
+    }
+   ],
+   "alternates": [],
+   "category": "motion",
+   "descKey": "packdesc_vim_back_one_sentence",
+   "desc": "Back one sentence",
+   "helpTag": "(",
+   "extras": []
+  },
+  {
+   "localId": "normal/)",
+   "context": "normal",
+   "notation": ")",
+   "steps": [
+    {
+     "mods": 0,
+     "text": ")"
+    }
+   ],
+   "alternates": [],
+   "category": "motion",
+   "descKey": "packdesc_vim_forward_one_sentence",
+   "desc": "Forward one sentence",
+   "helpTag": ")",
+   "extras": []
+  },
+  {
+   "localId": "normal/H",
+   "context": "normal",
+   "notation": "H",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "H"
+    }
+   ],
+   "alternates": [],
+   "category": "motion",
+   "descKey": "packdesc_vim_to_the_top_line_of_the_window",
+   "desc": "To the top line of the window",
+   "helpTag": "H",
+   "extras": []
+  },
+  {
+   "localId": "normal/M",
+   "context": "normal",
+   "notation": "M",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "M"
+    }
+   ],
+   "alternates": [],
+   "category": "motion",
+   "descKey": "packdesc_vim_to_the_middle_line_of_the_window",
+   "desc": "To the middle line of the window",
+   "helpTag": "M",
+   "extras": []
+  },
+  {
+   "localId": "normal/L",
+   "context": "normal",
+   "notation": "L",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "L"
+    }
+   ],
+   "alternates": [],
+   "category": "motion",
+   "descKey": "packdesc_vim_to_the_bottom_line_of_the_window",
+   "desc": "To the bottom line of the window",
+   "helpTag": "L",
+   "extras": []
+  },
+  {
+   "localId": "normal/%",
+   "context": "normal",
+   "notation": "%",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "%"
+    }
+   ],
+   "alternates": [],
+   "category": "motion",
+   "descKey": "packdesc_vim_to_the_matching_bracket",
+   "desc": "To the matching bracket",
+   "helpTag": "%",
+   "extras": []
+  },
+  {
+   "localId": "normal/gg",
+   "context": "normal",
+   "notation": "gg",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "g"
+    },
+    {
+     "mods": 0,
+     "text": "g"
+    }
+   ],
+   "alternates": [],
+   "category": "motion",
+   "descKey": "packdesc_vim_to_the_first_line_of_the_file",
+   "desc": "To the first line of the file",
+   "helpTag": "gg",
+   "extras": []
+  },
+  {
+   "localId": "normal/G",
+   "context": "normal",
+   "notation": "G",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "G"
+    }
+   ],
+   "alternates": [],
+   "category": "motion",
+   "descKey": "packdesc_vim_to_the_last_line_of_the_file",
+   "desc": "To the last line of the file",
+   "helpTag": "G",
+   "extras": []
+  },
+  {
+   "localId": "normal/gm",
+   "context": "normal",
+   "notation": "gm",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "g"
+    },
+    {
+     "mods": 0,
+     "text": "m"
+    }
+   ],
+   "alternates": [],
+   "category": "motion",
+   "descKey": "packdesc_vim_to_the_middle_of_the_screen_line",
+   "desc": "To the middle of the screen line",
+   "helpTag": "gm",
+   "extras": []
+  },
+  {
+   "localId": "normal/gj",
+   "context": "normal",
+   "notation": "gj",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "g"
+    },
+    {
+     "mods": 0,
+     "text": "j"
+    }
+   ],
+   "alternates": [],
+   "category": "motion",
+   "descKey": "packdesc_vim_down_one_screen_line_not_one_file_line",
+   "desc": "Down one screen line, not one file line",
+   "helpTag": "gj",
+   "extras": []
+  },
+  {
+   "localId": "normal/gk",
+   "context": "normal",
+   "notation": "gk",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "g"
+    },
+    {
+     "mods": 0,
+     "text": "k"
+    }
+   ],
+   "alternates": [],
+   "category": "motion",
+   "descKey": "packdesc_vim_up_one_screen_line_not_one_file_line",
+   "desc": "Up one screen line, not one file line",
+   "helpTag": "gk",
+   "extras": []
+  },
+  {
+   "localId": "normal/``",
+   "context": "normal",
+   "notation": "``",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "`"
+    },
+    {
+     "mods": 0,
+     "text": "`"
+    }
+   ],
+   "alternates": [],
+   "category": "mark",
+   "descKey": "packdesc_vim_back_to_the_position_before_the_last_jump",
+   "desc": "Back to the position before the last jump",
+   "helpTag": "``",
+   "extras": []
+  },
+  {
+   "localId": "normal/`.",
+   "context": "normal",
+   "notation": "`.",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "`"
+    },
+    {
+     "mods": 0,
+     "text": "."
+    }
+   ],
+   "alternates": [],
+   "category": "mark",
+   "descKey": "packdesc_vim_to_the_position_of_the_last_change",
+   "desc": "To the position of the last change",
+   "helpTag": "`.",
+   "extras": []
+  },
+  {
+   "localId": "normal/`^",
+   "context": "normal",
+   "notation": "`^",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "`"
+    },
+    {
+     "mods": 0,
+     "text": "^"
+    }
+   ],
+   "alternates": [],
+   "category": "mark",
+   "descKey": "packdesc_vim_to_where_insert_mode_was_last_left",
+   "desc": "To where insert mode was last left",
+   "helpTag": "`^",
+   "extras": []
+  },
+  {
+   "localId": "normal/g;",
+   "context": "normal",
+   "notation": "g;",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "g"
+    },
+    {
+     "mods": 0,
+     "text": ";"
+    }
+   ],
+   "alternates": [],
+   "category": "mark",
+   "descKey": "packdesc_vim_back_through_the_change_list",
+   "desc": "Back through the change list",
+   "helpTag": "g;",
+   "extras": []
+  },
+  {
+   "localId": "normal/g,",
+   "context": "normal",
+   "notation": "g,",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "g"
+    },
+    {
+     "mods": 0,
+     "text": ","
+    }
+   ],
+   "alternates": [],
+   "category": "mark",
+   "descKey": "packdesc_vim_forward_through_the_change_list",
+   "desc": "Forward through the change list",
+   "helpTag": "g,",
+   "extras": []
+  },
+  {
+   "localId": "normal/gv",
+   "context": "normal",
+   "notation": "gv",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "g"
+    },
+    {
+     "mods": 0,
+     "text": "v"
+    }
+   ],
+   "alternates": [],
+   "category": "mark",
+   "descKey": "packdesc_vim_reselect_the_last_visual_selection",
+   "desc": "Reselect the last visual selection",
+   "helpTag": "gv",
+   "extras": []
+  },
+  {
+   "localId": "normal/gi",
+   "context": "normal",
+   "notation": "gi",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "g"
+    },
+    {
+     "mods": 0,
+     "text": "i"
+    }
+   ],
+   "alternates": [],
+   "category": "mark",
+   "descKey": "packdesc_vim_insert_where_insert_mode_was_last_left",
+   "desc": "Insert where insert mode was last left",
+   "helpTag": "gi",
+   "extras": []
+  },
+  {
+   "localId": "operator/iw",
+   "context": "operator",
+   "notation": "iw",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "i"
+    },
+    {
+     "mods": 0,
+     "text": "w"
+    }
+   ],
+   "alternates": [],
+   "category": "textobject",
+   "descKey": "packdesc_vim_the_word_under_the_cursor",
+   "desc": "The word under the cursor",
+   "helpTag": "iw",
+   "extras": []
+  },
+  {
+   "localId": "operator/aw",
+   "context": "operator",
+   "notation": "aw",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "a"
+    },
+    {
+     "mods": 0,
+     "text": "w"
+    }
+   ],
+   "alternates": [],
+   "category": "textobject",
+   "descKey": "packdesc_vim_the_word_under_the_cursor_with_its_trailing_space",
+   "desc": "The word under the cursor with its trailing space",
+   "helpTag": "aw",
+   "extras": []
+  },
+  {
+   "localId": "operator/iW",
+   "context": "operator",
+   "notation": "iW",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "i"
+    },
+    {
+     "mods": 0,
+     "text": "W"
+    }
+   ],
+   "alternates": [],
+   "category": "textobject",
+   "descKey": "packdesc_vim_the_word_under_the_cursor_punctuation_included",
+   "desc": "The WORD under the cursor, punctuation included",
+   "helpTag": "iW",
+   "extras": []
+  },
+  {
+   "localId": "operator/is",
+   "context": "operator",
+   "notation": "is",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "i"
+    },
+    {
+     "mods": 0,
+     "text": "s"
+    }
+   ],
+   "alternates": [],
+   "category": "textobject",
+   "descKey": "packdesc_vim_the_sentence_under_the_cursor",
+   "desc": "The sentence under the cursor",
+   "helpTag": "is",
+   "extras": []
+  },
+  {
+   "localId": "operator/as",
+   "context": "operator",
+   "notation": "as",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "a"
+    },
+    {
+     "mods": 0,
+     "text": "s"
+    }
+   ],
+   "alternates": [],
+   "category": "textobject",
+   "descKey": "packdesc_vim_the_sentence_with_its_trailing_space",
+   "desc": "The sentence with its trailing space",
+   "helpTag": "as",
+   "extras": []
+  },
+  {
+   "localId": "operator/ip",
+   "context": "operator",
+   "notation": "ip",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "i"
+    },
+    {
+     "mods": 0,
+     "text": "p"
+    }
+   ],
+   "alternates": [],
+   "category": "textobject",
+   "descKey": "packdesc_vim_the_paragraph_under_the_cursor",
+   "desc": "The paragraph under the cursor",
+   "helpTag": "ip",
+   "extras": []
+  },
+  {
+   "localId": "operator/ap",
+   "context": "operator",
+   "notation": "ap",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "a"
+    },
+    {
+     "mods": 0,
+     "text": "p"
+    }
+   ],
+   "alternates": [],
+   "category": "textobject",
+   "descKey": "packdesc_vim_the_paragraph_with_its_blank_lines",
+   "desc": "The paragraph with its blank lines",
+   "helpTag": "ap",
+   "extras": []
+  },
+  {
+   "localId": "operator/i(",
+   "context": "operator",
+   "notation": "i(",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "i"
+    },
+    {
+     "mods": 0,
+     "text": "("
+    }
+   ],
+   "alternates": [
+    [
+     {
+      "mods": 0,
+      "text": "i"
+     },
+     {
+      "mods": 0,
+      "text": "b"
+     }
+    ]
+   ],
+   "category": "textobject",
+   "descKey": "packdesc_vim_inside_the_round_brackets",
+   "desc": "Inside the round brackets",
+   "helpTag": "ib",
+   "extras": []
+  },
+  {
+   "localId": "operator/a(",
+   "context": "operator",
+   "notation": "a(",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "a"
+    },
+    {
+     "mods": 0,
+     "text": "("
+    }
+   ],
+   "alternates": [
+    [
+     {
+      "mods": 0,
+      "text": "a"
+     },
+     {
+      "mods": 0,
+      "text": "b"
+     }
+    ]
+   ],
+   "category": "textobject",
+   "descKey": "packdesc_vim_the_round_brackets_and_what_is_inside",
+   "desc": "The round brackets and what is inside",
+   "helpTag": "ab",
+   "extras": []
+  },
+  {
+   "localId": "operator/i[",
+   "context": "operator",
+   "notation": "i[",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "i"
+    },
+    {
+     "mods": 0,
+     "text": "["
+    }
+   ],
+   "alternates": [],
+   "category": "textobject",
+   "descKey": "packdesc_vim_inside_the_square_brackets",
+   "desc": "Inside the square brackets",
+   "helpTag": "i[",
+   "extras": []
+  },
+  {
+   "localId": "operator/a[",
+   "context": "operator",
+   "notation": "a[",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "a"
+    },
+    {
+     "mods": 0,
+     "text": "["
+    }
+   ],
+   "alternates": [],
+   "category": "textobject",
+   "descKey": "packdesc_vim_the_square_brackets_and_what_is_inside",
+   "desc": "The square brackets and what is inside",
+   "helpTag": "a[",
+   "extras": []
+  },
+  {
+   "localId": "operator/i{",
+   "context": "operator",
+   "notation": "i{",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "i"
+    },
+    {
+     "mods": 0,
+     "text": "{"
+    }
+   ],
+   "alternates": [
+    [
+     {
+      "mods": 0,
+      "text": "i"
+     },
+     {
+      "mods": 0,
+      "text": "B"
+     }
+    ]
+   ],
+   "category": "textobject",
+   "descKey": "packdesc_vim_inside_the_curly_braces",
+   "desc": "Inside the curly braces",
+   "helpTag": "iB",
+   "extras": []
+  },
+  {
+   "localId": "operator/a{",
+   "context": "operator",
+   "notation": "a{",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "a"
+    },
+    {
+     "mods": 0,
+     "text": "{"
+    }
+   ],
+   "alternates": [
+    [
+     {
+      "mods": 0,
+      "text": "a"
+     },
+     {
+      "mods": 0,
+      "text": "B"
+     }
+    ]
+   ],
+   "category": "textobject",
+   "descKey": "packdesc_vim_the_curly_braces_and_what_is_inside",
+   "desc": "The curly braces and what is inside",
+   "helpTag": "aB",
+   "extras": []
+  },
+  {
+   "localId": "operator/i<lt>",
+   "context": "operator",
+   "notation": "i<lt>",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "i"
+    },
+    {
+     "mods": 0,
+     "text": "<"
+    }
+   ],
+   "alternates": [],
+   "category": "textobject",
+   "descKey": "packdesc_vim_inside_the_angle_brackets",
+   "desc": "Inside the angle brackets",
+   "helpTag": "i<",
+   "extras": []
+  },
+  {
+   "localId": "operator/a<lt>",
+   "context": "operator",
+   "notation": "a<lt>",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "a"
+    },
+    {
+     "mods": 0,
+     "text": "<"
+    }
+   ],
+   "alternates": [],
+   "category": "textobject",
+   "descKey": "packdesc_vim_the_angle_brackets_and_what_is_inside",
+   "desc": "The angle brackets and what is inside",
+   "helpTag": "a<",
+   "extras": []
+  },
+  {
+   "localId": "operator/i\"",
+   "context": "operator",
+   "notation": "i\"",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "i"
+    },
+    {
+     "mods": 0,
+     "text": "\""
+    }
+   ],
+   "alternates": [],
+   "category": "textobject",
+   "descKey": "packdesc_vim_inside_the_double_quotes",
+   "desc": "Inside the double quotes",
+   "helpTag": "iquote",
+   "extras": []
+  },
+  {
+   "localId": "operator/a\"",
+   "context": "operator",
+   "notation": "a\"",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "a"
+    },
+    {
+     "mods": 0,
+     "text": "\""
+    }
+   ],
+   "alternates": [],
+   "category": "textobject",
+   "descKey": "packdesc_vim_the_double_quotes_and_what_is_inside",
+   "desc": "The double quotes and what is inside",
+   "helpTag": "aquote",
+   "extras": []
+  },
+  {
+   "localId": "operator/i'",
+   "context": "operator",
+   "notation": "i'",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "i"
+    },
+    {
+     "mods": 0,
+     "text": "'"
+    }
+   ],
+   "alternates": [],
+   "category": "textobject",
+   "descKey": "packdesc_vim_inside_the_single_quotes",
+   "desc": "Inside the single quotes",
+   "helpTag": "iquote",
+   "extras": []
+  },
+  {
+   "localId": "operator/it",
+   "context": "operator",
+   "notation": "it",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "i"
+    },
+    {
+     "mods": 0,
+     "text": "t"
+    }
+   ],
+   "alternates": [],
+   "category": "textobject",
+   "descKey": "packdesc_vim_inside_the_surrounding_tag",
+   "desc": "Inside the surrounding tag",
+   "helpTag": "it",
+   "extras": []
+  },
+  {
+   "localId": "operator/at",
+   "context": "operator",
+   "notation": "at",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "a"
+    },
+    {
+     "mods": 0,
+     "text": "t"
+    }
+   ],
+   "alternates": [],
+   "category": "textobject",
+   "descKey": "packdesc_vim_the_surrounding_tag_and_its_contents",
+   "desc": "The surrounding tag and its contents",
+   "helpTag": "at",
+   "extras": []
+  },
+  {
+   "localId": "normal/diw",
+   "context": "normal",
+   "notation": "diw",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "d"
+    },
+    {
+     "mods": 0,
+     "text": "i"
+    },
+    {
+     "mods": 0,
+     "text": "w"
+    }
+   ],
+   "alternates": [],
+   "category": "edit",
+   "descKey": "packdesc_vim_delete_the_word_under_the_cursor",
+   "desc": "Delete the word under the cursor",
+   "helpTag": "iw",
+   "extras": []
+  },
+  {
+   "localId": "normal/daw",
+   "context": "normal",
+   "notation": "daw",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "d"
+    },
+    {
+     "mods": 0,
+     "text": "a"
+    },
+    {
+     "mods": 0,
+     "text": "w"
+    }
+   ],
+   "alternates": [],
+   "category": "edit",
+   "descKey": "packdesc_vim_delete_the_word_with_its_trailing_space",
+   "desc": "Delete the word with its trailing space",
+   "helpTag": "aw",
+   "extras": []
+  },
+  {
+   "localId": "normal/ciw",
+   "context": "normal",
+   "notation": "ciw",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "c"
+    },
+    {
+     "mods": 0,
+     "text": "i"
+    },
+    {
+     "mods": 0,
+     "text": "w"
+    }
+   ],
+   "alternates": [],
+   "category": "edit",
+   "descKey": "packdesc_vim_change_the_word_under_the_cursor",
+   "desc": "Change the word under the cursor",
+   "helpTag": "iw",
+   "extras": []
+  },
+  {
+   "localId": "normal/caw",
+   "context": "normal",
+   "notation": "caw",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "c"
+    },
+    {
+     "mods": 0,
+     "text": "a"
+    },
+    {
+     "mods": 0,
+     "text": "w"
+    }
+   ],
+   "alternates": [],
+   "category": "edit",
+   "descKey": "packdesc_vim_change_the_word_with_its_trailing_space",
+   "desc": "Change the word with its trailing space",
+   "helpTag": "aw",
+   "extras": []
+  },
+  {
+   "localId": "normal/yiw",
+   "context": "normal",
+   "notation": "yiw",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "y"
+    },
+    {
+     "mods": 0,
+     "text": "i"
+    },
+    {
+     "mods": 0,
+     "text": "w"
+    }
+   ],
+   "alternates": [],
+   "category": "edit",
+   "descKey": "packdesc_vim_yank_the_word_under_the_cursor",
+   "desc": "Yank the word under the cursor",
+   "helpTag": "iw",
+   "extras": []
+  },
+  {
+   "localId": "normal/di(",
+   "context": "normal",
+   "notation": "di(",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "d"
+    },
+    {
+     "mods": 0,
+     "text": "i"
+    },
+    {
+     "mods": 0,
+     "text": "("
+    }
+   ],
+   "alternates": [
+    [
+     {
+      "mods": 0,
+      "text": "d"
+     },
+     {
+      "mods": 0,
+      "text": "i"
+     },
+     {
+      "mods": 0,
+      "text": "b"
+     }
+    ]
+   ],
+   "category": "edit",
+   "descKey": "packdesc_vim_delete_inside_the_round_brackets",
+   "desc": "Delete inside the round brackets",
+   "helpTag": "ib",
+   "extras": []
+  },
+  {
+   "localId": "normal/ci(",
+   "context": "normal",
+   "notation": "ci(",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "c"
+    },
+    {
+     "mods": 0,
+     "text": "i"
+    },
+    {
+     "mods": 0,
+     "text": "("
+    }
+   ],
+   "alternates": [
+    [
+     {
+      "mods": 0,
+      "text": "c"
+     },
+     {
+      "mods": 0,
+      "text": "i"
+     },
+     {
+      "mods": 0,
+      "text": "b"
+     }
+    ]
+   ],
+   "category": "edit",
+   "descKey": "packdesc_vim_change_inside_the_round_brackets",
+   "desc": "Change inside the round brackets",
+   "helpTag": "ib",
+   "extras": []
+  },
+  {
+   "localId": "normal/yi(",
+   "context": "normal",
+   "notation": "yi(",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "y"
+    },
+    {
+     "mods": 0,
+     "text": "i"
+    },
+    {
+     "mods": 0,
+     "text": "("
+    }
+   ],
+   "alternates": [
+    [
+     {
+      "mods": 0,
+      "text": "y"
+     },
+     {
+      "mods": 0,
+      "text": "i"
+     },
+     {
+      "mods": 0,
+      "text": "b"
+     }
+    ]
+   ],
+   "category": "edit",
+   "descKey": "packdesc_vim_yank_inside_the_round_brackets",
+   "desc": "Yank inside the round brackets",
+   "helpTag": "ib",
+   "extras": []
+  },
+  {
+   "localId": "normal/di{",
+   "context": "normal",
+   "notation": "di{",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "d"
+    },
+    {
+     "mods": 0,
+     "text": "i"
+    },
+    {
+     "mods": 0,
+     "text": "{"
+    }
+   ],
+   "alternates": [
+    [
+     {
+      "mods": 0,
+      "text": "d"
+     },
+     {
+      "mods": 0,
+      "text": "i"
+     },
+     {
+      "mods": 0,
+      "text": "B"
+     }
+    ]
+   ],
+   "category": "edit",
+   "descKey": "packdesc_vim_delete_inside_the_curly_braces",
+   "desc": "Delete inside the curly braces",
+   "helpTag": "iB",
+   "extras": []
+  },
+  {
+   "localId": "normal/ci{",
+   "context": "normal",
+   "notation": "ci{",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "c"
+    },
+    {
+     "mods": 0,
+     "text": "i"
+    },
+    {
+     "mods": 0,
+     "text": "{"
+    }
+   ],
+   "alternates": [
+    [
+     {
+      "mods": 0,
+      "text": "c"
+     },
+     {
+      "mods": 0,
+      "text": "i"
+     },
+     {
+      "mods": 0,
+      "text": "B"
+     }
+    ]
+   ],
+   "category": "edit",
+   "descKey": "packdesc_vim_change_inside_the_curly_braces",
+   "desc": "Change inside the curly braces",
+   "helpTag": "iB",
+   "extras": []
+  },
+  {
+   "localId": "normal/di\"",
+   "context": "normal",
+   "notation": "di\"",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "d"
+    },
+    {
+     "mods": 0,
+     "text": "i"
+    },
+    {
+     "mods": 0,
+     "text": "\""
+    }
+   ],
+   "alternates": [],
+   "category": "edit",
+   "descKey": "packdesc_vim_delete_inside_the_double_quotes",
+   "desc": "Delete inside the double quotes",
+   "helpTag": "iquote",
+   "extras": []
+  },
+  {
+   "localId": "normal/ci\"",
+   "context": "normal",
+   "notation": "ci\"",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "c"
+    },
+    {
+     "mods": 0,
+     "text": "i"
+    },
+    {
+     "mods": 0,
+     "text": "\""
+    }
+   ],
+   "alternates": [],
+   "category": "edit",
+   "descKey": "packdesc_vim_change_inside_the_double_quotes",
+   "desc": "Change inside the double quotes",
+   "helpTag": "iquote",
+   "extras": []
+  },
+  {
+   "localId": "normal/cit",
+   "context": "normal",
+   "notation": "cit",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "c"
+    },
+    {
+     "mods": 0,
+     "text": "i"
+    },
+    {
+     "mods": 0,
+     "text": "t"
+    }
+   ],
+   "alternates": [],
+   "category": "edit",
+   "descKey": "packdesc_vim_change_inside_the_surrounding_tag",
+   "desc": "Change inside the surrounding tag",
+   "helpTag": "it",
+   "extras": []
+  },
+  {
+   "localId": "normal/dap",
+   "context": "normal",
+   "notation": "dap",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "d"
+    },
+    {
+     "mods": 0,
+     "text": "a"
+    },
+    {
+     "mods": 0,
+     "text": "p"
+    }
+   ],
+   "alternates": [],
+   "category": "edit",
+   "descKey": "packdesc_vim_delete_the_paragraph",
+   "desc": "Delete the paragraph",
+   "helpTag": "ap",
+   "extras": []
+  },
+  {
+   "localId": "normal/gUiw",
+   "context": "normal",
+   "notation": "gUiw",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "g"
+    },
+    {
+     "mods": 0,
+     "text": "U"
+    },
+    {
+     "mods": 0,
+     "text": "i"
+    },
+    {
+     "mods": 0,
+     "text": "w"
+    }
+   ],
+   "alternates": [],
+   "category": "edit",
+   "descKey": "packdesc_vim_upper_case_the_word_under_the_cursor",
+   "desc": "Upper-case the word under the cursor",
+   "helpTag": "gU",
+   "extras": []
+  },
+  {
+   "localId": "normal/guiw",
+   "context": "normal",
+   "notation": "guiw",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "g"
+    },
+    {
+     "mods": 0,
+     "text": "u"
+    },
+    {
+     "mods": 0,
+     "text": "i"
+    },
+    {
+     "mods": 0,
+     "text": "w"
+    }
+   ],
+   "alternates": [],
+   "category": "edit",
+   "descKey": "packdesc_vim_lower_case_the_word_under_the_cursor",
+   "desc": "Lower-case the word under the cursor",
+   "helpTag": "gu",
+   "extras": []
+  },
+  {
+   "localId": "normal/>ip",
+   "context": "normal",
+   "notation": ">ip",
+   "steps": [
+    {
+     "mods": 0,
+     "text": ">"
+    },
+    {
+     "mods": 0,
+     "text": "i"
+    },
+    {
+     "mods": 0,
+     "text": "p"
+    }
+   ],
+   "alternates": [],
+   "category": "edit",
+   "descKey": "packdesc_vim_indent_the_paragraph",
+   "desc": "Indent the paragraph",
+   "helpTag": ">",
+   "extras": []
+  },
+  {
+   "localId": "normal/=ap",
+   "context": "normal",
+   "notation": "=ap",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "="
+    },
+    {
+     "mods": 0,
+     "text": "a"
+    },
+    {
+     "mods": 0,
+     "text": "p"
+    }
+   ],
+   "alternates": [],
+   "category": "edit",
+   "descKey": "packdesc_vim_reindent_the_paragraph",
+   "desc": "Reindent the paragraph",
+   "helpTag": "=",
+   "extras": []
+  },
+  {
+   "localId": "normal/D",
+   "context": "normal",
+   "notation": "D",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "D"
+    }
+   ],
+   "alternates": [
+    [
+     {
+      "mods": 0,
+      "text": "d"
+     },
+     {
+      "mods": 0,
+      "text": "$"
+     }
+    ]
+   ],
+   "category": "edit",
+   "descKey": "packdesc_vim_delete_to_the_end_of_the_line",
+   "desc": "Delete to the end of the line",
+   "helpTag": "D",
+   "extras": []
+  },
+  {
+   "localId": "normal/C",
+   "context": "normal",
+   "notation": "C",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "C"
+    }
+   ],
+   "alternates": [
+    [
+     {
+      "mods": 0,
+      "text": "c"
+     },
+     {
+      "mods": 0,
+      "text": "$"
+     }
+    ]
+   ],
+   "category": "edit",
+   "descKey": "packdesc_vim_change_to_the_end_of_the_line",
+   "desc": "Change to the end of the line",
+   "helpTag": "C",
+   "extras": []
+  },
+  {
+   "localId": "normal/Y",
+   "context": "normal",
+   "notation": "Y",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "Y"
+    }
+   ],
+   "alternates": [
+    [
+     {
+      "mods": 0,
+      "text": "y"
+     },
+     {
+      "mods": 0,
+      "text": "y"
+     }
+    ]
+   ],
+   "category": "edit",
+   "descKey": "packdesc_vim_yank_the_line",
+   "desc": "Yank the line",
+   "helpTag": "Y",
+   "extras": []
+  },
+  {
+   "localId": "normal/S",
+   "context": "normal",
+   "notation": "S",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "S"
+    }
+   ],
+   "alternates": [
+    [
+     {
+      "mods": 0,
+      "text": "c"
+     },
+     {
+      "mods": 0,
+      "text": "c"
+     }
+    ]
+   ],
+   "category": "edit",
+   "descKey": "packdesc_vim_change_the_whole_line",
+   "desc": "Change the whole line",
+   "helpTag": "S",
+   "extras": []
+  },
+  {
+   "localId": "normal/x",
+   "context": "normal",
+   "notation": "x",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "x"
+    }
+   ],
+   "alternates": [
+    [
+     {
+      "mods": 0,
+      "text": "d"
+     },
+     {
+      "mods": 0,
+      "text": "l"
+     }
+    ]
+   ],
+   "category": "edit",
+   "descKey": "packdesc_vim_delete_the_character_under_the_cursor",
+   "desc": "Delete the character under the cursor",
+   "helpTag": "x",
+   "extras": []
+  },
+  {
+   "localId": "normal/X",
+   "context": "normal",
+   "notation": "X",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "X"
+    }
+   ],
+   "alternates": [
+    [
+     {
+      "mods": 0,
+      "text": "d"
+     },
+     {
+      "mods": 0,
+      "text": "h"
+     }
+    ]
+   ],
+   "category": "edit",
+   "descKey": "packdesc_vim_delete_the_character_before_the_cursor",
+   "desc": "Delete the character before the cursor",
+   "helpTag": "X",
+   "extras": []
+  },
+  {
+   "localId": "normal/dd",
+   "context": "normal",
+   "notation": "dd",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "d"
+    },
+    {
+     "mods": 0,
+     "text": "d"
+    }
+   ],
+   "alternates": [],
+   "category": "edit",
+   "descKey": "packdesc_vim_delete_the_line",
+   "desc": "Delete the line",
+   "helpTag": "dd",
+   "extras": []
+  },
+  {
+   "localId": "normal/cc",
+   "context": "normal",
+   "notation": "cc",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "c"
+    },
+    {
+     "mods": 0,
+     "text": "c"
+    }
+   ],
+   "alternates": [],
+   "category": "edit",
+   "descKey": "packdesc_vim_change_the_whole_line",
+   "desc": "Change the whole line",
+   "helpTag": "cc",
+   "extras": []
+  },
+  {
+   "localId": "normal/yy",
+   "context": "normal",
+   "notation": "yy",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "y"
+    },
+    {
+     "mods": 0,
+     "text": "y"
+    }
+   ],
+   "alternates": [],
+   "category": "edit",
+   "descKey": "packdesc_vim_yank_the_line",
+   "desc": "Yank the line",
+   "helpTag": "yy",
+   "extras": []
+  },
+  {
+   "localId": "normal/J",
+   "context": "normal",
+   "notation": "J",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "J"
+    }
+   ],
+   "alternates": [],
+   "category": "edit",
+   "descKey": "packdesc_vim_join_this_line_with_the_next",
+   "desc": "Join this line with the next",
+   "helpTag": "J",
+   "extras": []
+  },
+  {
+   "localId": "normal/gJ",
+   "context": "normal",
+   "notation": "gJ",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "g"
+    },
+    {
+     "mods": 0,
+     "text": "J"
+    }
+   ],
+   "alternates": [],
+   "category": "edit",
+   "descKey": "packdesc_vim_join_without_inserting_a_space",
+   "desc": "Join without inserting a space",
+   "helpTag": "gJ",
+   "extras": []
+  },
+  {
+   "localId": "normal/*",
+   "context": "normal",
+   "notation": "*",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "*"
+    }
+   ],
+   "alternates": [],
+   "category": "search",
+   "descKey": "packdesc_vim_search_forward_for_the_word_under_the_cursor",
+   "desc": "Search forward for the word under the cursor",
+   "helpTag": "star",
+   "extras": []
+  },
+  {
+   "localId": "normal/#",
+   "context": "normal",
+   "notation": "#",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "#"
+    }
+   ],
+   "alternates": [],
+   "category": "search",
+   "descKey": "packdesc_vim_search_backward_for_the_word_under_the_cursor",
+   "desc": "Search backward for the word under the cursor",
+   "helpTag": "#",
+   "extras": []
+  },
+  {
+   "localId": "normal/g*",
+   "context": "normal",
+   "notation": "g*",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "g"
+    },
+    {
+     "mods": 0,
+     "text": "*"
+    }
+   ],
+   "alternates": [],
+   "category": "search",
+   "descKey": "packdesc_vim_search_forward_for_the_word_unanchored",
+   "desc": "Search forward for the word, unanchored",
+   "helpTag": "gstar",
+   "extras": []
+  },
+  {
+   "localId": "normal/;",
+   "context": "normal",
+   "notation": ";",
+   "steps": [
+    {
+     "mods": 0,
+     "text": ";"
+    }
+   ],
+   "alternates": [],
+   "category": "search",
+   "descKey": "packdesc_vim_repeat_the_last_f_t_f_or_t",
+   "desc": "Repeat the last f, t, F or T",
+   "helpTag": ";",
+   "extras": []
+  },
+  {
+   "localId": "normal/,",
+   "context": "normal",
+   "notation": ",",
+   "steps": [
+    {
+     "mods": 0,
+     "text": ","
+    }
+   ],
+   "alternates": [],
+   "category": "search",
+   "descKey": "packdesc_vim_repeat_the_last_f_t_f_or_t_backward",
+   "desc": "Repeat the last f, t, F or T backward",
+   "helpTag": ",",
+   "extras": []
+  },
+  {
+   "localId": "normal/&",
+   "context": "normal",
+   "notation": "&",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "&"
+    }
+   ],
+   "alternates": [],
+   "category": "search",
+   "descKey": "packdesc_vim_repeat_the_last_substitute_on_this_line",
+   "desc": "Repeat the last substitute on this line",
+   "helpTag": "&",
+   "extras": []
+  },
+  {
+   "localId": "normal/zz",
+   "context": "normal",
+   "notation": "zz",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "z"
+    },
+    {
+     "mods": 0,
+     "text": "z"
+    }
+   ],
+   "alternates": [],
+   "category": "misc",
+   "descKey": "packdesc_vim_put_the_cursor_line_in_the_middle_of_the_window",
+   "desc": "Put the cursor line in the middle of the window",
+   "helpTag": "zz",
+   "extras": []
+  },
+  {
+   "localId": "normal/zt",
+   "context": "normal",
+   "notation": "zt",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "z"
+    },
+    {
+     "mods": 0,
+     "text": "t"
+    }
+   ],
+   "alternates": [],
+   "category": "misc",
+   "descKey": "packdesc_vim_put_the_cursor_line_at_the_top_of_the_window",
+   "desc": "Put the cursor line at the top of the window",
+   "helpTag": "zt",
+   "extras": []
+  },
+  {
+   "localId": "normal/zb",
+   "context": "normal",
+   "notation": "zb",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "z"
+    },
+    {
+     "mods": 0,
+     "text": "b"
+    }
+   ],
+   "alternates": [],
+   "category": "misc",
+   "descKey": "packdesc_vim_put_the_cursor_line_at_the_bottom_of_the_window",
+   "desc": "Put the cursor line at the bottom of the window",
+   "helpTag": "zb",
+   "extras": []
+  },
+  {
+   "localId": "normal/<C-o>",
+   "context": "normal",
+   "notation": "<C-o>",
+   "steps": [
+    {
+     "mods": 4,
+     "text": "o"
+    }
+   ],
+   "alternates": [],
+   "category": "misc",
+   "descKey": "packdesc_vim_back_through_the_jump_list",
+   "desc": "Back through the jump list",
+   "helpTag": "CTRL-O",
+   "extras": []
+  },
+  {
+   "localId": "normal/<C-i>",
+   "context": "normal",
+   "notation": "<C-i>",
+   "steps": [
+    {
+     "mods": 4,
+     "text": "i"
+    }
+   ],
+   "alternates": [],
+   "category": "misc",
+   "descKey": "packdesc_vim_forward_through_the_jump_list",
+   "desc": "Forward through the jump list",
+   "helpTag": "CTRL-I",
+   "extras": []
+  },
+  {
+   "localId": "normal/<C-a>",
+   "context": "normal",
+   "notation": "<C-a>",
+   "steps": [
+    {
+     "mods": 4,
+     "text": "a"
+    }
+   ],
+   "alternates": [],
+   "category": "misc",
+   "descKey": "packdesc_vim_increment_the_number_under_the_cursor",
+   "desc": "Increment the number under the cursor",
+   "helpTag": "CTRL-A",
+   "extras": []
+  },
+  {
+   "localId": "normal/<C-x>",
+   "context": "normal",
+   "notation": "<C-x>",
+   "steps": [
+    {
+     "mods": 4,
+     "text": "x"
+    }
+   ],
+   "alternates": [],
+   "category": "misc",
+   "descKey": "packdesc_vim_decrement_the_number_under_the_cursor",
+   "desc": "Decrement the number under the cursor",
+   "helpTag": "CTRL-X",
+   "extras": []
+  },
+  {
+   "localId": "normal/<C-v>",
+   "context": "normal",
+   "notation": "<C-v>",
+   "steps": [
+    {
+     "mods": 4,
+     "text": "v"
+    }
+   ],
+   "alternates": [],
+   "category": "misc",
+   "descKey": "packdesc_vim_start_a_blockwise_visual_selection",
+   "desc": "Start a blockwise visual selection",
+   "helpTag": "CTRL-V",
+   "extras": []
+  },
+  {
+   "localId": "normal/g<C-a>",
+   "context": "normal",
+   "notation": "g<C-a>",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "g"
+    },
+    {
+     "mods": 4,
+     "text": "a"
+    }
+   ],
+   "alternates": [],
+   "category": "misc",
+   "descKey": "packdesc_vim_increment_each_number_in_the_selection",
+   "desc": "Increment each number in the selection",
+   "helpTag": "v_g_CTRL-A",
+   "extras": []
+  },
+  {
+   "localId": "normal/q:",
+   "context": "normal",
+   "notation": "q:",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "q"
+    },
+    {
+     "mods": 0,
+     "text": ":"
+    }
+   ],
+   "alternates": [],
+   "category": "misc",
+   "descKey": "packdesc_vim_open_the_command_line_window",
+   "desc": "Open the command-line window",
+   "helpTag": "q:",
+   "extras": []
+  },
+  {
+   "localId": "normal/ZZ",
+   "context": "normal",
+   "notation": "ZZ",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "Z"
+    },
+    {
+     "mods": 0,
+     "text": "Z"
+    }
+   ],
+   "alternates": [],
+   "category": "misc",
+   "descKey": "packdesc_vim_write_the_file_and_quit",
+   "desc": "Write the file and quit",
+   "helpTag": "ZZ",
+   "extras": []
+  },
+  {
+   "localId": "normal/ZQ",
+   "context": "normal",
+   "notation": "ZQ",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "Z"
+    },
+    {
+     "mods": 0,
+     "text": "Q"
+    }
+   ],
+   "alternates": [],
+   "category": "misc",
+   "descKey": "packdesc_vim_quit_without_writing",
+   "desc": "Quit without writing",
+   "helpTag": "ZQ",
+   "extras": []
+  }
+ ]
+}

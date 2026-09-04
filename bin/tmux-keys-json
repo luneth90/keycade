@@ -1,0 +1,222 @@
+#!/usr/bin/python3
+"""Read the active tmux server's documented prefix-table bindings safely.
+
+`tmux list-keys` starts a server (and sources user configuration) when none is
+running. This helper therefore calls `has-session` first and never calls
+`list-keys` unless that read-only probe succeeds. Any failure emits an
+unavailable record; the QML side then uses the shipped default pack.
+"""
+
+from __future__ import annotations
+
+import hashlib
+import json
+import os
+import re
+import selectors
+import signal
+import stat
+import subprocess
+import sys
+import time
+from datetime import date
+
+SCHEMA_VERSION = 1
+TMUX = "/usr/bin/tmux"
+MAX_STDOUT = 512 * 1024
+MAX_STDERR = 16 * 1024
+MAX_BINDINGS = 512
+MAX_LINES = 2048
+TIMEOUT = 3.0
+
+SHIFT, CTRL, ALT = 1, 4, 8
+MODIFIERS = {"C": CTRL, "M": ALT, "S": "shift"}
+NAMED = {
+    "SPACE": "SPACE", "ENTER": "CR", "TAB": "TAB", "ESCAPE": "ESC", "BSPACE": "BS",
+    "UP": "UP", "DOWN": "DOWN", "LEFT": "LEFT", "RIGHT": "RIGHT",
+    "HOME": "HOME", "END": "END", "PPAGE": "PAGEUP", "NPAGE": "PAGEDOWN",
+    "IC": "INSERT", "DC": "DEL",
+}
+DEVICE_SPECIAL = {"HOME", "END", "PAGEUP", "PAGEDOWN", "INSERT", "DEL"}
+CATEGORY_NAMES = ["pane", "window", "session", "layout", "copy", "misc"]
+CATEGORIES = [
+    (r"\bpane\b", "pane"), (r"\bwindow\b", "window"),
+    (r"\bsession\b|\bclient\b", "session"), (r"\blayout\b", "layout"),
+    (r"paste|buffer|\bcopy\b", "copy"),
+]
+
+
+class Refused(Exception):
+    pass
+
+
+def trusted_command(path: str) -> str:
+    info = os.stat(path)
+    if not stat.S_ISREG(info.st_mode) or info.st_uid != 0:
+        raise OSError("tmux executable is not trusted")
+    if info.st_mode & (stat.S_IWGRP | stat.S_IWOTH) or not info.st_mode & stat.S_IXUSR:
+        raise OSError("tmux executable is replaceable or not executable")
+    return path
+
+
+def command(command: list[str], stdout_limit: int) -> tuple[int, str]:
+    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                               env={"PATH": "/usr/bin", "LC_ALL": "C"}, close_fds=True)
+    assert process.stdout is not None and process.stderr is not None
+    streams = selectors.DefaultSelector()
+    streams.register(process.stdout, selectors.EVENT_READ, ("stdout", stdout_limit))
+    streams.register(process.stderr, selectors.EVENT_READ, ("stderr", MAX_STDERR))
+    buffers = {"stdout": bytearray(), "stderr": bytearray()}
+    deadline = time.monotonic() + TIMEOUT
+    try:
+        while streams.get_map():
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                process.kill()
+                process.wait()
+                raise OSError("tmux query timed out")
+            events = streams.select(min(remaining, 0.1))
+            if not events and process.poll() is not None:
+                events = [(key, 0) for key in list(streams.get_map().values())]
+            for key, _mask in events:
+                chunk = os.read(key.fd, 65536)
+                if not chunk:
+                    streams.unregister(key.fileobj)
+                    continue
+                name, limit = key.data
+                buffers[name].extend(chunk)
+                if len(buffers[name]) > limit:
+                    process.kill()
+                    process.wait()
+                    raise OSError(f"tmux {name} exceeded its limit")
+        return process.wait(), buffers["stdout"].decode("utf-8", errors="strict")
+    finally:
+        streams.close()
+
+
+def parse_key(token: str) -> dict:
+    mods = 0
+    shifted = False
+    while len(token) > 2 and token[1] == "-" and token[0].upper() in MODIFIERS:
+        value = MODIFIERS[token[0].upper()]
+        if value == "shift":
+            shifted = True
+        else:
+            mods |= value
+        token = token[2:]
+    if not token:
+        raise Refused()
+    upper = token.upper()
+    if upper in NAMED:
+        if shifted:
+            if NAMED[upper] == "TAB":
+                raise Refused()
+            mods |= SHIFT
+        return {"mods": mods, "named": NAMED[upper]}
+    if len(token) == 1 and not shifted:
+        return {"mods": mods, "text": token.lower() if mods else token}
+    raise Refused()
+
+
+def description_key(desc: str) -> str:
+    slug = re.sub(r"_+", "_", re.sub(r"[^a-z0-9]+", "_", desc.lower())).strip("_")
+    return "packdesc_tmux_" + slug if slug else ""
+
+
+def collect(listing: str) -> dict:
+    bindings = []
+    dropped: dict[str, int] = {}
+    seen = set()
+
+    def drop(reason: str) -> None:
+        dropped[reason] = dropped.get(reason, 0) + 1
+
+    lines = listing.splitlines()
+    if len(lines) > MAX_LINES:
+        dropped["too-many-lines"] = len(lines) - MAX_LINES
+    for line in lines[:MAX_LINES]:
+        if not line.strip():
+            continue
+        match = re.match(r"^(\S+)\s+(\S+)\s+(.+)$", line)
+        if not match:
+            drop("unreadable-line")
+            continue
+        prefix, key, desc = match.group(1), match.group(2), match.group(3).strip()
+        if not desc or len(desc) > 512:
+            drop("missing-description")
+            continue
+        try:
+            first, second = parse_key(prefix), parse_key(key)
+        except Refused:
+            drop("unreadable-notation")
+            continue
+        steps = [first, second]
+        if any(step.get("named") == "ESC" for step in steps):
+            drop("escape-in-answer")
+            continue
+        if any(step.get("named") in DEVICE_SPECIAL for step in steps):
+            drop("device-special-key")
+            continue
+        local_id = "prefix/" + ("prefix" if key == prefix else key)
+        if local_id in seen:
+            drop("duplicate")
+            continue
+        if len(local_id) > 128 or len(bindings) >= MAX_BINDINGS:
+            drop("limit")
+            continue
+        seen.add(local_id)
+        lowered = desc.lower()
+        category = "misc"
+        for pattern, name in CATEGORIES:
+            if re.search(pattern, lowered):
+                category = name
+                break
+        bindings.append({
+            "localId": local_id, "context": "prefix", "notation": "prefix " + key,
+            "steps": steps,
+            "alternates": [[{"option": "prefix2"}, second]],
+            "category": category, "descKey": description_key(desc), "desc": desc,
+            "extras": [],
+        })
+    return {
+        "schemaVersion": 1, "profile": "tmux", "judgeMode": "text",
+        "contexts": ["prefix"], "extras": [],
+        "categories": [name for name in CATEGORY_NAMES
+                       if any(entry["category"] == name for entry in bindings)],
+        "provenance": {
+            "upstream": "tmux", "authority": "active tmux server: list-keys -N -T prefix",
+            "source": {"url": "local tmux server", "commit": "", "tag": "live",
+                       "date": date.today().isoformat(),
+                       "checksum": hashlib.sha256(listing.encode()).hexdigest()},
+            "generatedAt": date.today().isoformat(), "generator": "bin/tmux-keys-json@1",
+        },
+        "dropped": dropped, "bindings": bindings,
+    }
+
+
+def unavailable(reason: str) -> dict:
+    return {"schemaVersion": SCHEMA_VERSION, "profile": "tmux",
+            "available": False, "reason": reason[:128]}
+
+
+def main() -> None:
+    try:
+        tmux = trusted_command(TMUX)
+        status, _ = command([tmux, "has-session"], 4096)
+        if status != 0:
+            payload = unavailable("no running tmux server")
+        else:
+            status, listing = command([tmux, "list-keys", "-N", "-T", "prefix"], MAX_STDOUT)
+            if status != 0 or not listing.strip():
+                payload = unavailable("tmux key table could not be read")
+            else:
+                payload = collect(listing)
+                payload["available"] = bool(payload["bindings"])
+    except Exception as error:  # one bounded record, never a traceback
+        payload = unavailable(type(error).__name__)
+    sys.stdout.write(json.dumps(payload, ensure_ascii=False, separators=(",", ":")) + "\n")
+
+
+if __name__ == "__main__":
+    signal.signal(signal.SIGPIPE, signal.SIG_DFL)
+    main()

@@ -30,6 +30,11 @@ Item {
   // named them. An entry provided only by a bundle that is off is not dealt:
   // teaching a plugin nobody installed is worse than teaching nothing.
   property var enabledExtras: []
+  // Literal mappings this machine added, replaced or deleted. Empty for every
+  // ground except LazyVim; keeping it on the shared loader makes the merge a
+  // property of a pack rather than a branch in the game.
+  property var overrides: []
+  property var packOverride: null
 
   readonly property int maxBindings: 512
   readonly property int maxSteps: 8
@@ -50,6 +55,10 @@ Item {
   // Entries this table carries for bundles this machine has not turned on.
   // Not a rejection - they are simply not here.
   property int disabledCount: 0
+  property int customAdded: 0
+  property int customChanged: 0
+  property int customDeleted: 0
+  property int customSkipped: 0
 
   signal loaded()
   signal failed(string message)
@@ -147,8 +156,67 @@ Item {
       // English, which is what a rewritten description upstream produces.
       descKey: root.safeText(record.descKey, 128),
       notation: root.safeText(record.notation, root.maxLocalIdChars),
+      customKind: root.safeText(record.customKind, 16),
       answer: { judgeMode: "text", context: context, steps: steps, alternates: alternates }
     }
+  }
+
+  function mergedBindings(pack) {
+    var records = pack.bindings.slice()
+    if (root.profileId !== "lazyvim" || !Array.isArray(root.overrides)
+        || !root.overrides.length) return records
+    var byId = ({})
+    var defaults = ({})
+    for (var index = 0; index < records.length; index++) {
+      byId[records[index].localId] = index
+      defaults[records[index].localId] = true
+    }
+    var deleted = ({})
+    for (var change = 0; change < root.overrides.length; change++) {
+      var item = root.overrides[change]
+      var parsed = TextKey.parseNotation(item.lhs)
+      if (!parsed) {
+        root.customSkipped += 1
+        continue
+      }
+      for (var mode = 0; mode < item.contexts.length; mode++) {
+        var context = String(item.contexts[mode] || "")
+        var localId = context + "/" + String(item.lhs || "")
+        var position = byId[localId]
+        if (item.op === "del") {
+          if (position !== undefined && !deleted[localId]) {
+            deleted[localId] = true
+          }
+          continue
+        }
+        var replacement
+        if (position !== undefined) {
+          replacement = Object.assign({}, records[position], {
+            desc: item.desc, descKey: "", extras: [], steps: parsed,
+            alternates: [], customKind: defaults[localId] ? "changed" : "added"
+          })
+          records[position] = replacement
+          deleted[localId] = false
+        } else {
+          replacement = {
+            localId: localId, context: context, notation: item.lhs,
+            steps: parsed, alternates: [], category: "misc", descKey: "",
+            desc: item.desc, extras: [], customKind: "added"
+          }
+          byId[localId] = records.length
+          records.push(replacement)
+        }
+      }
+    }
+    var merged = records.filter(function(record) { return !deleted[record.localId] })
+    for (var result = 0; result < merged.length; result++) {
+      if (merged[result].customKind === "added") root.customAdded += 1
+      else if (merged[result].customKind === "changed") root.customChanged += 1
+    }
+    Object.keys(defaults).forEach(function(localId) {
+      if (deleted[localId]) root.customDeleted += 1
+    })
+    return merged
   }
 
   function fail(message) {
@@ -164,18 +232,33 @@ Item {
     root.loading = true
     root.error = ""
     root.rejected = 0
+    root.customAdded = 0
+    root.customChanged = 0
+    root.customDeleted = 0
+    root.customSkipped = 0
     root.bindings = []
     if (!Profiles.isPack(root.profileId)) {
       root.fail("Unknown pack profile")
       return
     }
-    var pack = Packs.pack(root.profileId)
+    var liveOverride = root.packOverride !== null && root.packOverride !== undefined
+    var pack = liveOverride ? root.packOverride : Packs.pack(root.profileId)
     if (!pack || pack.schemaVersion !== 1 || pack.profile !== root.profileId
         || pack.judgeMode !== "text" || !Array.isArray(pack.bindings)) {
+      if (liveOverride) {
+        root.packOverride = null
+        root.refresh()
+        return
+      }
       root.fail("Unsupported pack schema")
       return
     }
     if (pack.bindings.length > root.maxBindings) {
+      if (liveOverride) {
+        root.packOverride = null
+        root.refresh()
+        return
+      }
       root.fail("Pack exceeded its entry limit")
       return
     }
@@ -192,12 +275,22 @@ Item {
     var refused = 0
     var disabled = 0
     var seen = ({})
-    for (var index = 0; index < pack.bindings.length; index++) {
-      var item = root.acceptedBinding(pack.bindings[index], categories)
+    var records = root.mergedBindings(pack)
+    for (var index = 0; index < records.length; index++) {
+      var item = root.acceptedBinding(records[index], categories)
       if (item === "disabled") { disabled += 1; continue }
       if (!item || !item.id || seen[item.id]) { refused += 1; continue }
+      if (accepted.length >= root.maxBindings) { refused += 1; continue }
       seen[item.id] = true
       accepted.push(item)
+    }
+    // A live table is optional calibration. If every record was unreadable,
+    // an empty cabinet would be a silent failure; reload the reviewed fallback
+    // instead. A malformed live top level takes the same path above.
+    if (liveOverride && !accepted.length) {
+      root.packOverride = null
+      root.refresh()
+      return
     }
     root.bindings = accepted
     root.rejected = refused

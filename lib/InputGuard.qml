@@ -66,6 +66,13 @@ Item {
     if (root.phase === "ready" && root.active && root.keyboardFocused && root.modifiers === 0) root.phase = "playing"
   }
 
+  // Back to ready without giving up the inhibitor. Leaving a run is not
+  // leaving the overlay: the protection stays up and the next run starts from
+  // the same place the first one did.
+  function pause() {
+    if (root.phase === "playing") root.phase = "ready"
+  }
+
   function requestClose() {
     if (root.phase === "closed") return
     readyDelay.stop()

@@ -11,16 +11,19 @@
 Keycade 是一个原生 Omarchy 快捷键训练器。它把快捷键编成简短的自适应回忆练习。
 正确输入只在本地识别，不会派发或执行原快捷键动作。
 
-它带三个**训练场**，在首页像街机选机台一样切换。每个训练场各有自己的牌组、
+它带六个**训练场**，在首页像街机选机台一样切换。每个训练场各有自己的牌组、
 自己的进度、自己的掌握度：
 
 | 训练场 | 快捷键从哪来 |
 | --- | --- |
 | **Hyprland** | 你这台机器上真正生效的快捷键，从运行中的合成器读取 |
-| **LazyVim** | LazyVim 官方发布的默认键位，随插件分发，并按你的 leader 与已启用扩展包校准 |
-| **tmux** | tmux 自带的默认键位表，随插件分发，并按你的 prefix 校准 |
+| **herdr** | 通过 Omarchy 的只读清单读取本机真正生效的键位 |
+| **tmux** | 优先读取已运行 server 的带说明 prefix 表，读不到就回退到内置默认表 |
+| **VIM** | 依据 Neovim runtime help 校验的操作符、移动、文本对象及组合语法 |
+| **NEOVIM** | 从干净 Neovim 实例采集的内置映射 |
+| **LazyVim** | 官方发布的键位，并按 leader、extras 和顶格字面量改键校准 |
 
-新装和升级后都停在 Hyprland；另外两个想练的时候再选。
+新装和升级后都停在 Hyprland；其他训练场想练的时候再选。
 
 ## 核心功能
 
@@ -102,7 +105,7 @@ omarchy restart shell
   带修饰键的 Esc 组合（例如 `Super + Esc`）会被当作普通快捷键处理，
   不会跟系统里同样用到 Esc 的绑定（比如 Super + Esc 打开系统菜单）冲突，
   练习到这个组合时也能正常答题。
-- 在首页选训练场——Hyprland、LazyVim、tmux——再按回车。对局中不能换训练场：
+- 在首页选训练场——Hyprland、herdr、tmux、VIM、NEOVIM 或 LazyVim——再按回车。对局中不能换训练场：
   一副牌属于它是从哪个训练场发的，进度也是。
 - 使用顶部菜单切换语言、声音、音量和配色。内置五套配色，选择会被记住。
 - 遇到键盘按不出、或者干脆不想练的快捷键，点顶栏的 `✕ 排除此键`：它会永久离开
@@ -129,16 +132,17 @@ omarchy plugin remove luneth90.keycade
 ### 应用级训练场会从本机读什么
 
 键位表是上游默认。本机**改动过**的那部分，从配置里形状固定的地方读出来：其他绑定
-所依附的那个键（`vim.g.mapleader`、`set -g prefix`）、启用了哪些 LazyVim 扩展包、
-装的是哪个上游版本。**不执行任何东西**——不跑 Lua、不起编辑器、不连 socket、不联网、
-不跟 `require` 链——`bin/app-config-json` 里写死了它会打开哪几个文件。读不出来的值会
-如实标出、绝不猜，也可以在顶栏手动指定。
+所依附的那个键、启用了哪些 LazyVim 扩展包、装的是哪个上游版本，以及
+`lua/config/keymaps.lua` 中顶格的字面量 `vim.keymap.set/del`。不跑 Lua、不起编辑器、
+不跟 `require` 链。tmux 是唯一的实时查询：只有在 `has-session` 确认 server 已经运行后
+才连接其本地 socket 并调用 `list-keys`；否则直接使用内置表。读不出来的内容会计数显示，
+绝不猜测。
 
 ### 应用级词条包
 
-LazyVim 与 tmux 的键位表是**在维护者机器上采集、以可 review 的 JSON 提交进仓库**
-的静态数据。用户机器上不发生任何采集：运行时不读文件、不起进程、不连 socket、
-不联网。
+LazyVim、tmux、VIM 与 NEOVIM 的回退词条包是**在维护者机器上采集、以可 review 的
+JSON 提交进仓库**的静态数据。用户机器上不会运行词条包生成流程，运行时也不联网；
+上一节所述的有界本机校准与这条构建流水线彼此独立。
 
 上游发新版时重新采集，然后看 JSON 的 git diff 对账：
 
@@ -151,6 +155,9 @@ printf '# tmux %s\n' "$(tmux -V | awk '{print $2}')" > /tmp/tmux-keys.txt
 tmux -L keycade-build -f /dev/null list-keys -N -T prefix >> /tmp/tmux-keys.txt
 tmux -L keycade-build kill-server
 python3 tools/build_packs.py --collect tmux --listing /tmp/tmux-keys.txt
+
+python3 tools/build_packs.py --collect vim --runtime /usr/share/nvim/runtime \
+  --runtime-version 'NVIM v0.12.5'
 ```
 
 `-f /dev/null` 不能省：不加它 tmux 会拉起 server 并 source 你自己的 `tmux.conf`，

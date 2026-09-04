@@ -1138,6 +1138,7 @@ TestCase {
     for (var index = 0; index < TextKeys.pairs.length; index++) {
       var notation = TextKeys.pairs[index][0]
       var steps = TextKeys.pairs[index][1]
+      compare(JSON.stringify(TextKey.parseNotation(notation)), JSON.stringify(steps), notation)
       for (var stepIndex = 0; stepIndex < steps.length; stepIndex++) {
         var normalized = TextKey.normalizedStep(steps[stepIndex])
         verify(normalized !== null, notation + " step " + stepIndex + " was refused")
@@ -1147,6 +1148,21 @@ TestCase {
       var result = typeAll(textAnswer(steps), steps)
       compare(result.verdict, "hit", notation)
     }
+  }
+
+  function test_runtimeNotationParserKeepsConfigurableKeysAsPlaceholders() {
+    var steps = TextKey.parseNotation("<leader>f<localleader>r")
+    compare(steps.length, 4)
+    compare(steps[0].option, "leader")
+    compare(steps[1].text, "f")
+    compare(steps[2].option, "localleader")
+    compare(steps[3].text, "r")
+    compare(TextKey.parseNotation("<Plug>(mine)"), null)
+    compare(TextKey.parseNotation("unterminated<"), null)
+    var unicode = TextKey.parseNotation("你😀")
+    compare(unicode.length, 2)
+    compare(unicode[0].text, "你")
+    compare(unicode[1].text, "😀")
   }
 
   // Case is decisive with no modifier held, and is not with one: Vim reads
@@ -1305,6 +1321,18 @@ TestCase {
     state = AnswerMatcher.begin()
     compare(AnswerMatcher.advance(state, answer, textEvent({ mods: 0, text: "d" }), {}), "progress")
     compare(AnswerMatcher.advance(state, answer, textEvent({ mods: 0, text: "w" }), {}), "miss")
+  }
+
+  function test_alternatesSurviveQmlArrayLikeConversion() {
+    var alternate = ({ length: 1, 0: { mods: 0, text: "D" } })
+    var answer = {
+      judgeMode: "text", context: "normal",
+      steps: [{ mods: 0, text: "d" }, { mods: 0, text: "$" }],
+      alternates: ({ length: 1, 0: alternate })
+    }
+    compare(AnswerMatcher.alternateLabels(answer).join(","), "D")
+    compare(AnswerMatcher.advance(AnswerMatcher.begin(), answer,
+                                  textEvent({ mods: 0, text: "D" }), {}), "hit")
   }
 
   function test_answersAreBoundedInSteps() {
@@ -1492,6 +1520,97 @@ TestCase {
     testPack.enabledExtras = []
     testPack.refresh()
     compare(testPack.bindings.length, core)
+  }
+
+  function test_literalMachineMappingsCalibrateTheLazyVimPack() {
+    testPack.profileId = "lazyvim"
+    testPack.options = ({ leader: " ", localleader: "\\" })
+    testPack.enabledExtras = []
+    testPack.overrides = [
+      { op: "set", contexts: ["normal"], lhs: "<leader>ff", desc: "My file picker" },
+      { op: "del", contexts: ["normal"], lhs: "<C-h>", desc: "" },
+      { op: "set", contexts: ["normal"], lhs: "gZ", desc: "My command" }
+    ]
+    testPack.refresh()
+    var changed = null
+    var added = null
+    var removed = null
+    for (var index = 0; index < testPack.bindings.length; index++) {
+      var item = testPack.bindings[index]
+      if (item.localId === "normal/<leader>ff") changed = item
+      if (item.localId === "normal/gZ") added = item
+      if (item.localId === "normal/<C-h>") removed = item
+    }
+    verify(changed !== null)
+    compare(changed.actionName, "My file picker")
+    compare(changed.customKind, "changed")
+    verify(added !== null)
+    compare(added.customKind, "added")
+    compare(AnswerMatcher.stepCount(added.answer), 2)
+    compare(removed, null)
+    compare(testPack.customAdded, 1)
+    compare(testPack.customChanged, 1)
+    compare(testPack.customDeleted, 1)
+    compare(testPack.customSkipped, 0)
+
+    // Source order defines the final result. Repeated operations count the
+    // effective diff, not each intermediate write.
+    testPack.overrides = [
+      { op: "del", contexts: ["normal"], lhs: "<leader>ff", desc: "" },
+      { op: "set", contexts: ["normal"], lhs: "<leader>ff", desc: "Final picker" },
+      { op: "set", contexts: ["normal"], lhs: "gZ", desc: "Temporary" },
+      { op: "del", contexts: ["normal"], lhs: "gZ", desc: "" },
+      { op: "set", contexts: ["normal"], lhs: "<Plug>(mine)", desc: "Unreadable" }
+    ]
+    testPack.refresh()
+    compare(testPack.customAdded, 0)
+    compare(testPack.customChanged, 1)
+    compare(testPack.customDeleted, 0)
+    compare(testPack.customSkipped, 1)
+    testPack.overrides = []
+    testPack.refresh()
+  }
+
+  function test_theVimGrammarPackLoadsWithItsEquivalentAnswers() {
+    testPack.profileId = "vim"
+    testPack.options = ({})
+    testPack.enabledExtras = []
+    testPack.overrides = []
+    testPack.packOverride = null
+    testPack.refresh()
+    compare(testPack.error, "")
+    verify(testPack.bindings.length > 100)
+    var shorthand = null
+    for (var index = 0; index < testPack.bindings.length; index++) {
+      if (testPack.bindings[index].localId === "normal/D") shorthand = testPack.bindings[index]
+    }
+    verify(shorthand !== null)
+    compare(AnswerMatcher.alternateLabels(shorthand.answer).join(""), "d › $")
+    testPack.profileId = "lazyvim"
+    testPack.options = ({ leader: " ", localleader: "\\" })
+    testPack.refresh()
+  }
+
+  function test_anUnreadableLiveTmuxTableFallsBackToTheShippedPack() {
+    testPack.profileId = "tmux"
+    testPack.options = ({ prefix: "C-b", prefix2: "" })
+    testPack.enabledExtras = []
+    testPack.overrides = []
+    testPack.packOverride = {
+      schemaVersion: 1, profile: "tmux", judgeMode: "text",
+      contexts: ["prefix"], categories: ["misc"], extras: [],
+      provenance: {}, bindings: [
+        { localId: "prefix/bad", context: "prefix", category: "misc",
+          desc: "Unreadable", steps: [{ mods: 0, named: "ESC" }], extras: [] }
+      ]
+    }
+    testPack.refresh()
+    compare(testPack.error, "")
+    compare(testPack.packOverride, null)
+    compare(testPack.bindings.length, Packs.pack("tmux").bindings.length)
+    testPack.profileId = "lazyvim"
+    testPack.options = ({ leader: " ", localleader: "\\" })
+    testPack.refresh()
   }
 
   // The table declares every bundle it carries keys for, so the runtime has

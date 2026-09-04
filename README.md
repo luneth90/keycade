@@ -12,17 +12,20 @@ Keycade is a native Omarchy shortcut trainer. It turns shortcuts into short,
 adaptive recall runs. Correct input is recognized locally and never dispatches
 the original shortcut action.
 
-It trains three **training grounds**, picked on the home screen like a cabinet
+It trains six **training grounds**, picked on the home screen like a cabinet
 in an arcade. Each keeps its own deck, its own progress and its own mastery:
 
 | Ground | Where its shortcuts come from |
 | --- | --- |
 | **Hyprland** | The shortcuts active on your machine, read from the running compositor |
-| **LazyVim** | LazyVim's own published default keymaps, shipped with the plugin, matched to your leader and your enabled extras |
-| **tmux** | tmux's own default key table, shipped with the plugin, matched to your prefix |
+| **herdr** | The bindings active on your machine, through Omarchy's read-only listing |
+| **tmux** | The running server's documented prefix table; the shipped default table is the fallback |
+| **VIM** | Operators, motions, text objects and compositions cited against Neovim's runtime help |
+| **NEOVIM** | Neovim's built-in mappings collected from a clean instance |
+| **LazyVim** | LazyVim's published keymaps, calibrated by your leader, extras and literal top-level overrides |
 
 Hyprland is what you get on a fresh install and after an upgrade; the other
-two are there when you want them.
+grounds are there when you want them.
 
 ## Core features
 
@@ -114,7 +117,8 @@ The restart is required — updating alone does not reliably reload Keycade.
 
 - Launch with `Super + Shift + K`, or run
   `omarchy-shell shell summon luneth90.keycade '{}'`.
-- Pick a training ground on the home screen - Hyprland, LazyVim or tmux -
+- Pick a training ground on the home screen - Hyprland, herdr, tmux, VIM,
+  NEOVIM or LazyVim -
   then press Enter. A ground cannot be changed mid-run: a deck belongs to the
   ground it was dealt from, and so does its progress.
 - Press Enter to start or continue a run.
@@ -154,20 +158,20 @@ edits Hyprland configuration during removal.
 ### What the application grounds read from your machine
 
 The tables are the upstream defaults. What a machine changed about them is read
-from the small, fixed-shape part of its own configuration: which key every
-other binding hangs off (`vim.g.mapleader`, `set -g prefix`), which LazyVim
-extras are enabled, and which upstream version is installed. Nothing is
-executed - no Lua runs, no editor starts, no socket opens, nothing is fetched,
-no `require` chain is followed - and `bin/app-config-json` names every file it
-opens. A value it cannot read is skipped and said so rather than guessed at,
-and the top bar lets you set it by hand.
+from the small, fixed-shape part of its own configuration: configurable prefix
+keys, LazyVim extras and version, and top-level literal `vim.keymap.set/del`
+calls in `lua/config/keymaps.lua`. No Lua runs, no editor starts and no
+`require` chain is followed. tmux is the one live query: its local socket is
+opened only after `has-session` proves a server is already running; otherwise
+the shipped pack is used without invoking `list-keys`. Anything unreadable is
+skipped and shown rather than guessed.
 
 ### Application shortcut packs
 
-The LazyVim and tmux tables are static data collected on a maintainer's
-machine and committed as reviewable JSON. Nothing is collected on a user's
-machine: at run time Keycade reads no file, starts no process, opens no socket
-and fetches nothing for them.
+The LazyVim, tmux, VIM and NEOVIM fallback tables are static data collected on
+a maintainer's machine and committed as reviewable JSON. Pack generation never
+runs on a user's machine and never fetches anything at runtime; the bounded
+local calibration described above is separate from that build pipeline.
 
 When an upstream moves, re-collect and read the JSON diff:
 
@@ -180,6 +184,9 @@ printf '# tmux %s\n' "$(tmux -V | awk '{print $2}')" > /tmp/tmux-keys.txt
 tmux -L keycade-build -f /dev/null list-keys -N -T prefix >> /tmp/tmux-keys.txt
 tmux -L keycade-build kill-server
 python3 tools/build_packs.py --collect tmux --listing /tmp/tmux-keys.txt
+
+python3 tools/build_packs.py --collect vim --runtime /usr/share/nvim/runtime \
+  --runtime-version 'NVIM v0.12.5'
 ```
 
 The `-f /dev/null` is not optional: without it tmux starts a server, sources

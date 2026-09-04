@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
 """Compile assets/packs/*.json into lib/Packs.js, and collect the sources.
 
-A pack is the key table of an application-level training ground - LazyVim
-today. It is static data that ships with the plugin: the runtime never reads a
-file, never runs a subprocess, never touches the user's configuration and never
-reaches the network. That is the whole reason a pack exists rather than a
-reader for the application's own config.
+A pack is the reviewed table of an application-level training ground. It is
+static data that ships with the plugin: pack generation never runs on a user's
+machine. Small runtime readers may calibrate that table against fixed-shape
+local configuration, but they are separate from this development-time tool.
 
 This tool is a development-time tool. It is not listed in manifest.json and it
 never runs on a user's machine.
@@ -39,7 +38,8 @@ Where the LazyVim table comes from, and why:
   reviewer sees it rather than having to go looking.
 
   Sections carrying a "Part of [...]" line are extras: opt-in plugins a user
-  must enable. They are not defaults and are never collected.
+  must enable. They are collected with their provider names, then filtered by
+  the runtime loader against this machine's enabled extras.
 """
 
 from __future__ import annotations
@@ -823,6 +823,267 @@ def collect_neovim(listing: Path) -> dict:
     }
 
 
+# --- vim grammar collection -------------------------------------------------
+
+# vim's grammar, which is the one table here that is written rather than
+# scraped. The commands are not mappings - they are built into the editor, so
+# they appear in no keymap - and the reference describes them in reference
+# prose: `:help d` says "delete Nmove text [into register x]", which is true
+# and is not a card prompt.
+#
+# So the prompts are authored, and every entry cites the help tag it was
+# authored from. --collect vim checks each tag against the Neovim runtime
+# documentation on this machine and refuses to build if one is missing, which
+# is what keeps an authored prompt honest: a card nobody can look up does not
+# ship.
+#
+# What is not here, and why:
+#   counts     `2dd`, `d2w` - the count is a variable, not a key to press
+#   registers  `"ay` - same
+#   Ex         `:s`, `:g` - another language, not a keymap
+# The ruler is a fixed string somebody can press once and get right.
+
+VIM_DOC_FILES = ["index.txt", "motion.txt", "change.txt", "vi_diff.txt", "insert.txt",
+                 "scroll.txt", "pattern.txt", "undo.txt", "various.txt", "windows.txt",
+                 "tagsrch.txt", "repeat.txt", "fold.txt", "diff.txt", "visual.txt",
+                 "cmdline.txt", "editing.txt"]
+
+VIM_CATEGORIES = ["operator", "motion", "textobject", "edit", "search", "mark", "misc"]
+
+# (notation, help tag, description, category, alternates)
+VIM_TABLE = [
+    # -- operators, on their own --
+    ("d", "d", "Delete over a motion, into a register", "operator", []),
+    ("c", "c", "Delete over a motion and start insert", "operator", []),
+    ("y", "y", "Yank over a motion into a register", "operator", []),
+    (">", ">", "Indent over a motion", "operator", []),
+    ("<lt>", "<", "Unindent over a motion", "operator", []),
+    ("=", "=", "Reindent over a motion", "operator", []),
+    ("gu", "gu", "Lower-case over a motion", "operator", []),
+    ("gU", "gU", "Upper-case over a motion", "operator", []),
+    ("g~", "g~", "Swap case over a motion", "operator", []),
+    ("gq", "gq", "Reflow over a motion", "operator", []),
+    ("!", "!", "Filter a motion through an external command", "operator", []),
+    ("zf", "zf", "Fold over a motion", "operator", []),
+    # -- word and line motions --
+    ("w", "w", "Forward to the start of the next word", "motion", []),
+    ("W", "W", "Forward to the next WORD, ignoring punctuation", "motion", []),
+    ("e", "e", "Forward to the end of this word", "motion", []),
+    ("ge", "ge", "Back to the end of the previous word", "motion", []),
+    ("b", "b", "Back to the start of the previous word", "motion", []),
+    ("B", "B", "Back to the previous WORD, ignoring punctuation", "motion", []),
+    ("0", "0", "To the first column of the line", "motion", []),
+    ("^", "^", "To the first non-blank of the line", "motion", []),
+    ("$", "$", "To the end of the line", "motion", []),
+    ("g_", "g_", "To the last non-blank of the line", "motion", []),
+    ("{", "{", "Back one paragraph", "motion", []),
+    ("}", "}", "Forward one paragraph", "motion", []),
+    ("(", "(", "Back one sentence", "motion", []),
+    (")", ")", "Forward one sentence", "motion", []),
+    ("H", "H", "To the top line of the window", "motion", []),
+    ("M", "M", "To the middle line of the window", "motion", []),
+    ("L", "L", "To the bottom line of the window", "motion", []),
+    ("%", "%", "To the matching bracket", "motion", []),
+    ("gg", "gg", "To the first line of the file", "motion", []),
+    ("G", "G", "To the last line of the file", "motion", []),
+    ("gm", "gm", "To the middle of the screen line", "motion", []),
+    ("gj", "gj", "Down one screen line, not one file line", "motion", []),
+    ("gk", "gk", "Up one screen line, not one file line", "motion", []),
+    # -- jumps and marks --
+    ("``", "``", "Back to the position before the last jump", "mark", []),
+    ("`.", "`.", "To the position of the last change", "mark", []),
+    ("`^", "`^", "To where insert mode was last left", "mark", []),
+    ("g;", "g;", "Back through the change list", "mark", []),
+    ("g,", "g,", "Forward through the change list", "mark", []),
+    ("gv", "gv", "Reselect the last visual selection", "mark", []),
+    ("gi", "gi", "Insert where insert mode was last left", "mark", []),
+    # -- text objects --
+    ("iw", "iw", "The word under the cursor", "textobject", []),
+    ("aw", "aw", "The word under the cursor with its trailing space", "textobject", []),
+    ("iW", "iW", "The WORD under the cursor, punctuation included", "textobject", []),
+    ("is", "is", "The sentence under the cursor", "textobject", []),
+    ("as", "as", "The sentence with its trailing space", "textobject", []),
+    ("ip", "ip", "The paragraph under the cursor", "textobject", []),
+    ("ap", "ap", "The paragraph with its blank lines", "textobject", []),
+    ("i(", "ib", "Inside the round brackets", "textobject", [["i", "b"]]),
+    ("a(", "ab", "The round brackets and what is inside", "textobject", [["a", "b"]]),
+    ("i[", "i[", "Inside the square brackets", "textobject", []),
+    ("a[", "a[", "The square brackets and what is inside", "textobject", []),
+    ("i{", "iB", "Inside the curly braces", "textobject", [["i", "B"]]),
+    ("a{", "aB", "The curly braces and what is inside", "textobject", [["a", "B"]]),
+    ("i<lt>", "i<", "Inside the angle brackets", "textobject", []),
+    ("a<lt>", "a<", "The angle brackets and what is inside", "textobject", []),
+    ("i\"", "iquote", "Inside the double quotes", "textobject", []),
+    ("a\"", "aquote", "The double quotes and what is inside", "textobject", []),
+    ("i\'", "iquote", "Inside the single quotes", "textobject", []),
+    ("it", "it", "Inside the surrounding tag", "textobject", []),
+    ("at", "at", "The surrounding tag and its contents", "textobject", []),
+    # -- the grammar, composed --
+    ("diw", "iw", "Delete the word under the cursor", "edit", []),
+    ("daw", "aw", "Delete the word with its trailing space", "edit", []),
+    ("ciw", "iw", "Change the word under the cursor", "edit", []),
+    ("caw", "aw", "Change the word with its trailing space", "edit", []),
+    ("yiw", "iw", "Yank the word under the cursor", "edit", []),
+    ("di(", "ib", "Delete inside the round brackets", "edit", [["d", "i", "b"]]),
+    ("ci(", "ib", "Change inside the round brackets", "edit", [["c", "i", "b"]]),
+    ("yi(", "ib", "Yank inside the round brackets", "edit", [["y", "i", "b"]]),
+    ("di{", "iB", "Delete inside the curly braces", "edit", [["d", "i", "B"]]),
+    ("ci{", "iB", "Change inside the curly braces", "edit", [["c", "i", "B"]]),
+    ("di\"", "iquote", "Delete inside the double quotes", "edit", []),
+    ("ci\"", "iquote", "Change inside the double quotes", "edit", []),
+    ("cit", "it", "Change inside the surrounding tag", "edit", []),
+    ("dap", "ap", "Delete the paragraph", "edit", []),
+    ("gUiw", "gU", "Upper-case the word under the cursor", "edit", []),
+    ("guiw", "gu", "Lower-case the word under the cursor", "edit", []),
+    (">ip", ">", "Indent the paragraph", "edit", []),
+    ("=ap", "=", "Reindent the paragraph", "edit", []),
+    # -- line-wise shorthands, with the long way accepted too --
+    ("D", "D", "Delete to the end of the line", "edit", [["d", "$"]]),
+    ("C", "C", "Change to the end of the line", "edit", [["c", "$"]]),
+    ("Y", "Y", "Yank the line", "edit", [["y", "y"]]),
+    ("S", "S", "Change the whole line", "edit", [["c", "c"]]),
+    ("x", "x", "Delete the character under the cursor", "edit", [["d", "l"]]),
+    ("X", "X", "Delete the character before the cursor", "edit", [["d", "h"]]),
+    ("dd", "dd", "Delete the line", "edit", []),
+    ("cc", "cc", "Change the whole line", "edit", []),
+    ("yy", "yy", "Yank the line", "edit", []),
+    ("J", "J", "Join this line with the next", "edit", []),
+    ("gJ", "gJ", "Join without inserting a space", "edit", []),
+    # -- search and repeat --
+    ("*", "star", "Search forward for the word under the cursor", "search", []),
+    ("#", "#", "Search backward for the word under the cursor", "search", []),
+    ("g*", "gstar", "Search forward for the word, unanchored", "search", []),
+    (";", ";", "Repeat the last f, t, F or T", "search", []),
+    (",", ",", "Repeat the last f, t, F or T backward", "search", []),
+    ("&", "&", "Repeat the last substitute on this line", "search", []),
+    # -- scrolling and the rest --
+    ("zz", "zz", "Put the cursor line in the middle of the window", "misc", []),
+    ("zt", "zt", "Put the cursor line at the top of the window", "misc", []),
+    ("zb", "zb", "Put the cursor line at the bottom of the window", "misc", []),
+    ("<C-o>", "CTRL-O", "Back through the jump list", "misc", []),
+    ("<C-i>", "CTRL-I", "Forward through the jump list", "misc", []),
+    ("<C-a>", "CTRL-A", "Increment the number under the cursor", "misc", []),
+    ("<C-x>", "CTRL-X", "Decrement the number under the cursor", "misc", []),
+    ("<C-v>", "CTRL-V", "Start a blockwise visual selection", "misc", []),
+    ("g<C-a>", "v_g_CTRL-A", "Increment each number in the selection", "misc", []),
+    ("q:", "q:", "Open the command-line window", "misc", []),
+    ("ZZ", "ZZ", "Write the file and quit", "misc", []),
+    ("ZQ", "ZQ", "Quit without writing", "misc", []),
+]
+
+
+def vim_help_tags(runtime: Path) -> dict[str, str]:
+    """Every tag the Neovim documentation on this machine defines."""
+    tags: dict[str, str] = {}
+    index = runtime / "doc" / "tags"
+    if index.is_file():
+        for line in index.read_text(encoding="utf-8", errors="replace").splitlines():
+            parts = line.split("\t")
+            if len(parts) >= 2:
+                tags[parts[0]] = parts[1]
+    return tags
+
+
+def vim_docs_checksum(runtime: Path) -> str:
+    """Pin the documents the authored table cites, not merely their index."""
+    digest = hashlib.sha256()
+    for name in VIM_DOC_FILES:
+        path = runtime / "doc" / name
+        if not path.is_file():
+            raise RuntimeError(f"missing vim runtime document: {path}")
+        digest.update(name.encode("utf-8") + b"\0")
+        digest.update(path.read_bytes())
+        digest.update(b"\0")
+    return digest.hexdigest()
+
+
+def collect_vim(runtime: Path, runtime_version: str) -> dict:
+    tags = vim_help_tags(runtime)
+    if not tags:
+        raise RuntimeError(f"no help tags under {runtime}")
+    version = str(runtime_version or "").strip()
+    if not version or len(version) > 64:
+        raise RuntimeError("--runtime-version must name the Neovim/Vim runtime being collected")
+
+    bindings: list[dict] = []
+    dropped: dict[str, int] = {}
+    missing: list[str] = []
+    seen: set[str] = set()
+
+    def drop(reason: str) -> None:
+        dropped[reason] = dropped.get(reason, 0) + 1
+
+    for notation, tag, desc, category, alternates in VIM_TABLE:
+        # An authored prompt has to be checkable. A tag this machine's
+        # documentation does not define means the card cites nothing.
+        if tag not in tags:
+            missing.append(f"{notation} cites :help {tag}, which does not exist")
+            continue
+        if tags[tag] not in VIM_DOC_FILES:
+            missing.append(f"{notation} cites :help {tag} in unreviewed {tags[tag]}")
+            continue
+        try:
+            steps = parse_notation(notation)
+            other = [parse_notation("".join(sequence)) for sequence in alternates]
+        except Rejected:
+            drop("unreadable-notation")
+            continue
+        if len(steps) > 8:
+            drop("too-many-steps")
+            continue
+        # A text object is only meaningful after an operator (or in Visual
+        # mode); labelling `iw` NORMAL would teach a context in which typing it
+        # actually enters Insert mode. Composed edits begin in Normal mode.
+        context = "operator" if category == "textobject" else "normal"
+        local_id = context + "/" + notation
+        if local_id in seen:
+            drop("duplicate")
+            continue
+        seen.add(local_id)
+        bindings.append({
+            "localId": local_id,
+            "context": context,
+            "notation": notation,
+            "steps": steps,
+            "alternates": other,
+            "category": category,
+            "descKey": description_key("vim", desc),
+            "desc": desc,
+            "helpTag": tag,
+            "extras": [],
+        })
+
+    if missing:
+        raise RuntimeError("help tags not found: " + "; ".join(missing))
+
+    return {
+        "schemaVersion": 1,
+        "profile": "vim",
+        "judgeMode": "text",
+        "contexts": ["normal", "operator"],
+        "categories": [name for name in VIM_CATEGORIES
+                       if any(entry["category"] == name for entry in bindings)],
+        "extras": [],
+        "provenance": {
+            "upstream": "Vim/Neovim",
+            "authority": "prompts authored for this trainer; every entry cites a :help tag,"
+                         " and the build refuses any tag the runtime documentation"
+                         " does not define",
+            "source": {
+                "url": "https://github.com/neovim/neovim",
+                "commit": "",
+                "tag": version,
+                "date": date.today().isoformat(),
+                "checksum": vim_docs_checksum(runtime),
+            },
+            "generatedAt": date.today().isoformat(),
+            "generator": f"tools/build_packs.py@{GENERATOR_VERSION}",
+        },
+        "dropped": dict(sorted(dropped.items())),
+        "bindings": bindings,
+    }
+
+
 # --- compilation ------------------------------------------------------------
 
 HEADER = """.pragma library
@@ -860,10 +1121,14 @@ def render() -> str:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--collect", choices=["lazyvim", "tmux", "neovim"],
+    parser.add_argument("--collect", choices=["lazyvim", "tmux", "neovim", "vim"],
                         help="regenerate a pack from a local upstream source")
     parser.add_argument("--site", type=Path, help="path to a LazyVim.github.io checkout")
     parser.add_argument("--lazyvim", type=Path, help="path to a LazyVim checkout at a tag")
+    parser.add_argument("--runtime", type=Path, default=Path("/usr/share/nvim/runtime"),
+                        help="vim: the Neovim runtime whose help tags are checked")
+    parser.add_argument("--runtime-version", default="",
+                        help="vim: exact version owning --runtime, for pack provenance")
     parser.add_argument("--listing", type=Path,
                         help="tmux: a saved `tmux -f /dev/null list-keys -N -T prefix`")
     parser.add_argument("--extras", action="store_true",
@@ -872,7 +1137,9 @@ def main() -> None:
     parser.add_argument("--localleader", default="\\")
     args = parser.parse_args()
 
-    if args.collect == "neovim":
+    if args.collect == "vim":
+        pack = collect_vim(args.runtime, args.runtime_version)
+    elif args.collect == "neovim":
         if not args.listing:
             parser.error("--collect neovim needs --listing")
         pack = collect_neovim(args.listing)

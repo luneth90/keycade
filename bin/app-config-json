@@ -5,14 +5,15 @@ The tables Keycade deals for LazyVim and tmux are the upstream defaults,
 shipped with the plugin. This helper reads the small, fixed-shape part of a
 machine's configuration that says how those defaults were *changed*: which key
 every other binding hangs off, and - for LazyVim - which opt-in bundles are
-turned on and which upstream version is installed.
+turned on, which upstream version is installed, and which top-level literal
+keymap calls add, replace or delete a binding.
 
 What it will not do, in the words of the rule it lives under:
 
   Do not execute, load or interpret any of the user's configuration. Read only
   fixed shapes at fixed paths (declarative JSON, and top-level literal
-  assignments), bound every file, skip and count anything unreadable, and fall
-  back to the shipped defaults when the whole read fails.
+  assignments and calls), bound every file, skip and count anything unreadable,
+  and fall back to the shipped defaults when the whole read fails.
 
 So: no Lua is run, no editor is started, no socket is opened, nothing is
 fetched, no `require` chain is followed, no directory is walked and no symlink
@@ -25,9 +26,11 @@ costs the reader a menu.
 from __future__ import annotations
 
 import argparse
+import ast
 import json
 import os
 import re
+import stat
 import sys
 from pathlib import Path
 from typing import Any
@@ -39,6 +42,12 @@ MAX_EXTRAS = 128
 MAX_EXTRA_CHARS = 128
 MAX_OPTION_CHARS = 32
 MAX_COMMIT_CHARS = 64
+MAX_BINDINGS = 128
+MAX_LHS_CHARS = 128
+MAX_DESC_CHARS = 512
+MAX_LINE_CHARS = 4096
+TRAINED_MODES = {"n": "normal", "x": "visual", "v": "visual",
+                 "o": "operator", "i": "insert"}
 
 # Neovim resolves mapleader by taking its text and substituting it into the
 # left-hand side, so "<Space>" is as valid a spelling as " ". `:help mapleader`
@@ -83,6 +92,7 @@ FILES: dict[str, dict[str, list[str]]] = {
         ],
         "extras": [".config/nvim/lazyvim.json"],
         "lock": [".config/nvim/lazy-lock.json"],
+        "keymaps": [".config/nvim/lua/config/keymaps.lua"],
     },
     "tmux": {
         "prefix": [".config/tmux/tmux.conf", ".tmux.conf"],
@@ -95,16 +105,32 @@ class Skipped(Exception):
 
 
 def read_text(home: Path, relative: str) -> str | None:
-    """One file, by exact name, bounded, without following a symlink."""
-    path = home / relative
-    try:
-        # O_NOFOLLOW refuses a symlinked final component: the list of files is
-        # the contract, and a link would let it point somewhere else.
-        descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
-    except OSError:
+    """One regular file by descriptor-relative path, bounded, no symlinks."""
+    parts = Path(relative).parts
+    if not parts or any(part in ("", ".", "..") for part in parts):
         return None
+    directory = -1
+    try:
+        # Resolve every component beneath the already-open home. O_NOFOLLOW on
+        # only the final file is insufficient: ~/.config/nvim itself may be a
+        # link and would silently widen the fixed-path contract.
+        directory = os.open(home, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+        for part in parts[:-1]:
+            child = os.open(part, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW,
+                            dir_fd=directory)
+            os.close(directory)
+            directory = child
+        descriptor = os.open(parts[-1], os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK,
+                             dir_fd=directory)
+    except OSError:
+        if directory >= 0:
+            os.close(directory)
+        return None
+    os.close(directory)
     try:
         with os.fdopen(descriptor, "rb") as handle:
+            if not stat.S_ISREG(os.fstat(handle.fileno()).st_mode):
+                return None
             raw = handle.read(MAX_FILE_BYTES + 1)
     except OSError:
         return None
@@ -121,6 +147,147 @@ def unescape(raw: str) -> str:
         return raw.encode("utf-8").decode("unicode_escape")
     except UnicodeDecodeError:
         raise Skipped("unreadable escape") from None
+
+
+def lua_string(value: str) -> str | None:
+    """One quoted Lua string, without evaluating any Lua expression."""
+    text = value.strip()
+    if len(text) < 2 or text[0] not in "\"'" or text[-1] != text[0]:
+        return None
+    try:
+        # The accepted subset has Python-compatible quote and backslash
+        # escapes. Anything outside it is skipped rather than guessed.
+        result = ast.literal_eval(text)
+    except (SyntaxError, ValueError):
+        return None
+    return result if isinstance(result, str) else None
+
+
+def split_lua_args(body: str) -> list[str] | None:
+    """Split a single-line call while respecting strings and delimiters."""
+    args: list[str] = []
+    start = 0
+    stack: list[str] = []
+    quote = ""
+    escaped = False
+    pairs = {')': '(', ']': '[', '}': '{'}
+    for index, char in enumerate(body):
+        if quote:
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == quote:
+                quote = ""
+            continue
+        if char in "\"'":
+            quote = char
+        elif char in "([{":
+            stack.append(char)
+        elif char in ")]}":
+            if not stack or stack.pop() != pairs[char]:
+                return None
+        elif char == "," and not stack:
+            args.append(body[start:index].strip())
+            start = index + 1
+    if quote or stack:
+        return None
+    args.append(body[start:].strip())
+    return args
+
+
+def literal_modes(value: str) -> list[str] | None:
+    text = value.strip()
+    single = lua_string(text)
+    names: list[str]
+    if single is not None:
+        names = [single]
+    elif text.startswith("{") and text.endswith("}"):
+        parts = split_lua_args(text[1:-1])
+        if parts is None:
+            return None
+        names = []
+        for part in parts:
+            name = lua_string(part)
+            if name is None:
+                return None
+            names.append(name)
+    else:
+        return None
+    contexts: list[str] = []
+    for name in names:
+        context = TRAINED_MODES.get(name)
+        if context and context not in contexts:
+            contexts.append(context)
+    return contexts or None
+
+
+def literal_desc(options: str) -> str | None:
+    match = re.search(r'(?:^|[,\s{])desc\s*=\s*("(?:[^"\\]|\\.)*"|\'(?:[^\'\\]|\\.)*\')',
+                      options)
+    if not match:
+        return None
+    desc = lua_string(match.group(1))
+    if not desc or len(desc) > MAX_DESC_CHARS or re.search(r"[\x00-\x1f\x7f]", desc):
+        return None
+    return desc
+
+
+KEYMAP_CALL = re.compile(r'^vim\.keymap\.(set|del)\s*\((.*)\)\s*(?:--.*)?$')
+KEYMAP_MENTION = re.compile(r'\bvim\.keymap\.(set|del)\b')
+
+
+def read_keymaps(home: Path, files: list[str]) -> tuple[list[dict[str, Any]], dict[str, int]]:
+    """Top-level, single-line literal set/del calls, in file order."""
+    bindings: list[dict[str, Any]] = []
+    skipped: dict[str, int] = {}
+
+    def drop(reason: str) -> None:
+        skipped[reason] = skipped.get(reason, 0) + 1
+
+    for relative in files:
+        text = read_text(home, relative)
+        if text is None:
+            continue
+        for line in text.splitlines():
+            stripped = line.lstrip()
+            if is_comment(line) or not KEYMAP_MENTION.match(stripped):
+                continue
+            if len(line) > MAX_LINE_CHARS:
+                drop("line-too-long")
+                continue
+            if line[:1].isspace():
+                drop("indented")
+                continue
+            match = KEYMAP_CALL.fullmatch(line)
+            if not match:
+                drop("unsupported-shape")
+                continue
+            op = match.group(1)
+            args = split_lua_args(match.group(2))
+            if args is None or len(args) < (4 if op == "set" else 2):
+                drop("unsupported-shape")
+                continue
+            modes = literal_modes(args[0])
+            lhs = lua_string(args[1])
+            if not modes:
+                drop("untrained-mode")
+                continue
+            if not lhs or len(lhs) > MAX_LHS_CHARS or re.search(r"[\x00-\x1f\x7f]", lhs):
+                drop("non-literal-lhs")
+                continue
+            record: dict[str, Any] = {"op": op, "contexts": modes, "lhs": lhs}
+            if op == "set":
+                desc = literal_desc(args[3])
+                if not desc:
+                    drop("missing-description")
+                    continue
+                record["desc"] = desc
+            if len(bindings) >= MAX_BINDINGS:
+                drop("too-many-bindings")
+                continue
+            bindings.append(record)
+    return bindings, skipped
 
 
 def option_value(value: str) -> str:
@@ -247,6 +414,8 @@ def snapshot(profile: str, home: Path) -> dict[str, Any]:
     skipped: dict[str, str] = {}
     extras: list[str] = []
     upstream: dict[str, str] = {}
+    bindings: list[dict[str, Any]] = []
+    binding_skipped: dict[str, int] = {}
 
     def attempt(reader, *args) -> tuple[Any, dict[str, str]]:
         try:
@@ -264,6 +433,9 @@ def snapshot(profile: str, home: Path) -> dict[str, Any]:
         found, reasons = attempt(read_lock, home, files["lock"])
         upstream = found or {}
         skipped.update(reasons)
+        found, reasons = attempt(read_keymaps, home, files["keymaps"])
+        bindings = found or []
+        binding_skipped = reasons
     else:
         found, reasons = attempt(read_tmux_prefix, home, files["prefix"])
         options.update(found or {})
@@ -275,6 +447,8 @@ def snapshot(profile: str, home: Path) -> dict[str, Any]:
         "options": options,
         "extras": extras,
         "upstream": upstream,
+        "bindings": bindings,
+        "bindingSkipped": binding_skipped,
         # Every value this could not read, and why. A skipped value is visible
         # in the interface; a guessed one would not be.
         "skipped": skipped,

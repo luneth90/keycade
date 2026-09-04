@@ -27,6 +27,7 @@ Item {
   readonly property real relayDeadline: 3.0
   readonly property int maxRecordChars: 256 * 1024
   readonly property int maxExtras: 128
+  readonly property int maxBindings: 128
   readonly property int maxOptionChars: 32
 
   property string profileId: ""
@@ -36,6 +37,10 @@ Item {
   property var options: ({})
   property var extras: []
   property string upstreamCommit: ""
+  // Literal top-level vim.keymap.set/del calls, still in source order. The
+  // pack loader applies them over the shipped LazyVim table.
+  property var bindings: []
+  property int bindingSkipped: 0
   // Why a value is missing, by name: "never assigned" means the upstream
   // default applies and nothing needs attention, anything else means the
   // reader should look.
@@ -52,6 +57,8 @@ Item {
     root.options = ({})
     root.extras = []
     root.upstreamCommit = ""
+    root.bindings = []
+    root.bindingSkipped = 0
     root.skipped = ({})
     root.settled = false
   }
@@ -116,6 +123,52 @@ Item {
 
     root.options = options
     root.extras = extras
+    var bindings = []
+    var rejectedBindings = 0
+    if (root.profileId === "lazyvim" && Array.isArray(record.bindings)) {
+      var bindingLimit = Math.min(record.bindings.length, root.maxBindings)
+      for (var binding = 0; binding < bindingLimit; binding++) {
+        var item = record.bindings[binding]
+        if (!item || typeof item !== "object" || Array.isArray(item)) {
+          rejectedBindings += 1
+          continue
+        }
+        var op = String(item.op || "")
+        var lhs = String(item.lhs || "")
+        var desc = String(item.desc || "")
+        if ((op !== "set" && op !== "del") || !lhs.length || lhs.length > 128) {
+          rejectedBindings += 1
+          continue
+        }
+        if (op === "set" && (!desc.length || desc.length > 512)) {
+          rejectedBindings += 1
+          continue
+        }
+        if (!Array.isArray(item.contexts) || !item.contexts.length || item.contexts.length > 4) {
+          rejectedBindings += 1
+          continue
+        }
+        var contexts = []
+        for (var context = 0; context < item.contexts.length; context++) {
+          var name = String(item.contexts[context] || "")
+          if (Profiles.contexts(root.profileId).indexOf(name) !== -1
+              && contexts.indexOf(name) === -1) contexts.push(name)
+        }
+        if (contexts.length)
+          bindings.push({ op: op, lhs: lhs, desc: desc, contexts: contexts })
+        else rejectedBindings += 1
+      }
+      rejectedBindings += Math.max(0, record.bindings.length - bindingLimit)
+    }
+    var bindingSkipped = 0
+    var bindingReasons = record.bindingSkipped && typeof record.bindingSkipped === "object"
+        && !Array.isArray(record.bindingSkipped) ? record.bindingSkipped : ({})
+    Object.keys(bindingReasons).slice(0, 16).forEach(function(reason) {
+      var count = Number(bindingReasons[reason] || 0)
+      if (isFinite(count)) bindingSkipped += Math.max(0, Math.min(100000, Math.floor(count)))
+    })
+    root.bindings = bindings
+    root.bindingSkipped = bindingSkipped + rejectedBindings
     root.upstreamCommit = /^[0-9a-f]{7,40}$/.test(String((record.upstream || {}).commit || ""))
         ? String(record.upstream.commit) : ""
     root.skipped = skipped

@@ -162,6 +162,38 @@ Item {
       root.shell.hide((root.manifest && root.manifest.id) || "luneth90.keycade")
   }
 
+  // Back to the cabinets, mid-run. The run is saved exactly as leaving the
+  // overlay saves it - the deck, the correction state, the statistics - so
+  // picking this ground again resumes where it stopped. It is the only way
+  // out of a run that is not also a way out of the overlay.
+  function leaveRun() {
+    if (root.view !== "playing") return
+    cardTimer.stop()
+    sounds.stopCountdown()
+    feedbackTimer.stop()
+    excludeStampTimer.stop()
+    root.excludeStampVisible = false
+    root.excludedCardId = ""
+    commitActiveTraining()
+    if (store.ready) {
+      saveRunSession()
+      store.saveStats()
+    }
+    root.cardLocked = false
+    root.correctionRequired = false
+    root.deadline = 0
+    root.energy = 1
+    root.combo = 0
+    root.feedbackKind = "idle"
+    root.answerStep = 0
+    root.answerState = AnswerMatcher.begin()
+    guard.pause()
+    root.view = "home"
+    root.feedbackText = i18n.t("ready")
+    root.resumeAvailable = root.hasResumableSession()
+    refreshProgressCounts()
+  }
+
   function requestSafeClose() {
     cardTimer.stop()
     sounds.stopCountdown()
@@ -569,10 +601,41 @@ Item {
       root.groundReady()
       return
     }
+    // Querying an already-running tmux server is optional. The live reader
+    // first proves one exists; if it cannot, the same callback receives null
+    // and the shipped table remains the complete fallback.
+    if (root.profileId === "tmux") {
+      tmuxLive.refresh()
+      return
+    }
+    root.buildPack(null)
+  }
+
+  function applyTmuxLive() {
+    // A slow answer for a cabinet the user has already left must not replace
+    // the newly selected ground's table.
+    if (root.profileId !== "tmux") return
+    root.buildPack(tmuxLive.pack)
+  }
+
+  function buildPack(overridePack) {
     packs.profileId = root.profileId
     packs.options = root.profileOptions()
     packs.enabledExtras = appConfig.extras
+    packs.overrides = root.profileId === "lazyvim" ? appConfig.bindings : []
+    packs.packOverride = overridePack || null
     packs.refresh()
+  }
+
+  function mappingConfigNotice() {
+    if (root.profileId !== "lazyvim") return ""
+    return i18n.t("mappingConfigNotice", {
+      read: Math.max(0, appConfig.bindings.length - packs.customSkipped),
+      skipped: appConfig.bindingSkipped + packs.customSkipped,
+      added: packs.customAdded,
+      changed: packs.customChanged,
+      deleted: packs.customDeleted
+    })
   }
 
   // A source finished. The eligible set is rebuilt from it whatever screen we
@@ -1107,6 +1170,10 @@ Item {
     id: appConfig
     onFinished: root.applyDetectedConfig()
   }
+  TmuxLiveSource {
+    id: tmuxLive
+    onFinished: root.applyTmuxLive()
+  }
   PackSource {
     id: packs
     onLoaded: root.groundReady()
@@ -1375,6 +1442,18 @@ Item {
           spacing: 10
 
           Rectangle {
+            id: leaveButton
+            width: 96; height: 36
+            visible: root.view === "playing"
+            color: root.screenColor; border.width: 3; border.color: root.mutedColor
+            SafeText {
+              anchors.centerIn: parent
+              text: i18n.t("leaveRun")
+              color: root.inkColor; font.family: "monospace"; font.bold: true; font.pixelSize: 10
+            }
+            MouseArea { anchors.fill: parent; onClicked: root.leaveRun() }
+          }
+          Rectangle {
             id: excludeButton
             width: 122; height: 36
             visible: root.view === "playing"
@@ -1624,7 +1703,7 @@ Item {
         x: Math.max(4, topbar.x + topControls.x + optionsButton.x + (optionsButton.width - width) / 2)
         y: topbar.y + topbar.height + 8
         width: 306
-        height: root.optionRows().length * 34 + 34
+        height: root.optionRows().length * 34 + 34 + (root.profileId === "lazyvim" ? 18 : 0)
         visible: root.optionsMenuOpen && Profiles.optionNames(root.profileId).length > 0
         z: 100
         color: root.cabinetColor; border.width: 3; border.color: root.primaryColor
@@ -1705,6 +1784,15 @@ Item {
                 }
               }
             }
+          }
+          SafeText {
+            width: parent.width
+            visible: root.profileId === "lazyvim"
+            text: root.mappingConfigNotice()
+            color: appConfig.bindingSkipped + packs.customSkipped > 0
+                   ? root.coinColor : root.mutedColor
+            font.family: "monospace"; font.pixelSize: 8
+            elide: Text.ElideRight; maximumLineCount: 1
           }
         }
       }
@@ -2087,18 +2175,10 @@ Item {
         // A pack ground says where its table came from, so nothing here can
         // be read as "these are the keymaps on your machine". Two short lines
         // rather than one wrapping paragraph: the card has a fixed height.
-        // Only what was read off this machine. The upstream name, its version
-        // and the line saying the table is the official default were true but
-        // nobody acted on them, and the card needed the room for a second row
-        // of cabinets. The READMEs still say where each ground's table comes
-        // from, and a ground that reads nothing now says nothing.
-        SafeText {
-          width: parent.width; horizontalAlignment: Text.AlignHCenter
-          visible: root.view === "home" && root.groundConfigNotice().length > 0
-          text: root.groundConfigNotice()
-          color: root.successColor; font.family: "monospace"; font.pixelSize: 10
-          elide: Text.ElideRight; maximumLineCount: 1
-        }
+        // Nothing about where a ground's table came from. It was all true and
+        // none of it was acted on: what a ground read off this machine is
+        // already visible where it can be changed - the configurable-keys menu
+        // in the top bar names each value and says where it came from.
         // Continuing and starting over sit beside each other rather than
         // stacked. Two rows of buttons cost 51 pixels the card does not have
         // once a ground names where its table came from, and they were never
@@ -2188,6 +2268,8 @@ Item {
           text: (root.currentAnswer && root.currentAnswer.context
                  ? i18n.t("context_" + root.currentAnswer.context) + " · " : "")
                 + (root.currentBinding ? i18n.t("category_" + root.currentBinding.category) + " · " : "")
+                + (root.currentBinding && root.currentBinding.customKind
+                   ? i18n.t("mapping_" + root.currentBinding.customKind) + " · " : "")
                 + i18n.t(root.correctionRequired ? "correction" : root.currentCard && root.currentCard.remedial ? "remedial" : root.currentCard && root.currentCard.tier === "guided" ? "guided" : root.currentCard && root.currentCard.tier === "maintenance" ? "maintenance" : "learning")
           color: root.currentCard && root.currentCard.tier === "maintenance" ? root.coinColor : root.secondaryColor
           font.family: "monospace"; font.pixelSize: 12; font.bold: true; font.letterSpacing: 2

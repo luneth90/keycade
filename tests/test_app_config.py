@@ -148,6 +148,55 @@ class ExtrasAndVersionTests(unittest.TestCase):
         self.assertEqual(found["upstream"], {})
 
 
+class KeymapTests(unittest.TestCase):
+    def setUp(self):
+        self.home = Home()
+        self.addCleanup(self.home.close)
+
+    def keymaps(self, body: str) -> dict:
+        self.home.write(".config/nvim/lua/config/keymaps.lua", body)
+        return self.home.snapshot("lazyvim")
+
+    def test_reads_top_level_literal_add_change_and_delete_in_order(self):
+        found = self.keymaps(
+            'vim.keymap.set("n", "<leader>xx", run_it, { desc = "Do a thing" })\n'
+            'vim.keymap.del("n", "<leader>ff")\n'
+            'vim.keymap.set({ "n", "v" }, "gZ", function() end, { desc = "Custom action" })\n')
+        self.assertEqual(found["bindings"], [
+            {"op": "set", "contexts": ["normal"], "lhs": "<leader>xx",
+             "desc": "Do a thing"},
+            {"op": "del", "contexts": ["normal"], "lhs": "<leader>ff"},
+            {"op": "set", "contexts": ["normal", "visual"], "lhs": "gZ",
+             "desc": "Custom action"},
+        ])
+        self.assertEqual(found["bindingSkipped"], {})
+
+    def test_skips_conditional_dynamic_and_undescribed_calls_visibly(self):
+        found = self.keymaps(
+            '  vim.keymap.set("n", "x", rhs, { desc = "Conditional" })\n'
+            'vim.keymap.set("n", "<leader>" .. suffix, rhs, { desc = "Dynamic" })\n'
+            'vim.keymap.set("n", "gx", rhs, {})\n'
+            'vim.keymap.set(mode, "gy", rhs, { desc = "Dynamic mode" })\n')
+        self.assertEqual(found["bindings"], [])
+        self.assertEqual(found["bindingSkipped"], {
+            "indented": 1, "non-literal-lhs": 1,
+            "missing-description": 1, "untrained-mode": 1,
+        })
+
+    def test_ignores_comments_and_unrelated_lua(self):
+        found = self.keymaps(
+            '-- vim.keymap.set("n", "x", rhs, { desc = "No" })\n'
+            'local x = "vim.keymap.set"\nprint(x)\n')
+        self.assertEqual(found["bindings"], [])
+        self.assertEqual(found["bindingSkipped"], {})
+
+    def test_a_multiline_call_is_skipped_not_partially_read(self):
+        found = self.keymaps(
+            'vim.keymap.set(\n  "n",\n  "gx",\n  rhs,\n  { desc = "Open" }\n)\n')
+        self.assertEqual(found["bindings"], [])
+        self.assertEqual(found["bindingSkipped"].get("unsupported-shape"), 1)
+
+
 class TmuxTests(unittest.TestCase):
     def setUp(self):
         self.home = Home()
@@ -203,6 +252,21 @@ class BoundsTests(unittest.TestCase):
         link = self.home.path / ".config/nvim/lua/config/options.lua"
         link.parent.mkdir(parents=True, exist_ok=True)
         os.symlink(target, link)
+        self.assertNotIn("leader", self.home.snapshot("lazyvim")["options"])
+
+    def test_a_symlinked_parent_directory_is_not_followed(self):
+        outside = self.home.path / "outside"
+        outside.mkdir()
+        (outside / "options.lua").write_text('vim.g.mapleader = ","', encoding="utf-8")
+        config = self.home.path / ".config/nvim/lua/config"
+        config.parent.mkdir(parents=True)
+        os.symlink(outside, config)
+        self.assertNotIn("leader", self.home.snapshot("lazyvim")["options"])
+
+    def test_a_fifo_is_refused_without_reading_it(self):
+        fifo = self.home.path / ".config/nvim/lua/config/options.lua"
+        fifo.parent.mkdir(parents=True, exist_ok=True)
+        os.mkfifo(fifo)
         self.assertNotIn("leader", self.home.snapshot("lazyvim")["options"])
 
     def test_the_output_is_one_bounded_json_line(self):
