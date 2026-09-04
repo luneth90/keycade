@@ -798,7 +798,7 @@
   "soundSettings": "SOUND SETTINGS",
   "soundVolume": "SOUND {volume}%",
   "start": "PRESS ENTER TO START",
-  "startFresh": "START A NEW RUN INSTEAD",
+  "startFresh": "START NEW RUN",
   "startRun": "START RUN",
   "summary": "RUN COMPLETE",
   "timeout": "TIME OUT · ANSWER SHOWN",
