@@ -6,7 +6,9 @@
 
 ![Keycade 简体中文学习界面](docs/screenshots/keycade-zh-CN.png)
 
-![全部快捷键已掌握庆祝画面](docs/screenshots/keycade-mastery-zh-CN.png)
+![首页上每个机台各自的进度](docs/screenshots/keycade-grounds-zh-CN.png)
+
+![LazyVim 的 leader 连打](docs/screenshots/keycade-lazyvim-zh-CN.png)
 
 Keycade 是一个原生 Omarchy 覆盖层，把快捷键编成简短的自适应回忆练习。
 正确输入只在本地识别，不会派发或执行原快捷键动作。
@@ -24,17 +26,6 @@ Keycade 是一个原生 Omarchy 覆盖层，把快捷键编成简短的自适应
 | **LazyVim** | 官方发布的键位，并按 leader、extras 和顶格字面量改键校准 |
 
 新装和升级后都停在 Hyprland；其他训练场想练的时候再选。
-
-每个机台都显示自己的进度，一排看下来就是一张完整的进度图。Tokyo Night 配色：
-
-![首页上每个机台各自的进度](docs/screenshots/keycade-grounds-zh-CN.png)
-
-六个机台里有四个要连打，卡片按步显示。Everforest 配色下的 LazyVim，
-以及 Ristretto 配色下的 Vim 原生语法：
-
-![LazyVim 的 leader 连打](docs/screenshots/keycade-lazyvim-zh-CN.png)
-
-![Vim 的组合语法](docs/screenshots/keycade-vim-zh-CN.png)
 
 ## 核心功能
 

@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Reshoot every image the READMEs and the plugin listing use.
+# Reshoot every image the READMEs and the plugin listing use - the three
+# each README shows, in both languages, plus the listing preview.
 #
 # The overlay is driven rather than played: a card is built by hand and the
 # input guard is never activated, so the capture cannot take the keyboard from
@@ -85,5 +86,3 @@ shoot tokyo      en    hyprland home    ""                  "$shots/keycade-grou
 shoot tokyo      zh-CN hyprland home    ""                  "$shots/keycade-grounds-zh-CN.png"
 shoot everforest en    lazyvim  playing 'normal/<leader>ff' "$shots/keycade-lazyvim-en.png"
 shoot everforest zh-CN lazyvim  playing 'normal/<leader>ff' "$shots/keycade-lazyvim-zh-CN.png"
-shoot ristretto  en    vim      playing 'normal/diw'        "$shots/keycade-vim-en.png"
-shoot ristretto  zh-CN vim      playing 'normal/diw'        "$shots/keycade-vim-zh-CN.png"
