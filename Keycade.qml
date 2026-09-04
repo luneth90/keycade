@@ -25,6 +25,12 @@ Item {
   property string view: "closed"
   property string errorMessage: ""
   property bool guardReady: false
+  // A ground is not ready the moment it is picked. A pack ground reads the
+  // machine's own configuration first, which is a subprocess, so between the
+  // pick and the answer the source still holds the ground before it - and
+  // counting that was how switching cabinets showed one ground's total under
+  // another's name.
+  property bool groundLoading: false
   property bool escapeDown: false
   property string requestedLocale: ""
 
@@ -173,6 +179,7 @@ Item {
   // A pack ground is loaded from data already in memory, so it can only be
   // asked once the settings that name its leader have arrived.
   function loadActiveGround() {
+    root.groundLoading = true
     if (root.packGround) {
       // Ask the machine what it changed, then build the table against the
       // answer. A ground with nothing readable answers immediately.
@@ -189,7 +196,7 @@ Item {
 
   function maybeShowHome() {
     if (!root.opened || root.view !== "loading" || !root.guardReady
-        || root.activeSource.loading || !store.ready) return
+        || root.groundLoading || root.activeSource.loading || !store.ready) return
     var savedLocale = String(store.settings.locale || "en")
     if (i18n.supported.indexOf(savedLocale) === -1) {
       store.settings.locale = "en"
@@ -389,10 +396,9 @@ Item {
     root.excludedMenuOpen = false
     root.view = "loading"
     root.errorMessage = ""
+    // Every ground answers through a signal now - a pack one reads the
+    // machine's configuration first - so nothing is counted here.
     root.loadActiveGround()
-    // A machine ground answers through its own signal; a pack ground is
-    // already in memory and has answered by the time refresh() returns.
-    root.maybeShowHome()
   }
 
   function localeLabel(code) {
@@ -557,11 +563,24 @@ Item {
   }
 
   function applyDetectedConfig() {
-    if (!root.packGround) return
+    if (!root.packGround) {
+      root.groundReady()
+      return
+    }
     packs.profileId = root.profileId
     packs.options = root.profileOptions()
     packs.enabledExtras = appConfig.extras
     packs.refresh()
+  }
+
+  // A source finished. The eligible set is rebuilt from it whatever screen we
+  // are on: waiting for maybeShowHome() to do it only worked while the answer
+  // arrived before the home screen did.
+  function groundReady() {
+    root.groundLoading = false
+    root.applyEligibility()
+    root.resumeAvailable = root.hasResumableSession()
+    root.maybeShowHome()
   }
 
   // Set one of them. Empty puts the ground's own default back.
@@ -1058,7 +1077,7 @@ Item {
   }
   HyprlandSource {
     id: keybinds
-    onLoaded: root.maybeShowHome()
+    onLoaded: root.groundReady()
     onFailed: function(message) {
       root.errorMessage = message
       guard.fail(message)
@@ -1066,12 +1085,11 @@ Item {
   }
   HerdrSource {
     id: herdr
-    onLoaded: root.maybeShowHome()
+    onLoaded: root.groundReady()
     onFailed: function(message) {
       // A ground that could not be read has nothing to teach. It says so on
       // the home screen rather than dealing cards built on a guess.
-      root.applyEligibility()
-      root.maybeShowHome()
+      root.groundReady()
     }
   }
   AppConfigSource {
@@ -1080,7 +1098,7 @@ Item {
   }
   PackSource {
     id: packs
-    onLoaded: root.maybeShowHome()
+    onLoaded: root.groundReady()
     onFailed: function(message) {
       root.errorMessage = message
       guard.fail(message)

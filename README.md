@@ -191,6 +191,7 @@ QT_QPA_PLATFORM=offscreen QT_QPA_PLATFORMTHEME= QT_STYLE_OVERRIDE=Fusion \
   /usr/lib/qt6/bin/qmltestrunner -input tests/qml/tst_algorithms.qml -import /usr/lib/qt6/qml
 ./tests/test_state_store_qml.sh
 ./tests/test_hyprland_source_qml.sh
+./tests/test_ground_switching_qml.sh
 /usr/lib/qt6/bin/qmllint -I /usr/lib/qt6/qml Keycade.qml lib/*.qml lib/sources/*.qml dev/InputProbe.qml
 ```
 

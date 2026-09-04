@@ -148,6 +148,7 @@ Item {
     root.loading = true
     root.error = ""
     root.rejected = 0
+    root.bindings = []
     if (!Profiles.isPack(root.profileId)) {
       root.fail("Unknown pack profile")
       return

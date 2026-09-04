@@ -42,6 +42,9 @@ Item {
   property var skipped: ({})
   property bool loading: false
   property bool settled: false
+  // A second ground picked while the first is still being read must not be
+  // dropped: the request is remembered and run once the reader is down.
+  property bool pending: false
 
   signal finished()
 
@@ -60,11 +63,15 @@ Item {
   }
 
   function refresh() {
-    if (reader.running) return
     root.reset()
     if (!root.readable()) {
       root.settled = true
       root.finished()
+      return
+    }
+    if (reader.running) {
+      root.pending = true
+      reader.signal(15)
       return
     }
     root.loading = true
@@ -151,7 +158,14 @@ Item {
         }
       }
     }
-    onExited: root.settle()
+    onExited: {
+      if (root.pending) {
+        root.pending = false
+        root.refresh()
+        return
+      }
+      root.settle()
+    }
   }
 
   Timer {

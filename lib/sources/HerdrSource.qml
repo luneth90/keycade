@@ -36,14 +36,22 @@ Item {
   property string error: ""
   property int rejected: 0
   property bool settled: false
+  // Same as AppConfigSource: a ground picked while this one is still reading
+  // is remembered rather than dropped.
+  property bool pending: false
 
   signal loaded()
   signal failed(string message)
 
   function refresh() {
-    if (reader.running) return
+    if (reader.running) {
+      root.pending = true
+      reader.signal(15)
+      return
+    }
     root.error = ""
     root.rejected = 0
+    root.bindings = []
     root.settled = false
     root.loading = true
     readTimeout.restart()
@@ -167,6 +175,11 @@ Item {
     onExited: function(exitCode) {
       readTimeout.stop()
       root.loading = false
+      if (root.pending) {
+        root.pending = false
+        root.refresh()
+        return
+      }
       if (root.settled) return
       root.fail("herdr-keys-json exited with code " + exitCode)
     }
