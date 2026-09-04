@@ -13,7 +13,6 @@ import "lib/Stats.js" as Stats
 import "lib/Session.js" as Session
 import "lib/Palettes.js" as Palettes
 import "lib/sources/hyprland/Eligibility.js" as Eligibility
-import "lib/sources/hyprland/Categorizer.js" as Categorizer
 import "lib/sources/hyprland/ActionLocalizer.js" as Actions
 import "lib/sources/pack/Eligibility.js" as PackEligibility
 
@@ -379,6 +378,9 @@ Item {
   // swapping under it would mix two decks and two run counters.
   function selectProfile(id) {
     if (root.view === "playing" || !Profiles.known(id) || id === root.profileId) return
+    // The choice is recorded in settings, so it cannot be made before they
+    // have loaded: the store would overwrite it as it finished reading.
+    if (!store.ready) return
     store.settings.activeProfile = String(id)
     store.settings = Object.assign({}, store.settings)
     store.saveSettings()
@@ -393,35 +395,6 @@ Item {
     // A machine ground answers through its own signal; a pack ground is
     // already in memory and has answered by the time refresh() returns.
     root.maybeShowHome()
-  }
-
-  // What the ground says about itself. A pack names its upstream and the day
-  // that table was published, so nothing on screen suggests it read your
-  // machine; the Hyprland ground reads the machine and says nothing.
-  function groundNotice() {
-    if (!root.packGround) return ""
-    return [packs.sourceLabel, i18n.t("packNotice")].filter(Boolean).join("  ·  ")
-  }
-
-  function profileMastery(id) {
-    var counts = Stats.counts(store.stats, id === root.profileId ? root.eligibleBindings : [],
-                              Date.now(), root.activeRunId)
-    return counts.total ? Math.round(counts.mastered / counts.total * 100) : 0
-  }
-
-  function categorySummary() {
-    var counts = {}
-    for (var i = 0; i < root.eligibleBindings.length; i++) {
-      var name = String(root.eligibleBindings[i].category || "uncategorized")
-      counts[name] = Number(counts[name] || 0) + 1
-    }
-    var labels = []
-    var order = root.packGround ? PackEligibility.categories(root.eligibleBindings)
-                                : Categorizer.categories()
-    for (var j = 0; j < order.length; j++) {
-      if (counts[order[j]]) labels.push(i18n.t("category_" + order[j]) + " " + counts[order[j]])
-    }
-    return labels.join(" · ")
   }
 
   function localeLabel(code) {
@@ -1184,9 +1157,31 @@ Item {
         Column {
           anchors.left: parent.left; anchors.leftMargin: 92
           anchors.verticalCenter: parent.verticalCenter
-          spacing: 0
+          spacing: 2
           SafeText { text: "KEYCADE"; color: root.voidColor; font.family: "monospace"; font.pixelSize: 32; font.bold: true; font.letterSpacing: 4 }
-          SafeText { text: i18n.t("brandSubtitle"); color: root.voidColor; font.family: "monospace"; font.pixelSize: 11; font.bold: true }
+          Row {
+            spacing: 8
+            SafeText {
+              anchors.verticalCenter: parent.verticalCenter
+              text: i18n.t("brandSubtitle"); color: root.voidColor
+              font.family: "monospace"; font.pixelSize: 11; font.bold: true
+            }
+            // Which cabinet this is. The home screen names it too, but a run
+            // is played away from the home screen, and "which ground am I on"
+            // has to be answerable without leaving the run to find out.
+            Rectangle {
+              anchors.verticalCenter: parent.verticalCenter
+              width: groundBadge.implicitWidth + 16; height: 18
+              color: root.voidColor
+              SafeText {
+                id: groundBadge
+                anchors.centerIn: parent
+                text: i18n.t("profile_" + root.profileId)
+                color: root.primaryColor
+                font.family: "monospace"; font.pixelSize: 10; font.bold: true; font.letterSpacing: 2
+              }
+            }
+          }
         }
 
         Row {
@@ -1702,7 +1697,9 @@ Item {
       Column {
         anchors.centerIn: parent
         width: parent.width - 70
-        spacing: 18
+        // The cabinet is a fixed frame: this column has to fit inside it at
+        // the smallest size the panel is drawn at, so it stays short.
+        spacing: 13
         SafeText {
           width: parent.width; horizontalAlignment: Text.AlignHCenter
           text: root.view === "home" ? i18n.t("ready")
@@ -1738,12 +1735,6 @@ Item {
             NumberAnimation { to: 1; duration: 720; easing.type: Easing.InOutQuad }
           }
         }
-        SafeText {
-          width: parent.width; horizontalAlignment: Text.AlignHCenter
-          text: root.categorySummary(); color: root.secondaryColor
-          font.family: "monospace"; font.pixelSize: 11; font.bold: true
-          wrapMode: Text.WordWrap
-        }
         // Choosing a cabinet, which is what a training ground is. A ground is
         // picked here rather than from the top bar: the menus up there are
         // preferences that can change mid-run, and this one decides the deck.
@@ -1764,7 +1755,7 @@ Item {
               id: groundDatum
               required property var modelData
               readonly property bool current: groundDatum.modelData === root.profileId
-              width: Math.max(132, groundName.implicitWidth + 34); height: 42
+              width: Math.max(124, groundName.implicitWidth + 30); height: 38
               color: groundDatum.current ? root.screenColor : root.voidColor
               border.width: groundDatum.current ? 3 : 2
               border.color: groundDatum.current ? root.primaryColor : root.mutedColor
@@ -1792,14 +1783,25 @@ Item {
             }
           }
         }
-        // A pack ground says where its table came from, in full, so nothing
-        // here can be read as "these are the keymaps on your machine".
-        SafeText {
-          width: parent.width; horizontalAlignment: Text.AlignHCenter
+        // A pack ground says where its table came from, so nothing here can
+        // be read as "these are the keymaps on your machine". Two short lines
+        // rather than one wrapping paragraph: the card has a fixed height.
+        Column {
+          width: parent.width
+          spacing: 2
           visible: root.view === "home" && root.packGround
-          text: root.groundNotice()
-          color: root.coinColor; font.family: "monospace"; font.pixelSize: 10
-          wrapMode: Text.WordWrap; maximumLineCount: 2; elide: Text.ElideRight
+          SafeText {
+            width: parent.width; horizontalAlignment: Text.AlignHCenter
+            text: packs.sourceLabel
+            color: root.coinColor; font.family: "monospace"; font.pixelSize: 10; font.bold: true
+            elide: Text.ElideRight; maximumLineCount: 1
+          }
+          SafeText {
+            width: parent.width; horizontalAlignment: Text.AlignHCenter
+            text: i18n.t("packNotice")
+            color: root.mutedColor; font.family: "monospace"; font.pixelSize: 10
+            elide: Text.ElideRight; maximumLineCount: 1
+          }
         }
         Rectangle {
           width: 240; height: 48; anchors.horizontalCenter: parent.horizontalCenter
