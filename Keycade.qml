@@ -1334,7 +1334,6 @@ Item {
                 root.soundMenuOpen = false
                 root.excludedMenuOpen = false
                 root.themeMenuOpen = false
-                root.optionsMenuOpen = false
               }
             }
           }
@@ -1369,6 +1368,7 @@ Item {
                 root.soundMenuOpen = false
                 root.languageMenuOpen = false
                 root.excludedMenuOpen = false
+                root.optionsMenuOpen = false
               }
             }
           }
