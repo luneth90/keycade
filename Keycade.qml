@@ -57,10 +57,18 @@ Item {
   property bool resumeAvailable: false
   property bool languageMenuOpen: false
   property bool soundMenuOpen: false
+  property bool excludedMenuOpen: false
+  property var excludedRows: []
+  property int staleExcludedCount: 0
+  property bool excludeStampVisible: false
+  property string excludedCardId: ""
+  property bool trainingLockedOut: false
 
   readonly property var currentCard: deck.length > cardIndex ? deck[cardIndex] : null
   readonly property var currentBinding: currentCard ? currentCard.binding : null
   readonly property int runCardLimit: 24
+  readonly property string profileId: "hyprland"
+  readonly property int excludeStampMs: 300
   readonly property bool reducedMotion: Boolean(store.settings.reducedMotion)
   readonly property int activeRunId: Number(store.stats.runs || 0) + 1
 
@@ -138,13 +146,8 @@ Item {
       savedLocale = "en"
     }
     if (!root.requestedLocale) i18n.locale = savedLocale
-    var result = Eligibility.filter(keybinds.bindings, {
-      appleKeyboard: keybinds.appleKeyboard,
-      keymapAuthoritative: keybinds.keymapAuthoritative,
-      keycodeMap: keybinds.keycodeMap
-    })
-    root.eligibleBindings = result.eligible
-    if (!root.eligibleBindings.length) {
+    root.applyEligibility()
+    if (!root.eligibleBindings.length && !root.trainingLockedOut) {
       root.errorMessage = i18n.t("noBindings")
       guard.fail(root.errorMessage)
       return
@@ -168,6 +171,142 @@ Item {
       root.startRequested = false
       Qt.callLater(function() { root.startPrimary() })
     }
+  }
+
+  // The one place eligibility is computed. Excluding and restoring both go
+  // through it, so the mastery denominator - which is the size of this set -
+  // moves with them instead of at the next launch.
+  function applyEligibility() {
+    var result = Eligibility.filter(keybinds.bindings, {
+      appleKeyboard: keybinds.appleKeyboard,
+      keymapAuthoritative: keybinds.keymapAuthoritative,
+      keycodeMap: keybinds.keycodeMap,
+      excludedBindings: store.settings.excludedBindings,
+      profile: root.profileId
+    })
+    var rows = []
+    var matched = Session.safeMap()
+    for (var i = 0; i < result.excluded.length; i++) {
+      if (result.excluded[i].reason !== "user-excluded") continue
+      rows.push(result.excluded[i].binding)
+      matched[result.excluded[i].binding.id] = true
+    }
+    var stored = Session.excludedSet(store.settings.excludedBindings, root.profileId)
+    var stale = 0
+    Object.keys(stored).forEach(function(id) { if (!matched[id]) stale += 1 })
+    root.eligibleBindings = result.eligible
+    root.excludedRows = rows
+    root.staleExcludedCount = stale
+    // An exclusion can outlive the bind it names, so a config change between
+    // two launches can empty the eligible set. Failing here would close the
+    // overlay after five seconds with the restore list out of reach, so home
+    // stays reachable and starting a run is what gets refused instead.
+    root.trainingLockedOut = !result.eligible.length && (rows.length > 0 || stale > 0)
+    refreshProgressCounts()
+    return result
+  }
+
+  function excludeCurrentBinding() {
+    if (root.view !== "playing" || !root.currentBinding || root.excludeStampVisible) return
+    if (root.eligibleBindings.length <= 1) {
+      root.feedbackKind = "miss"
+      root.feedbackText = i18n.t("excludeRejectedLast")
+      return
+    }
+    var id = root.currentBinding.id
+    var next = Session.withExclusion(store.settings.excludedBindings, root.profileId, id)
+    if (!next) {
+      root.feedbackKind = "miss"
+      root.feedbackText = i18n.t("excludeRejectedFull")
+      return
+    }
+
+    // Seal the card before anything else. A timer left running would reach
+    // zero while the stamp is up and record a miss against a bind the user
+    // just took out of training.
+    root.cardLocked = true
+    root.correctionRequired = false
+    cardTimer.stop()
+    feedbackTimer.stop()
+    sounds.stopCountdown()
+    root.deadline = 0
+    root.energy = 1
+    root.feedbackKind = "idle"
+    root.feedbackText = i18n.t("excludeStamp")
+    root.excludeStampVisible = true
+    sounds.playEject()
+    if (!root.reducedMotion) excludedPulse.restart()
+
+    store.settings.excludedBindings = next
+    store.settings = Object.assign({}, store.settings)
+    store.saveSettings()
+    // The eligible set shrinks now, not at the next launch, so the mastery
+    // denominator and the drawer count answer for this run.
+    root.applyEligibility()
+
+    // The deck is left alone until the stamp clears: emptying it here would
+    // blank the card behind the stamp. Nothing can reach the old card in the
+    // meantime - it is locked and its timers are stopped - and a crash inside
+    // the beat is harmless, because a resumed deck keeps only cards whose
+    // binding is still eligible.
+    root.excludedCardId = id
+    excludeStampTimer.restart()
+  }
+
+  function dropExcludedCard(bindingId) {
+    var removedBefore = 0
+    var remaining = []
+    for (var i = 0; i < root.deck.length; i++) {
+      if (root.deck[i].binding.id === bindingId) {
+        if (i < root.cardIndex) removedBefore += 1
+        continue
+      }
+      remaining.push(root.deck[i])
+    }
+    root.deck = remaining
+    root.cardIndex = Math.max(0, root.cardIndex - removedBefore)
+    root.setReinforcementPending(bindingId, false)
+    // The miss that led here stays in stats - it happened - but the run's own
+    // tally drops the row, so an excluded bind cannot head the review list.
+    if (root.runResults[bindingId]) {
+      var results = {}
+      Object.keys(root.runResults).forEach(function(key) {
+        if (key !== bindingId) results[key] = root.runResults[key]
+      })
+      root.runResults = results
+    }
+  }
+
+  // Restoring is offered while idle only: putting a bind back mid-run would
+  // mean rebuilding the deck and its plan counts for no benefit.
+  function restoreBinding(bindingId) {
+    if (root.view === "playing") return
+    store.settings.excludedBindings =
+        Session.withoutExclusion(store.settings.excludedBindings, root.profileId, bindingId)
+    store.settings = Object.assign({}, store.settings)
+    store.saveSettings()
+    root.applyEligibility()
+    root.resumeAvailable = root.hasResumableSession()
+  }
+
+  // Entries whose bind no longer exists cannot be shown or restored, but they
+  // still spend the budget. They are never dropped silently: clearing them is
+  // a button, because a bind commented out today may come back tomorrow.
+  function clearStaleExclusions() {
+    var live = Session.safeMap()
+    for (var i = 0; i < root.excludedRows.length; i++) live[root.excludedRows[i].id] = true
+    var prefix = root.profileId + ":"
+    var stored = Session.excludedList(store.settings.excludedBindings)
+    var keep = []
+    for (var j = 0; j < stored.length; j++) {
+      var entry = stored[j]
+      if (entry.slice(0, prefix.length) !== prefix || live[entry.slice(prefix.length)])
+        keep.push(entry)
+    }
+    store.settings.excludedBindings = keep
+    store.settings = Object.assign({}, store.settings)
+    store.saveSettings()
+    root.applyEligibility()
   }
 
   function categorySummary() {
@@ -372,6 +511,7 @@ Item {
 
   function startRun() {
     if (root.view !== "home" && root.view !== "summary") return
+    if (root.trainingLockedOut) return
     if (!guard.active) {
       guard.fail("Shortcut inhibition is not active.")
       return
@@ -704,11 +844,34 @@ Item {
   }
   Timer { id: blockedClose; interval: 5000; repeat: false; onTriggered: root.dismiss() }
 
+  // The stamp holds for a fixed beat so the exclusion is legible, then the run
+  // moves on. reducedMotion drops the fade, never this delay: the confirmation
+  // is the point.
+  Timer {
+    id: excludeStampTimer
+    interval: root.excludeStampMs
+    repeat: false
+    onTriggered: {
+      root.excludeStampVisible = false
+      if (root.excludedCardId) root.dropExcludedCard(root.excludedCardId)
+      root.excludedCardId = ""
+      if (root.view !== "playing") return
+      if (root.cardIndex >= root.deck.length) root.finishRun()
+      else root.showCard()
+    }
+  }
+
   SequentialAnimation {
     id: hitFlash
     NumberAnimation { target: cardGlow; property: "opacity"; to: 1; duration: 50 }
     PauseAnimation { duration: 45 }
     NumberAnimation { target: cardGlow; property: "opacity"; to: 0; duration: 160 }
+  }
+
+  SequentialAnimation {
+    id: excludedPulse
+    NumberAnimation { target: excludedLamp; property: "opacity"; to: 1; duration: 90 }
+    NumberAnimation { target: excludedLamp; property: "opacity"; to: 0; duration: 420 }
   }
 
   SequentialAnimation {
@@ -867,6 +1030,36 @@ Item {
           spacing: 10
 
           Rectangle {
+            id: excludeButton
+            width: 122; height: 36
+            visible: root.view === "playing"
+            color: root.screenColor; border.width: 3; border.color: root.dangerColor
+            SafeText {
+              anchors.centerIn: parent
+              text: i18n.t("excludeAction")
+              color: root.dangerColor; font.family: "monospace"; font.bold: true; font.pixelSize: 10
+            }
+            MouseArea { anchors.fill: parent; onClicked: root.excludeCurrentBinding() }
+          }
+          Rectangle {
+            id: excludedButton
+            width: 140; height: 36; color: root.screenColor; border.width: 3; border.color: root.voidColor
+            Rectangle { id: excludedLamp; anchors.fill: parent; color: root.coinColor; opacity: 0 }
+            SafeText {
+              anchors.centerIn: parent
+              text: i18n.t("excludedMenu", { count: root.excludedRows.length + root.staleExcludedCount }) + " ▾"
+              color: root.inkColor; font.family: "monospace"; font.bold: true; font.pixelSize: 10
+            }
+            MouseArea {
+              anchors.fill: parent
+              onClicked: {
+                root.excludedMenuOpen = !root.excludedMenuOpen
+                root.soundMenuOpen = false
+                root.languageMenuOpen = false
+              }
+            }
+          }
+          Rectangle {
             id: soundButton
             width: 116; height: 36; color: root.screenColor; border.width: 3; border.color: root.voidColor
             SafeText {
@@ -882,6 +1075,7 @@ Item {
               onClicked: {
                 root.soundMenuOpen = !root.soundMenuOpen
                 root.languageMenuOpen = false
+                root.excludedMenuOpen = false
               }
             }
           }
@@ -894,6 +1088,7 @@ Item {
               onClicked: {
                 root.languageMenuOpen = !root.languageMenuOpen
                 root.soundMenuOpen = false
+                root.excludedMenuOpen = false
               }
             }
           }
@@ -945,6 +1140,89 @@ Item {
               width: 108; height: 32; color: store.settings.countdownSound ? root.coinColor : root.screenColor; border.width: 2; border.color: root.mutedColor
               SafeText { anchors.centerIn: parent; text: i18n.t(store.settings.countdownSound ? "countdownOn" : "countdownOff"); color: store.settings.countdownSound ? root.voidColor : root.mutedColor; font.family: "monospace"; font.pixelSize: 9; font.bold: true }
               MouseArea { anchors.fill: parent; onClicked: root.toggleCountdownSound() }
+            }
+          }
+        }
+      }
+
+      Rectangle {
+        id: excludedMenu
+        x: topbar.x + topControls.x + excludedButton.x + excludedButton.width - width
+        y: topbar.y + topbar.height + 8
+        width: 560
+        height: 58 + Math.min(240, Math.max(28, root.excludedRows.length * 40))
+                + (root.staleExcludedCount > 0 ? 40 : 0)
+        visible: root.excludedMenuOpen
+        z: 100
+        color: root.cabinetColor; border.width: 3; border.color: root.primaryColor
+        Column {
+          anchors.fill: parent; anchors.margins: 10; spacing: 8
+          SafeText { text: i18n.t("excludedTitle"); color: root.inkColor; font.family: "monospace"; font.bold: true; font.pixelSize: 11 }
+          SafeText {
+            width: parent.width
+            visible: root.excludedRows.length === 0
+            text: i18n.t("excludedEmpty"); color: root.mutedColor; font.pixelSize: 11
+            wrapMode: Text.WordWrap; maximumLineCount: 2; elide: Text.ElideRight
+          }
+          Flickable {
+            width: parent.width
+            height: Math.min(240, root.excludedRows.length * 40)
+            visible: root.excludedRows.length > 0
+            contentHeight: excludedRowList.height
+            clip: true
+            Column {
+              id: excludedRowList
+              width: parent.width
+              Repeater {
+                model: root.excludedRows
+                delegate: Item {
+                  id: excludedRow
+                  required property var modelData
+                  width: excludedRowList.width
+                  height: 40
+                  Row {
+                    anchors.left: parent.left
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: 10
+                    SafeText {
+                      width: 170; elide: Text.ElideRight; maximumLineCount: 1
+                      text: Normalizer.display(excludedRow.modelData)
+                      color: root.inkColor; font.family: "monospace"; font.pixelSize: 11; font.bold: true
+                    }
+                    SafeText {
+                      width: 230; elide: Text.ElideRight; maximumLineCount: 1
+                      text: Actions.actionName(excludedRow.modelData, i18n)
+                      color: root.mutedColor; font.pixelSize: 11
+                    }
+                  }
+                  Rectangle {
+                    anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
+                    width: 92; height: 28
+                    visible: root.view !== "playing"
+                    color: root.screenColor; border.width: 2; border.color: root.mutedColor
+                    SafeText { anchors.centerIn: parent; text: i18n.t("restoreAction"); color: root.inkColor; font.family: "monospace"; font.pixelSize: 9; font.bold: true }
+                    MouseArea { anchors.fill: parent; onClicked: root.restoreBinding(excludedRow.modelData.id) }
+                  }
+                }
+              }
+            }
+          }
+          Item {
+            width: parent.width; height: 32
+            visible: root.staleExcludedCount > 0
+            SafeText {
+              anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter
+              width: 400; elide: Text.ElideRight; maximumLineCount: 1
+              text: i18n.t("excludedStale", { count: root.staleExcludedCount })
+              color: root.coinColor; font.family: "monospace"; font.pixelSize: 10; font.bold: true
+            }
+            Rectangle {
+              anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
+              width: 92; height: 28
+              visible: root.view !== "playing"
+              color: root.screenColor; border.width: 2; border.color: root.mutedColor
+              SafeText { anchors.centerIn: parent; text: i18n.t("excludedClearStale"); color: root.inkColor; font.family: "monospace"; font.pixelSize: 9; font.bold: true }
+              MouseArea { anchors.fill: parent; onClicked: root.clearStaleExclusions() }
             }
           }
         }
@@ -1091,6 +1369,32 @@ Item {
                 border.width: 4
                 border.color: root.feedbackKind === "hit" ? root.successColor : root.feedbackKind === "miss" ? root.dangerColor : root.primaryColor
 
+                Rectangle {
+                  id: excludeStamp
+                  z: 5
+                  anchors.centerIn: parent
+                  width: Math.min(parent.width - 60, 430); height: 88
+                  color: root.voidColor
+                  border.width: 4; border.color: root.coinColor
+                  opacity: root.excludeStampVisible ? 1 : 0
+                  visible: opacity > 0
+                  // The fade is the only part reducedMotion removes. The stamp
+                  // itself still holds for its full beat, because it is the
+                  // confirmation that the key left training.
+                  Behavior on opacity {
+                    enabled: !root.reducedMotion
+                    NumberAnimation { duration: 110; easing.type: Easing.OutQuad }
+                  }
+                  SafeText {
+                    anchors.centerIn: parent
+                    width: parent.width - 24
+                    horizontalAlignment: Text.AlignHCenter
+                    text: i18n.t("excludeStamp")
+                    color: root.coinColor; font.family: "monospace"; font.bold: true; font.pixelSize: 15
+                    wrapMode: Text.WordWrap; maximumLineCount: 2; elide: Text.ElideRight
+                  }
+                }
+
                 Loader {
                   anchors.fill: parent
                   sourceComponent: root.view === "playing" ? playCard
@@ -1137,10 +1441,18 @@ Item {
         }
         SafeText {
           width: parent.width; horizontalAlignment: Text.AlignHCenter
-          text: root.view === "home" ? i18n.t(root.resumeAvailable ? "resumeTitle" : "start") : "···"
+          text: root.view !== "home" ? "···"
+                : root.trainingLockedOut ? i18n.t("allExcluded")
+                : i18n.t(root.resumeAvailable ? "resumeTitle" : "start")
           color: root.inkColor; font.family: "monospace"; font.bold: true; font.pixelSize: 28; wrapMode: Text.WordWrap
         }
-        SafeText { width: parent.width; horizontalAlignment: Text.AlignHCenter; text: i18n.t(root.resumeAvailable ? "resumeHint" : "startHint"); color: root.mutedColor; font.pixelSize: 15 }
+        SafeText {
+          width: parent.width; horizontalAlignment: Text.AlignHCenter
+          text: root.trainingLockedOut ? i18n.t("allExcludedHint")
+                                       : i18n.t(root.resumeAvailable ? "resumeHint" : "startHint")
+          color: root.trainingLockedOut ? root.coinColor : root.mutedColor
+          font.pixelSize: 15; wrapMode: Text.WordWrap
+        }
         SafeText {
           width: parent.width; horizontalAlignment: Text.AlignHCenter
           text: root.categorySummary(); color: root.secondaryColor
@@ -1149,7 +1461,7 @@ Item {
         }
         Rectangle {
           width: 240; height: 48; anchors.horizontalCenter: parent.horizontalCenter
-          visible: root.view === "home"
+          visible: root.view === "home" && !root.trainingLockedOut
           color: root.primaryColor; border.width: 4; border.color: root.voidColor
           SafeText { anchors.centerIn: parent; text: "▶  " + i18n.t(root.resumeAvailable ? "resumeRun" : "startRun"); color: root.voidColor; font.family: "monospace"; font.bold: true; font.pixelSize: 15 }
           MouseArea { anchors.fill: parent; onClicked: root.startPrimary() }
@@ -1189,6 +1501,17 @@ Item {
           width: parent.width; horizontalAlignment: Text.AlignHCenter
           text: i18n.t(root.correctionRequired ? "correctionInstruction" : root.currentCard && root.currentCard.remedial ? "remedialInstruction" : root.currentCard && root.currentCard.tier === "guided" ? "guidedInstruction" : root.currentCard && root.currentCard.tier === "maintenance" ? "maintenanceInstruction" : "learningInstruction")
           color: root.mutedColor; font.pixelSize: 14; wrapMode: Text.WordWrap
+        }
+        // Correction only advances on the exact chord, so someone whose
+        // keyboard cannot produce it is stuck. This line is how they learn
+        // there is a way out; without it the top bar button may as well not
+        // exist.
+        SafeText {
+          width: parent.width; horizontalAlignment: Text.AlignHCenter
+          visible: root.correctionRequired
+          text: i18n.t("excludeHint")
+          color: root.coinColor; font.family: "monospace"; font.pixelSize: 11; font.bold: true
+          elide: Text.ElideRight; maximumLineCount: 1
         }
         Item {
           width: parent.width; height: 74

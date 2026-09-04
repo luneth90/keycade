@@ -27,6 +27,16 @@ Item {
     playFeedback(wrongSound)
   }
 
+  // Deliberately not routed through playFeedback: excluding a bind almost
+  // always follows a miss, and that path both stops the sound just played and
+  // swallows anything inside its cooldown, so the eject would be silent
+  // exactly when it matters most.
+  function playEject() {
+    if (!root.feedbackEnabled) return
+    ejectSound.stop()
+    ejectSound.play()
+  }
+
   function playCountdown(finalBeat) {
     if (!root.countdownEnabled) return
     if (finalBeat) countdownFinalSound.play()
@@ -48,6 +58,12 @@ Item {
     id: wrongSound
     source: Qt.resolvedUrl("../assets/sfx/wrong.wav")
     volume: root.volume * 0.4
+  }
+
+  SoundEffect {
+    id: ejectSound
+    source: Qt.resolvedUrl("../assets/sfx/eject.wav")
+    volume: root.volume * 0.45
   }
 
   SoundEffect {
