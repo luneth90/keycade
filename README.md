@@ -30,7 +30,12 @@ shortcut action.
 - Lets you exclude a shortcut your keyboard cannot press, or one you do not
   want to train, and restore it later with its progress intact.
 - Includes English and Simplified Chinese, local feedback/countdown sounds,
-  and Tokyo Night and Gruvbox palettes.
+  and five palettes: Catppuccin, Tokyo Night, Gruvbox, Everforest and
+  Ristretto.
+- Reads like a cabinet: dot matrix countdown and counters, scanlines on the
+  screen, a marquee frame, and a streak counter that is display only and never
+  reaches the scheduler. Reduced motion turns the movement off and keeps every
+  reading.
 
 Function-row, XF86 media/device, Print/Pause/SysRq, dedicated
 Home/End/Insert/Page/Delete, ambiguous, unsafe, and unsupported bindings are
@@ -95,10 +100,16 @@ The restart is required — updating alone does not reliably reload Keycade.
   bare Esc; Esc held with a modifier (e.g. `Super + Esc`) is treated as a
   normal shortcut chord, so it won't fight with a system binding that also
   uses Esc (like a Super + Esc menu) while you're answering a card for it.
-- Use the top menus to switch language, sound, volume, and palette.
-- Press `✕ EXCLUDE` in the top bar for a shortcut your keyboard cannot produce.
-  It leaves training for good, stops counting toward mastery, and is listed
-  under `EXCLUDED` where one click restores it along with its progress.
+- Use the top menus to switch language, sound, volume, and palette. Five
+  palettes are included and the choice is remembered between runs.
+- Press `✕ EXCLUDE` in the top bar for a shortcut your keyboard cannot produce,
+  or one you simply do not want to train. It leaves training for good and stops
+  counting toward mastery, so a key your board does not have can no longer hold
+  a run — or 100% — hostage.
+- Open `EXCLUDED` in the top bar to see what you have set aside and put any of
+  it back. A restored shortcut returns with its history, so nothing you learned
+  is lost by excluding it. The list is capped, and the last remaining shortcut
+  cannot be excluded.
 
 Progress is stored under
 `${XDG_STATE_HOME:-$HOME/.local/state}/omarchy/keycade/` and is preserved across
