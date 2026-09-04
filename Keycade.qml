@@ -178,9 +178,14 @@ Item {
       var stored = store.settings.profileOptions && store.settings.profileOptions[root.profileId]
           ? store.settings.profileOptions[root.profileId] : ({})
       packs.profileId = root.profileId
-      packs.leader = String(stored.leader === undefined ? defaults.leader : stored.leader)
-      packs.localleader = String(stored.localleader === undefined
-                                 ? defaults.localleader : stored.localleader)
+      // A ground that names no leader keeps the source's own defaults rather
+      // than being handed the string "undefined", which is neither a leader
+      // nor short enough to be one.
+      if (defaults.leader !== undefined)
+        packs.leader = String(stored.leader === undefined ? defaults.leader : stored.leader)
+      if (defaults.localleader !== undefined)
+        packs.localleader = String(stored.localleader === undefined
+                                   ? defaults.localleader : stored.localleader)
       packs.refresh()
       return
     }

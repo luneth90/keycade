@@ -137,7 +137,7 @@
   "noBindings": "No eligible shortcuts were found. Add descriptions to your bindings and try again.",
   "noDispatch": "NO DISPATCH",
   "packLeader": "leader = {leader}",
-  "packNotice": "Official default keymaps · not read from your Neovim",
+  "packNotice": "Official default keymaps · not read from your own configuration",
   "perfectClear": "PERFECT CLEAR",
   "profile_hyprland": "HYPRLAND",
   "profile_lazyvim": "LAZYVIM",
