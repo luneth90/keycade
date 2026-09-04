@@ -1291,7 +1291,20 @@ Item {
                   width: parent.width
                   anchors.centerIn: parent
                   SafeText { width: parent.width; horizontalAlignment: Text.AlignHCenter; elide: Text.ElideRight; text: hudDatum.modelData.label; color: root.mutedColor; font.family: "monospace"; font.pixelSize: 9; font.bold: true }
-                  SafeText { width: parent.width; horizontalAlignment: Text.AlignHCenter; text: hudDatum.modelData.value; color: root.inkColor; font.family: "monospace"; font.pixelSize: 20; font.bold: true }
+                  // Deliberately the small cell: the widest reading here is
+                  // "07 / 24", seven glyphs, and at cell 3 that outgrows a
+                  // sixth of the strip on a 1024 wide screen.
+                  Item {
+                    width: parent.width; height: 26
+                    DotNumber {
+                      anchors.horizontalCenter: parent.horizontalCenter
+                      anchors.verticalCenter: parent.verticalCenter
+                      value: String(hudDatum.modelData.value)
+                      cell: 2
+                      gap: 1
+                      color: root.inkColor
+                    }
+                  }
                 }
               }
             }
