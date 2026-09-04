@@ -180,6 +180,89 @@ TestCase {
     compare(Eligibility.reason(deleteBinding), "device-special-key")
   }
 
+  function test_userExcludedBindingsLeaveTheEligibleSet() {
+    var kept = binding({ key: "1", arg: "1", description: "Switch to workspace 1" })
+    var dropped = binding({ key: "2", arg: "2", description: "Switch to workspace 2" })
+    var droppedId = Normalizer.bindingId(dropped)
+
+    var result = Eligibility.filter([kept, dropped], {
+      excludedBindings: ["hyprland:" + droppedId]
+    })
+    compare(result.eligible.length, 1)
+    compare(result.eligible[0].key, "1")
+    compare(result.excluded.length, 1)
+    compare(result.excluded[0].reason, "user-excluded")
+    compare(result.excluded[0].binding.key, "2")
+
+    // Another profile's entries are not consumed here.
+    var other = Eligibility.filter([kept, dropped], {
+      excludedBindings: ["lazyvim:" + droppedId]
+    })
+    compare(other.eligible.length, 2)
+  }
+
+  // Excluding one bind must not change which chords count as ambiguous, or the
+  // exclusion would silently readmit whatever shared the chord.
+  function test_userExclusionDoesNotDisturbAmbiguousChords() {
+    var first = binding({ key: "4", arg: "4", description: "Switch to workspace 4" })
+    var second = binding({ key: "4", arg: "5", description: "Switch to workspace 5" })
+    var third = binding({ key: "6", arg: "6", description: "Switch to workspace 6" })
+
+    var before = Eligibility.filter([first, second, third], {})
+    compare(before.eligible.length, 1)
+    compare(before.eligible[0].key, "6")
+
+    var after = Eligibility.filter([first, second, third], {
+      excludedBindings: ["hyprland:" + Normalizer.bindingId(first)]
+    })
+    compare(after.eligible.length, 1)
+    compare(after.eligible[0].key, "6")
+    compare(after.excluded.length, 2)
+    compare(after.excluded[0].reason, "ambiguous-chord")
+    compare(after.excluded[1].reason, "ambiguous-chord")
+  }
+
+  function test_excludedListIsBoundedOnBothAxes() {
+    var many = []
+    for (var i = 0; i < 100; i++) many.push("hyprland:64|K|workspace|" + i)
+    compare(Session.excludedList(many).length, 64)
+
+    var long = ["hyprland:" + new Array(2400).join("a")]
+    compare(Session.excludedList(long).length, 0)
+
+    var heavy = []
+    for (var j = 0; j < 64; j++) heavy.push("hyprland:" + new Array(300).join("b") + j)
+    var bounded = Session.excludedList(heavy)
+    verify(bounded.length < 64)
+    verify(JSON.stringify(bounded).length <= 8 * 1024)
+
+    compare(Session.excludedList(["hyprland:__proto__"]).length, 0)
+    compare(Session.excludedList(["hyprland:constructor"]).length, 0)
+    compare(Session.excludedList(["HYPRLAND:64|K|workspace|1"]).length, 0)
+    compare(Session.excludedList(["64|K|workspace|1"]).length, 0)
+    compare(Session.excludedList([17, null, {}]).length, 0)
+    compare(Session.excludedList("not an array").length, 0)
+    compare(Session.excludedList(["hyprland:a", "hyprland:a"]).length, 1)
+  }
+
+  function test_excludedListAddAndRemoveRespectTheCap() {
+    var list = Session.withExclusion([], "hyprland", "64|K|workspace|1")
+    compare(list.length, 1)
+    compare(list[0], "hyprland:64|K|workspace|1")
+    // Adding the same bind twice is a no-op, not a second entry.
+    compare(Session.withExclusion(list, "hyprland", "64|K|workspace|1").length, 1)
+
+    var full = []
+    for (var i = 0; i < 64; i++) full.push("hyprland:64|K|workspace|" + i)
+    compare(Session.withExclusion(full, "hyprland", "64|K|other|1"), null)
+    compare(Session.withExclusion([], "hyprland", "__proto__"), null)
+    compare(Session.withExclusion([], "Hyprland", "64|K|workspace|1"), null)
+
+    compare(Session.withoutExclusion(list, "hyprland", "64|K|workspace|1").length, 0)
+    compare(Session.withoutExclusion(list, "hyprland", "64|K|missing|1").length, 1)
+    compare(Session.withoutExclusion(list, "lazyvim", "64|K|workspace|1").length, 1)
+  }
+
   function test_tabAndBacktabNormalization() {
     var tab = Normalizer.normalizeEvent({
       key: 0x01000001,

@@ -12,6 +12,14 @@ ShellRoot {
       if (!ready || root.writeRequested) return
       root.writeRequested = true
       store.settings.locale = "zh-CN"
+      // Junk alongside one good entry: the sanitizer must keep exactly one.
+      store.settings.excludedBindings = [
+        "hyprland:64|LEFT|movefocus|l",
+        "hyprland:__proto__",
+        "hyprland:64|LEFT|movefocus|l",
+        "no-profile-prefix",
+        42
+      ]
       store.saveSettings()
       store.saveStats()
       completionPoll.start()

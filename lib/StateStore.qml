@@ -59,7 +59,8 @@ Item {
       reducedMotion: false,
       feedbackSound: true,
       countdownSound: true,
-      soundVolume: 0.6
+      soundVolume: 0.6,
+      excludedBindings: []
     }
   }
 
@@ -81,6 +82,10 @@ Item {
         : source.feedbackSound === true
     result.countdownSound = source.countdownSound === undefined ? true : source.countdownSound === true
     result.soundVolume = root.finiteNumber(source.soundVolume, 0.6, 0, 1)
+    // The field is new in this schema version but the version stays at 3: a
+    // bump would make an older Keycade reject the whole file and quarantine
+    // every setting, while staying put only costs it the exclusions.
+    result.excludedBindings = Session.excludedList(source.excludedBindings)
     if (Number(source.schemaVersion) === 2 && Math.abs(result.soundVolume - 0.3) < 0.001)
       result.soundVolume = 0.6
     return result

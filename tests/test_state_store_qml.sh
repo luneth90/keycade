@@ -36,6 +36,9 @@ stats="$test_root/state/omarchy/keycade/stats.json"
 [[ $(stat -c '%a' "$settings") == 600 ]]
 [[ $(stat -c '%a' "$stats") == 600 ]]
 grep -Fq -- '"locale":"zh-CN"' "$settings"
+grep -Fq -- '"excludedBindings":["hyprland:64|LEFT|movefocus|l"]' "$settings"
+! grep -Fq -- '__proto__' "$settings"
+! grep -Fq -- 'no-profile-prefix' "$settings"
 grep -Fq -- '"bindings":{}' "$stats"
 
 printf 'state-store QML integration test passed\n'
