@@ -35,7 +35,7 @@ rm -rf -- "$test_root/config/keycade/.git"
 # The counts each ground is expected to reach are read from the shipped tables
 # rather than written here, so a table that grows does not fail this.
 counts=$(python3 - "$test_root/config/keycade" <<'PY'
-import json, subprocess, sys
+import json, re, subprocess, sys
 from pathlib import Path
 root = Path(sys.argv[1])
 sys.path.insert(0, str(root / "tools"))
@@ -49,7 +49,8 @@ lazy_config = json.loads(subprocess.run(
 # integration check valid on a maintainer machine that has extras or literal
 # keymap overrides of its own.
 lazy_records = [dict(entry) for entry in packs["lazyvim"]["bindings"]]
-lazy_by_id = {entry["localId"]: index for index, entry in enumerate(lazy_records)}
+lazy_by_id = {re.sub(r"<[^<>]*>", lambda m: m.group(0).lower(), entry["localId"]): index
+               for index, entry in enumerate(lazy_records)}
 lazy_deleted = set()
 for change in lazy_config.get("bindings", []):
     try:
@@ -57,7 +58,10 @@ for change in lazy_config.get("bindings", []):
     except (KeyError, build_packs.Rejected):
         continue
     for context in change.get("contexts", []):
-        local_id = f"{context}/{change['lhs']}"
+        # Mirrors TextKey.canonicalNotation: Vim reads <Leader> and <leader> as
+        # one key, so the overlay merges on that spelling and so does this.
+        local_id = re.sub(r"<[^<>]*>", lambda m: m.group(0).lower(),
+                          f"{context}/{change['lhs']}")
         position = lazy_by_id.get(local_id)
         if change.get("op") == "del":
             if position is not None:

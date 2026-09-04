@@ -63,6 +63,20 @@ LEADER_MENTION = re.compile(
 )
 TMUX_PREFIX_MENTION = re.compile(r'\bprefix2?\b')
 
+# Commands that can set the prefix somewhere this cannot follow. tmux accepts
+# any unambiguous prefix of a command name, so `if`, `run` and `sou` are the
+# same commands as their full spellings and have to be recognised as such.
+TMUX_DYNAMIC_COMMANDS = ("source-file", "source", "if-shell", "run-shell")
+
+
+def tmux_dynamic(token: str) -> bool:
+    if token.startswith("%"):
+        # %if / %elif / %else / %endif, and any other config-file directive:
+        # what runs inside one is decided when tmux reads it, not here.
+        return True
+    return len(token) >= 2 and any(name.startswith(token)
+                                   for name in TMUX_DYNAMIC_COMMANDS)
+
 
 def is_comment(line: str) -> bool:
     stripped = line.lstrip()
@@ -264,6 +278,59 @@ def without_lua_comments(text: str) -> str | None:
             continue
         index += 1
     return "".join(output)
+
+
+def long_string_spans(text: str) -> list[tuple[int, int]]:
+    """Where the bodies of Lua long strings are, as [start, end) offsets.
+
+    Comments are blanked before anything is read, but long *strings* are not:
+    `vim.cmd [[let mapleader = " "]]` needs its contents to be readable. That
+    left the other direction open - a `[[ ... ]]` block quoting configuration
+    as documentation had its lines read as configuration, so a leader named
+    inside a string became the leader the whole deck was built on.
+
+    A statement that begins outside a long string is still read in full; only
+    lines that start inside one are passed over.
+    """
+    spans: list[tuple[int, int]] = []
+    index = 0
+    while index < len(text):
+        char = text[index]
+        if char in "\"'":
+            quote = char
+            index += 1
+            while index < len(text):
+                if text[index] == "\\":
+                    index += 2
+                elif text[index] == quote:
+                    index += 1
+                    break
+                else:
+                    index += 1
+            continue
+        if char == "[" and re.match(r"\[(=*)\[", text[index:]):
+            opened = long_bracket(text, index)
+            if not opened:
+                break
+            spans.append((index, opened[1]))
+            index = opened[1]
+            continue
+        index += 1
+    return spans
+
+
+def line_offsets(text: str) -> list[int]:
+    """The absolute offset each line of splitlines() starts at."""
+    offsets: list[int] = []
+    position = 0
+    for line in text.splitlines():
+        offsets.append(position)
+        position += len(line) + 1
+    return offsets
+
+
+def within(spans: list[tuple[int, int]], position: int) -> bool:
+    return any(start < position < end for start, end in spans)
 
 
 def split_lua_args(body: str, separators: str = ",") -> list[str] | None:
@@ -508,10 +575,16 @@ def read_keymaps(home: Path, files: list[str]) -> tuple[list[dict[str, Any]], di
         aliases: dict[str, str] = {}
         invalid_aliases: set[str] = set()
         lines = clean_text.splitlines()
+        quoted = long_string_spans(clean_text)
+        offsets = line_offsets(clean_text)
         line_index = 0
         while line_index < len(lines):
             line = lines[line_index]
             stripped = line.lstrip()
+            # Text quoted in a [[ ]] block is a string, whatever it looks like.
+            if within(quoted, offsets[line_index]):
+                line_index += 1
+                continue
             if is_comment(line):
                 line_index += 1
                 continue
@@ -528,7 +601,11 @@ def read_keymaps(home: Path, files: list[str]) -> tuple[list[dict[str, Any]], di
                     aliases[name] = target
                 line_index += 1
                 continue
-            reassigned = re.match(r"^(?:local\s+)?([A-Za-z_]\w*)\s*=", clean_line)
+            # Only at column zero. `function helper(map) map = wrap(map) end`
+            # rebinds a parameter of that name, not the file's own alias, and
+            # retiring the alias there cost every call after it.
+            reassigned = (re.match(r"^(?:local\s+)?([A-Za-z_]\w*)\s*=", clean_line)
+                          if not line[:1].isspace() else None)
             if reassigned and reassigned.group(1) in aliases:
                 invalid_aliases.add(reassigned.group(1))
                 aliases.pop(reassigned.group(1), None)
@@ -696,9 +773,14 @@ def read_leader(home: Path, files: list[str]) -> tuple[dict[str, str], dict[str,
                     mentioned.add(name)
             continue
         lines = clean_text.splitlines()
+        quoted = long_string_spans(clean_text)
+        offsets = line_offsets(clean_text)
         index = 0
         while index < len(lines):
             line = lines[index]
+            if within(quoted, offsets[index]):
+                index += 1
+                continue
             if is_comment(line):
                 index += 1
                 continue
@@ -803,7 +885,7 @@ def read_tmux_prefix(home: Path, files: list[str]) -> tuple[dict[str, str], dict
                 head = shlex.split(line, comments=True, posix=True)
             except ValueError:
                 head = []
-            if head and head[0] in ("source", "source-file", "if-shell", "run-shell"):
+            if head and tmux_dynamic(head[0]):
                 uncertain = True
                 continue
             assignment = tmux_assignment(line)

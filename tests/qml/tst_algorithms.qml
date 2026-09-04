@@ -1490,6 +1490,53 @@ TestCase {
     compare(TextKey.parseKeySpec("ctrl+notakey"), null)
   }
 
+  // "S-" is Shift in Vim's notation, in tmux's, and in every collector on the
+  // Python side. It meant Super in this parser alone, so a prefix a machine
+  // had set to Shift would have been taught as Super.
+  function test_shiftIsShiftOnBothSidesOfTheHelperBoundary() {
+    compare(TextKey.parseKeySpec("S-x").text, "X")
+    compare(TextKey.parseKeySpec("S-x").mods, 0)
+    compare(TextKey.parseKeySpec("shift+x").text, "X")
+    // A named key has no character for Shift to fold into, so there it stays
+    // a modifier - and Tab is refused, because Qt cannot tell it from Backtab.
+    compare(TextKey.parseKeySpec("S-Up").mods, 1)
+    compare(TextKey.parseKeySpec("S-Tab"), null)
+    // Nothing shifts "1" into another key on every layout, so it is refused
+    // rather than guessed at.
+    compare(TextKey.parseKeySpec("S-1"), null)
+    // Super still has spellings of its own.
+    compare(TextKey.parseKeySpec("SUPER+k").mods, 64)
+    compare(TextKey.parseKeySpec("cmd+k").mods, 64)
+    compare(TextKey.parseKeySpec("C-S-x").mods, 4)
+    compare(TextKey.parseKeySpec("C-S-x").text, "X")
+  }
+
+  // Vim reads the name inside <> without regard to case; the characters
+  // outside it are decisive. A config written <Leader>ff used to add a second
+  // card beside the packaged <leader>ff instead of replacing its description.
+  function test_aLeftHandSideMeetsThePackWhateverCaseItsBracketsUse() {
+    compare(TextKey.canonicalNotation("normal/<Leader>ff"), "normal/<leader>ff")
+    compare(TextKey.canonicalNotation("normal/<C-X>"), "normal/<c-x>")
+    // Outside the brackets nothing moves: these are two different mappings.
+    compare(TextKey.canonicalNotation("normal/<leader>fF"), "normal/<leader>fF")
+
+    testPack.profileId = "lazyvim"
+    testPack.options = ({ leader: " " })
+    testPack.overrides = [{ op: "set", lhs: "<Leader>ff", desc: "Mine",
+                            contexts: ["normal"] }]
+    testPack.refresh()
+    var matched = 0
+    for (var index = 0; index < testPack.bindings.length; index++) {
+      if (TextKey.canonicalNotation(testPack.bindings[index].localId)
+          === "normal/<leader>ff") matched += 1
+    }
+    compare(matched, 1)
+    compare(testPack.customAdded, 0)
+    compare(testPack.customChanged, 1)
+    testPack.overrides = []
+    testPack.refresh()
+  }
+
   function test_tmuxPrefersAnActuallyEnabledCBAndNeverInventsOne() {
     var omarchy = Profiles.resolvedOptions("tmux", {
       prefix: "C-Space", prefix2: "C-b"
@@ -1508,6 +1555,17 @@ TestCase {
     var duplicate = Profiles.resolvedOptions("tmux", { prefix2: "C-b" })
     compare(duplicate.prefix, "C-b")
     compare(duplicate.prefix2, "")
+
+    // A prefix set to something this cannot read is not an invitation to put
+    // C-b in front of a prefix that was read: that would make the card ask for
+    // a key the machine may never have bound.
+    var unreadable = Profiles.resolvedOptions("tmux", { prefix: "F13", prefix2: "C-a" })
+    compare(unreadable.prefix, "C-a")
+    compare(unreadable.prefix2, "")
+    // With nothing readable at all, nothing was proved and the default is all
+    // there is.
+    compare(Profiles.resolvedOptions("tmux", { prefix: "F13" }).prefix, "C-b")
+    compare(Profiles.resolvedOptions("tmux", ({})).prefix, "C-b")
   }
 
   // The shipped tmux table was collected against tmux's own default of C-b,

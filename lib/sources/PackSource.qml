@@ -173,9 +173,13 @@ Item {
         || !root.overrides.length) return records
     var byId = ({})
     var defaults = ({})
+    // Indexed by the spelling Vim itself would consider the same, so a line
+    // written <Leader>ff finds the packaged <leader>ff instead of landing
+    // beside it as a second card.
     for (var index = 0; index < records.length; index++) {
-      byId[records[index].localId] = index
-      defaults[records[index].localId] = true
+      var packedId = TextKey.canonicalNotation(records[index].localId)
+      byId[packedId] = index
+      defaults[packedId] = true
     }
     var deleted = ({})
     for (var change = 0; change < root.overrides.length; change++) {
@@ -187,7 +191,8 @@ Item {
       }
       for (var mode = 0; mode < item.contexts.length; mode++) {
         var context = String(item.contexts[mode] || "")
-        var localId = context + "/" + String(item.lhs || "")
+        var written = context + "/" + String(item.lhs || "")
+        var localId = TextKey.canonicalNotation(written)
         var position = byId[localId]
         if (item.op === "del") {
           if (position !== undefined && !deleted[localId]) {
@@ -205,7 +210,7 @@ Item {
           deleted[localId] = false
         } else {
           replacement = {
-            localId: localId, context: context, notation: item.lhs,
+            localId: written, context: context, notation: item.lhs,
             steps: parsed, alternates: [], category: "misc", descKey: "",
             desc: item.desc, extras: [], customKind: "added"
           }
@@ -214,7 +219,9 @@ Item {
         }
       }
     }
-    var merged = records.filter(function(record) { return !deleted[record.localId] })
+    var merged = records.filter(function(record) {
+      return !deleted[TextKey.canonicalNotation(record.localId)]
+    })
     for (var result = 0; result < merged.length; result++) {
       if (merged[result].customKind === "added") root.customAdded += 1
       else if (merged[result].customKind === "changed") root.customChanged += 1

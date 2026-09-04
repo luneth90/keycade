@@ -36,7 +36,6 @@ Item {
   // fails - a stale answer from another ground would be worse than none.
   property var options: ({})
   property var extras: []
-  property string upstreamCommit: ""
   // Literal top-level vim.keymap.set/del calls, still in source order. The
   // pack loader applies them over the shipped LazyVim table.
   property var bindings: []
@@ -56,7 +55,6 @@ Item {
   function reset() {
     root.options = ({})
     root.extras = []
-    root.upstreamCommit = ""
     root.bindings = []
     root.bindingSkipped = 0
     root.skipped = ({})
@@ -169,8 +167,6 @@ Item {
     })
     root.bindings = bindings
     root.bindingSkipped = bindingSkipped + rejectedBindings
-    root.upstreamCommit = /^[0-9a-f]{7,40}$/.test(String((record.upstream || {}).commit || ""))
-        ? String(record.upstream.commit) : ""
     root.skipped = skipped
   }
 

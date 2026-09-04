@@ -206,6 +206,60 @@ class KeymapTests(unittest.TestCase):
         self.assertEqual(found["bindings"], [])
         self.assertEqual(found["bindingSkipped"], {})
 
+    def test_a_long_string_is_a_string_however_much_it_looks_like_lua(self):
+        """Comments are blanked before anything is read; long strings are not,
+        because `vim.cmd [[let mapleader = " "]]` needs its own contents. That
+        left the other direction open: a `[[ ]]` block quoting configuration as
+        documentation had its lines read as configuration."""
+        found = self.keymaps(
+            'local doc = [[\n'
+            'vim.keymap.set("n", "<leader>zz", rhs, { desc = "Quoted" })\n'
+            ']]\n'
+            'vim.keymap.set("n", "gx", rhs, { desc = "Real" })\n')
+        self.assertEqual(found["bindings"], [
+            {"op": "set", "contexts": ["normal"], "lhs": "gx", "desc": "Real"}
+        ])
+        self.assertEqual(found["bindingSkipped"], {})
+
+    def test_an_alias_survives_a_parameter_of_the_same_name(self):
+        """`function helper(map) map = ... end` rebinds that function's own
+        parameter, not the file's alias. Retiring the alias there dropped every
+        call after it."""
+        found = self.keymaps(
+            'local map = vim.keymap.set\n'
+            'map("n", "ga", rhs, { desc = "Before" })\n'
+            'local function helper(map)\n  map = wrap(map)\nend\n'
+            'map("n", "gb", rhs, { desc = "After" })\n')
+        self.assertEqual([entry["lhs"] for entry in found["bindings"]], ["ga", "gb"])
+        self.assertEqual(found["bindingSkipped"], {})
+
+    def test_every_shape_it_will_not_follow_is_counted_not_swallowed(self):
+        """One case per row of the compatibility matrix's refusing side. Each
+        differs from a readable line by exactly the condition being tested."""
+        for body, reason in (
+            # An unknown wrapper is not a keymap API because it is spelled
+            # like one.
+            ('my.map.set("n", "gx", rhs, { desc = "Wrapper" })\n', None),
+            # Brackets that never close cannot be a complete statement.
+            ('vim.keymap.set("n", "gx", rhs, { desc = "Open"\n', "unsupported-shape"),
+            # A buffer-local map belongs to one buffer, not to the machine.
+            ('vim.api.nvim_buf_set_keymap(0, "n", "gx", rhs, { desc = "Buf" })\n', None),
+            # keycode resolves at runtime unless it is handed a literal.
+            ('vim.keymap.set("n", vim.keycode(name), rhs, { desc = "Dyn" })\n',
+             "non-literal-lhs"),
+            # An options table built by a call is not a literal table.
+            ('vim.keymap.set("n", "gx", rhs, opts({ desc = "Built" }))\n',
+             "dynamic-options"),
+            # An alias retired at the top level really is retired.
+            ('local map = vim.keymap.set\nmap = other\n'
+             'map("n", "gx", rhs, { desc = "After" })\n', "alias-reassigned"),
+        ):
+            with self.subTest(body=body):
+                found = self.keymaps(body)
+                self.assertEqual(found["bindings"], [], body)
+                if reason:
+                    self.assertIn(reason, found["bindingSkipped"], body)
+
     def test_reads_balanced_multiline_calls(self):
         found = self.keymaps(
             'vim.keymap.set(\n  "n",\n  "gx",\n  rhs,\n  { desc = "Open" }\n)\n')
@@ -289,6 +343,23 @@ class TmuxTests(unittest.TestCase):
         dynamic = self.prefix("set -g prefix C-a\nsource-file ~/.tmux.local.conf")
         self.assertEqual(dynamic["options"], {})
         self.assertIn("dynamically", dynamic["skipped"]["prefix"])
+
+    def test_a_prefix_set_somewhere_conditional_is_not_read_as_certain(self):
+        """tmux takes any unambiguous abbreviation of a command name, and its
+        own %if blocks are decided when tmux reads the file. Either way what
+        runs is not decidable here, so the whole prefix read is refused rather
+        than reported as a value."""
+        for body in (
+            "%if #{==:#{host},laptop}\nset -g prefix C-a\n%endif\n",
+            'if -b "true" "set -g prefix C-a"\nset -g prefix C-x\n',
+            'run "true"\nset -g prefix C-a\n',
+            "sou other.conf\nset -g prefix C-a\n",
+        ):
+            with self.subTest(body=body):
+                found = self.prefix(body)
+                self.assertEqual(found["options"], {}, body)
+                self.assertEqual(found["skipped"]["prefix"],
+                                 "configuration may set prefix dynamically", body)
 
     def test_prefix2_none_is_an_explicit_absence(self):
         found = self.prefix("set -g prefix C-a\nset -g prefix2 None")
