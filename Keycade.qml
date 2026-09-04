@@ -1486,12 +1486,26 @@ Item {
   Component {
     id: playCard
     Item {
+      DotNumber {
+        anchors.right: parent.right
+        anchors.top: parent.top
+        anchors.rightMargin: 22
+        anchors.topMargin: 22
+        visible: root.deadline > 0
+        value: String(root.countdownSeconds)
+        cell: 4
+        gap: 1
+        color: root.energy < 0.25 ? root.dangerColor : root.primaryColor
+      }
       Column {
         anchors.fill: parent
         anchors.margins: 28
         spacing: 10
         SafeText {
-          width: parent.width; horizontalAlignment: Text.AlignHCenter
+          // Narrowed so a long category line cannot run under the countdown.
+          width: parent.width - 88; anchors.horizontalCenter: parent.horizontalCenter
+          horizontalAlignment: Text.AlignHCenter
+          elide: Text.ElideRight; maximumLineCount: 1
           text: (root.currentBinding ? i18n.t("category_" + root.currentBinding.category) + " · " : "")
                 + i18n.t(root.correctionRequired ? "correction" : root.currentCard && root.currentCard.remedial ? "remedial" : root.currentCard && root.currentCard.tier === "guided" ? "guided" : root.currentCard && root.currentCard.tier === "maintenance" ? "maintenance" : "learning")
           color: root.currentCard && root.currentCard.tier === "maintenance" ? root.coinColor : root.secondaryColor
@@ -1541,17 +1555,6 @@ Item {
                 SafeText { visible: keyDatum.index < (root.currentBinding ? Normalizer.display(root.currentBinding).split(" + ").length - 1 : 0); text: "+"; color: root.mutedColor; font.family: "monospace"; font.pixelSize: 20; font.bold: true; anchors.verticalCenter: parent.verticalCenter }
               }
             }
-          }
-        }
-        Item {
-          width: parent.width; height: 30
-          visible: root.deadline > 0
-          DotNumber {
-            anchors.centerIn: parent
-            value: String(root.countdownSeconds)
-            cell: 3
-            gap: 1
-            color: root.energy < 0.25 ? root.dangerColor : root.primaryColor
           }
         }
         Row {
