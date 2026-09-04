@@ -51,6 +51,10 @@ Item {
   property var reviewSuggestions: []
   property var masterySnapshot: ({ attempts: 0, correct: 0, accuracy: 0, response: 0 })
   property var progressCounts: ({ unseen: 0, learning: 0, mastered: 0, due: 0, total: 0 })
+  // Every ground's last known { mastered, total }, by id - what the cabinet
+  // row draws. The active one is live; the rest are what they recorded when
+  // they were last open.
+  property var groundProgress: ({})
   property double activeSegmentStartedAt: 0
   property double cardStartedAt: 0
   property double deadline: 0
@@ -249,26 +253,10 @@ Item {
     root.themeName = Palettes.supported(store.settings.theme)
         ? String(store.settings.theme) : root.themeName
     root.applyEligibility()
-    if (!root.eligibleBindings.length && !root.trainingLockedOut) {
-      root.errorMessage = i18n.t("noBindings")
-      guard.fail(root.errorMessage)
-      return
-    }
     root.runNumber = root.activeRunId
     root.resumeAvailable = hasResumableSession()
     refreshProgressCounts()
-    checkFirstMastery(root.activeRunId)
-    var counters = root.profileCounters()
-    if (!root.resumeAvailable && Number(counters.firstMasteryAt || 0) > 0
-        && !Boolean(counters.firstMasteryCelebrated)
-        && Number(counters.firstMasteryRun || 0) <= Number(counters.runs || 0)) {
-      root.masterySnapshot = Stats.aggregate(store.stats, root.eligibleBindings)
-      Stats.markFirstMasteryCelebrated(store.stats, root.profileId)
-      store.saveStats()
-      root.view = "mastery"
-      sounds.playMastery()
-      return
-    }
+    if (!root.settleGround()) return
     root.view = "home"
     root.feedbackText = i18n.t("ready")
   }
@@ -431,7 +419,12 @@ Item {
     root.staleExcludedCount = 0
     root.trainingLockedOut = false
     root.excludedMenuOpen = false
-    root.view = "loading"
+    // Only a cold start goes to the loading screen. Switching cabinets from
+    // the home screen stays on it: the row already knows what every ground
+    // last counted, so there is nothing to go and fetch before it can be
+    // drawn, and tearing the screen down and back up for the wait read as a
+    // page reload rather than as picking a machine.
+    if (root.view !== "home") root.view = "loading"
     root.errorMessage = ""
     // Every ground answers through a signal now - a pack one reads the
     // machine's configuration first - so nothing is counted here.
@@ -550,7 +543,34 @@ Item {
     root.applyEligibility()
     root.resumeAvailable = root.hasResumableSession()
     root.adoptRunState()
-    root.maybeShowHome()
+    // Already on the home screen: the ground changed under it, so settle it
+    // in place rather than sending it through the loading screen again.
+    if (root.view === "home") root.settleGround()
+    else root.maybeShowHome()
+  }
+
+  // What a ground has to answer for once its table is in: whether it has
+  // anything to teach at all, and whether finishing it earned the one-time
+  // celebration. Shared by the cold start and by picking another cabinet.
+  function settleGround() {
+    if (!root.eligibleBindings.length && !root.trainingLockedOut) {
+      root.errorMessage = i18n.t("noBindings")
+      guard.fail(root.errorMessage)
+      return false
+    }
+    checkFirstMastery(root.activeRunId)
+    var counters = root.profileCounters()
+    if (!root.resumeAvailable && Number(counters.firstMasteryAt || 0) > 0
+        && !Boolean(counters.firstMasteryCelebrated)
+        && Number(counters.firstMasteryRun || 0) <= Number(counters.runs || 0)) {
+      root.masterySnapshot = Stats.aggregate(store.stats, root.eligibleBindings)
+      Stats.markFirstMasteryCelebrated(store.stats, root.profileId)
+      store.saveStats()
+      root.view = "mastery"
+      sounds.playMastery()
+      return false
+    }
+    return true
   }
 
   // A run belongs to one ground, and so does every number a run produces. The
@@ -625,6 +645,49 @@ Item {
 
   function refreshProgressCounts() {
     root.progressCounts = Stats.counts(store.stats, root.eligibleBindings, Date.now(), root.activeRunId)
+    // The cabinet row shows every ground's progress, not only this one's, and
+    // the others cannot be counted from here: two of them read the machine
+    // through a subprocess, and a pack's eligible set depends on exclusions
+    // and on which extras are switched on. So each ground records what it
+    // counted while it was open, and the row reads that back.
+    if (store.ready && root.eligibleBindings.length
+        && Stats.noteProgress(store.stats, root.profileId,
+                              root.progressCounts.mastered, root.progressCounts.total)
+        && root.view !== "playing") store.saveStats()
+    root.refreshGroundProgress()
+  }
+
+  // Every ground's last known standing, rebuilt as one object so the cabinets
+  // redraw: the statistics are mutated in place, so a delegate bound straight
+  // to them would never hear that they moved.
+  function refreshGroundProgress() {
+    var ids = Profiles.ids()
+    var progress = ({})
+    for (var index = 0; index < ids.length; index++) {
+      var counters = Stats.counters(store.stats, ids[index])
+      progress[ids[index]] = {
+        mastered: Number(counters.knownMastered || 0),
+        total: Number(counters.knownTotal || 0)
+      }
+    }
+    // Only once this ground has actually counted itself. Mid-switch its
+    // eligible set is empty, and writing that here would blink the cabinet
+    // through a dash on the way to its real number.
+    if (root.eligibleBindings.length) {
+      progress[root.profileId] = {
+        mastered: root.progressCounts.mastered,
+        total: root.progressCounts.total
+      }
+    }
+    root.groundProgress = progress
+  }
+
+  // What each cabinet shows under its name. A ground nobody has opened yet has
+  // no total to show and says so with a dash rather than a made-up zero.
+  function groundProgressLabel(id) {
+    var known = root.groundProgress[String(id)]
+    if (!known || !known.total) return "—"
+    return known.mastered + "/" + known.total
   }
 
   function commitActiveTraining() {
@@ -720,7 +783,7 @@ Item {
   }
 
   function resumeRun() {
-    if (!root.resumeAvailable || !guard.active) return
+    if (!root.resumeAvailable || !guard.active || root.groundLoading) return
     var session = store.session
     var offset = Math.max(0, Math.min(root.runCardLimit - 1, Number(session.offset || 0)))
     var restoredDeck = Session.restoreCards(session.cards, root.eligibleBindings)
@@ -764,6 +827,9 @@ Item {
 
   function startRun() {
     if (root.view !== "home" && root.view !== "summary") return
+    // The home screen stays up while a cabinet loads, so START can be reached
+    // before the table it would deal from has arrived.
+    if (root.groundLoading) return
     if (root.trainingLockedOut) return
     if (!guard.active) {
       guard.fail("Shortcut inhibition is not active.")
@@ -1898,8 +1964,11 @@ Item {
         spacing: 13
         SafeText {
           width: parent.width; horizontalAlignment: Text.AlignHCenter
-          text: root.view === "home" ? i18n.t("ready")
-                : (root.activeSource.loading ? i18n.t("loading") : i18n.t("acquiring"))
+          // The home screen stays up while a cabinet loads, so this line is
+          // what says the wait is happening - the screen itself no longer goes
+          // away and come back to say it.
+          text: root.groundLoading || root.activeSource.loading ? i18n.t("loading")
+                : root.view === "home" ? i18n.t("ready") : i18n.t("acquiring")
           color: root.successColor; font.family: "monospace"; font.bold: true; font.pixelSize: 13; font.letterSpacing: 2
         }
         SafeText {
@@ -1963,8 +2032,10 @@ Item {
                 }
                 SafeText {
                   anchors.horizontalCenter: parent.horizontalCenter
-                  text: groundDatum.current ? root.progressCounts.mastered + "/" + root.progressCounts.total : "—"
-                  color: groundDatum.current ? root.successColor : root.mutedColor
+                  text: root.groundProgressLabel(groundDatum.modelData)
+                  color: groundDatum.current
+                       ? (root.groundLoading ? root.mutedColor : root.successColor)
+                       : root.mutedColor
                   font.family: "monospace"; font.pixelSize: 10; font.bold: true
                 }
               }
@@ -1992,6 +2063,10 @@ Item {
           anchors.horizontalCenter: parent.horizontalCenter
           spacing: 10
           visible: root.view === "home" && !root.trainingLockedOut
+          // Reachable but not usable while the picked cabinet is still coming
+          // in: there is no table to deal from yet, and a button that looks
+          // ready but does nothing is worse than one that looks busy.
+          opacity: root.groundLoading ? 0.4 : 1
           Rectangle {
             width: root.resumeAvailable ? 200 : 240; height: 46
             color: root.primaryColor; border.width: 4; border.color: root.voidColor

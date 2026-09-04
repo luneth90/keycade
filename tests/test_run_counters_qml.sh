@@ -120,6 +120,7 @@ ShellRoot {
     check(round + " mastered", overlay.progressCounts.mastered, 7)
     check(round + " due", overlay.progressCounts.due, 4)
     check(round + " total", overlay.progressCounts.total, 86)
+    check(round + " own cabinet", overlay.groundProgressLabel("tmux"), "7/86")
   }
 
   Timer {
@@ -163,7 +164,26 @@ ShellRoot {
       check("vim mastered", overlay.progressCounts.mastered, 0)
       check("vim due", overlay.progressCounts.due, 0)
       check("vim total", overlay.progressCounts.total, 109)
+      // The cabinet row is the point of recording a ground's standing: the
+      // one you are not on still says where you left it, and one nobody has
+      // opened says nothing rather than a zero that reads as "none mastered".
+      check("vim cabinet", overlay.groundProgressLabel("vim"), "0/109")
+      check("tmux cabinet from vim", overlay.groundProgressLabel("tmux"), "7/86")
+      check("unopened cabinet", overlay.groundProgressLabel("neovim"), "—")
+      // Picking a cabinet from the home screen stays on the home screen. The
+      // row is drawn from what each ground recorded, so there is nothing to
+      // fetch before it can be shown, and the screen no longer goes away and
+      // comes back for the wait.
+      //
+      // Put on the home screen by hand: opening the overlay for real would
+      // take the keyboard away from whoever is running the suite, and what is
+      // under test here is which screen a switch leaves you on.
+      overlay.view = "home"
       overlay.selectProfile("tmux")
+      check("home survives the switch", overlay.view, "home")
+      check("loading is announced", overlay.groundLoading, true)
+      check("picked cabinet keeps its number",
+            overlay.groundProgressLabel("tmux"), "7/86")
       backAgain.start()
     }
   }

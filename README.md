@@ -13,7 +13,8 @@ adaptive recall runs. Correct input is recognized locally and never dispatches
 the original shortcut action.
 
 It trains six **training grounds**, picked on the home screen like a cabinet
-in an arcade. Each keeps its own deck, its own progress and its own mastery:
+in an arcade. Each keeps its own deck, its own progress and its own mastery,
+and the row shows where every one of them stands:
 
 | Ground | Where its shortcuts come from |
 | --- | --- |
@@ -119,9 +120,12 @@ The restart is required — updating alone does not reliably reload Keycade.
 - Launch with `Super + Shift + K`, or run
   `omarchy-shell shell summon luneth90.keycade '{}'`.
 - Pick a training ground on the home screen - Hyprland, herdr, tmux, VIM,
-  NEOVIM or LazyVim -
-  then press Enter. A ground cannot be changed mid-run: a deck belongs to the
-  ground it was dealt from, and so does its progress.
+  NEOVIM or LazyVim - then press Enter. Every cabinet shows where it stands,
+  not only the one you are on, so the row reads as a single picture of your
+  progress; a ground you have never opened shows a dash rather than a zero.
+- A run belongs to the ground it was dealt from, and so do its numbers. To
+  train somewhere else, press BACK: the run is saved exactly as leaving the
+  overlay saves it, and picking that cabinet again resumes where it stopped.
 - Press Enter to start or continue a run.
 - Release Esc to save the current run and exit safely. This only fires for a
   bare Esc; Esc held with a modifier (e.g. `Super + Esc`) is treated as a

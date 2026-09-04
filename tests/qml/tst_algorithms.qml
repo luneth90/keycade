@@ -803,6 +803,46 @@ TestCase {
 
   // A v4 entry naming no readable ground cannot be loaded by any profile, so
   // it is dropped rather than guessed at.
+  // The cabinet row shows every ground's standing, and only the ground you are
+  // standing at can be counted: the other two read the machine through a
+  // subprocess, and a pack's eligible set turns on exclusions and on which
+  // extras are switched on. So each ground records what it counted, and a
+  // ground that has never been opened has to stay a dash rather than become a
+  // zero that looks like "nothing mastered here".
+  function test_aGroundRecordsWhatItCountedForTheCabinetsToRead() {
+    var stats = Stats.migrate({ schemaVersion: 4, bindings: {}, profiles: {} })
+    compare(Stats.counters(stats, "tmux").knownTotal, 0)
+    compare(Stats.counters(stats, "tmux").knownMastered, 0)
+
+    compare(Stats.noteProgress(stats, "tmux", 7, 86), true)
+    compare(Stats.counters(stats, "tmux").knownMastered, 7)
+    compare(Stats.counters(stats, "tmux").knownTotal, 86)
+    // Nothing moved, so nothing is written: the file is not rewritten to say
+    // the same thing again.
+    compare(Stats.noteProgress(stats, "tmux", 7, 86), false)
+    compare(Stats.noteProgress(stats, "tmux", 8, 86), true)
+
+    // One ground's standing is not another's.
+    compare(Stats.counters(stats, "vim").knownTotal, 0)
+    Stats.noteProgress(stats, "vim", 2, 109)
+    compare(Stats.counters(stats, "tmux").knownTotal, 86)
+    compare(Stats.counters(stats, "vim").knownTotal, 109)
+
+    // A hand-edited file cannot claim more mastered than it counted.
+    var edited = Stats.migrate({
+      schemaVersion: 4, bindings: {},
+      profiles: { tmux: { knownTotal: 10, knownMastered: 99 } }
+    })
+    compare(Stats.counters(edited, "tmux").knownMastered, 10)
+
+    // And a file written before this existed reads as "never opened".
+    var older = Stats.migrate({
+      schemaVersion: 4, bindings: {}, profiles: { tmux: { runs: 3 } }
+    })
+    compare(Stats.counters(older, "tmux").runs, 3)
+    compare(Stats.counters(older, "tmux").knownTotal, 0)
+  }
+
   function test_v4StatsDropEntriesWithNoTrainingGround() {
     var migrated = Stats.migrate({
       schemaVersion: 4,
