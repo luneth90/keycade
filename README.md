@@ -27,11 +27,14 @@ shortcut action.
   reviews the shortcut again later in the run.
 - Saves progress locally, resumes interrupted runs, tracks total mastery, and
   shows a one-time celebration when every eligible shortcut first reaches 100%.
+- Lets you exclude a shortcut your keyboard cannot press, or one you do not
+  want to train, and restore it later with its progress intact.
 - Includes English and Simplified Chinese, local feedback/countdown sounds,
   and Tokyo Night and Gruvbox palettes.
 
 Function-row, XF86 media/device, Print/Pause/SysRq, dedicated
-Home/End/Insert/Page, ambiguous, unsafe, and unsupported bindings are excluded.
+Home/End/Insert/Page/Delete, ambiguous, unsafe, and unsupported bindings are
+excluded: a compact keyboard is not guaranteed to carry them.
 
 ## Requirements
 
@@ -93,6 +96,9 @@ The restart is required — updating alone does not reliably reload Keycade.
   normal shortcut chord, so it won't fight with a system binding that also
   uses Esc (like a Super + Esc menu) while you're answering a card for it.
 - Use the top menus to switch language, sound, volume, and palette.
+- Press `✕ EXCLUDE` in the top bar for a shortcut your keyboard cannot produce.
+  It leaves training for good, stops counting toward mastery, and is listed
+  under `EXCLUDED` where one click restores it along with its progress.
 
 Progress is stored under
 `${XDG_STATE_HOME:-$HOME/.local/state}/omarchy/keycade/` and is preserved across
