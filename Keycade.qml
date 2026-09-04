@@ -1616,9 +1616,11 @@ Item {
         anchors.margins: 28
         spacing: 10
         SafeText {
-          // Narrowed so a long category line cannot run under the combo badge
-          // on one side or the countdown on the other.
-          width: parent.width - 260; anchors.horizontalCenter: parent.horizontalCenter
+          // Narrowed so a long category line cannot run under the countdown,
+          // and narrowed further only while the streak badge is on the other
+          // side - reserving that room permanently elided real category names.
+          width: parent.width - (root.combo >= 2 ? 250 : 110)
+          anchors.horizontalCenter: parent.horizontalCenter
           horizontalAlignment: Text.AlignHCenter
           elide: Text.ElideRight; maximumLineCount: 1
           text: (root.currentBinding ? i18n.t("category_" + root.currentBinding.category) + " · " : "")
