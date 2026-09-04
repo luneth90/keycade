@@ -2,15 +2,15 @@
 
 **English** | [简体中文](README.zh-CN.md)
 
-> Shortcut Recall Arcade
+> A shortcut recall arcade for Omarchy, herdr, tmux, Vim, Neovim and LazyVim
 
 ![Keycade English learning screen](docs/screenshots/keycade-en.png)
 
 ![All shortcuts mastered celebration](docs/screenshots/keycade-mastery-en.png)
 
-Keycade is a native Omarchy shortcut trainer. It turns shortcuts into short,
-adaptive recall runs. Correct input is recognized locally and never dispatches
-the original shortcut action.
+Keycade is a native Omarchy overlay that turns shortcuts into short, adaptive
+recall runs. Correct input is recognized locally and never dispatches the
+original shortcut action.
 
 It trains six **training grounds**, picked on the home screen like a cabinet
 in an arcade. Each keeps its own deck, its own progress and its own mastery,

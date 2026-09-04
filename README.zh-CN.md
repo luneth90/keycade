@@ -2,13 +2,13 @@
 
 [English](README.md) | **简体中文**
 
-> 快捷键记忆训练机
+> 一台快捷键记忆街机——练 Omarchy、herdr、tmux、Vim、Neovim 和 LazyVim
 
 ![Keycade 简体中文学习界面](docs/screenshots/keycade-zh-CN.png)
 
 ![全部快捷键已掌握庆祝画面](docs/screenshots/keycade-mastery-zh-CN.png)
 
-Keycade 是一个原生 Omarchy 快捷键训练器。它把快捷键编成简短的自适应回忆练习。
+Keycade 是一个原生 Omarchy 覆盖层，把快捷键编成简短的自适应回忆练习。
 正确输入只在本地识别，不会派发或执行原快捷键动作。
 
 它带六个**训练场**，在首页像街机选机台一样切换，一排机台上能同时看到各自的进度。
