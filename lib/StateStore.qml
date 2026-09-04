@@ -73,19 +73,16 @@ Item {
 
   readonly property int maxOptionChars: 32
 
-  // Each ground declares the configurable keys its table refers to - LazyVim's
-  // leader and localleader, tmux's prefix. Nothing here knows those names.
+  // Only what was chosen by hand is stored. An option nobody overrode is
+  // absent, so the overlay can tell "the reader picked this" from "this is
+  // what the machine or the upstream says" - and clearing an override is
+  // removing the entry rather than writing the default back over it.
   function defaultProfileOptions() {
     var result = Object.create(null)
     var ids = Profiles.ids()
     for (var index = 0; index < ids.length; index++) {
-      var defaults = Profiles.options(ids[index])
-      var names = Object.keys(defaults)
-      if (!names.length) continue
-      var entry = Object.create(null)
-      for (var name = 0; name < names.length; name++)
-        entry[names[name]] = String(defaults[names[name]])
-      result[ids[index]] = entry
+      if (!Object.keys(Profiles.options(ids[index])).length) continue
+      result[ids[index]] = Object.create(null)
     }
     return result
   }
@@ -102,10 +99,13 @@ Item {
       if (!Profiles.valid(id) || !Object.prototype.hasOwnProperty.call(result, id)) continue
       var stored = value[id]
       if (!stored || typeof stored !== "object" || Array.isArray(stored)) continue
-      var names = Object.keys(result[id])
+      var names = Object.keys(Profiles.options(id))
       for (var name = 0; name < names.length; name++) {
-        result[id][names[name]] =
-            root.optionValue(stored[names[name]], result[id][names[name]])
+        // Not `value`: that is this function's parameter, and `var` is scoped
+        // to the function, so assigning it here replaced the map being read
+        // and every ground after the first was silently dropped.
+        var chosen = root.optionValue(stored[names[name]], "")
+        if (chosen) result[id][names[name]] = chosen
       }
     }
     return result

@@ -1,0 +1,304 @@
+#!/usr/bin/python3
+"""Emit what a training ground's own configuration says about itself.
+
+The tables Keycade deals for LazyVim and tmux are the upstream defaults,
+shipped with the plugin. This helper reads the small, fixed-shape part of a
+machine's configuration that says how those defaults were *changed*: which key
+every other binding hangs off, and - for LazyVim - which opt-in bundles are
+turned on and which upstream version is installed.
+
+What it will not do, in the words of the rule it lives under:
+
+  Do not execute, load or interpret any of the user's configuration. Read only
+  fixed shapes at fixed paths (declarative JSON, and top-level literal
+  assignments), bound every file, skip and count anything unreadable, and fall
+  back to the shipped defaults when the whole read fails.
+
+So: no Lua is run, no editor is started, no socket is opened, nothing is
+fetched, no `require` chain is followed, no directory is walked and no symlink
+is followed. Every path below is written out in full; the list is the contract.
+An unreadable value is reported as skipped rather than guessed at, because a
+guessed prefix teaches every card the wrong first key while a skipped one only
+costs the reader a menu.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import re
+import sys
+from pathlib import Path
+from typing import Any
+
+SCHEMA_VERSION = 1
+MAX_FILE_BYTES = 64 * 1024
+MAX_PAYLOAD_BYTES = 256 * 1024
+MAX_EXTRAS = 128
+MAX_EXTRA_CHARS = 128
+MAX_OPTION_CHARS = 32
+MAX_COMMIT_CHARS = 64
+
+# Neovim resolves mapleader by taking its text and substituting it into the
+# left-hand side, so "<Space>" is as valid a spelling as " ". `:help mapleader`
+NOTATION = {"<space>": " ", "<bslash>": "\\", "<tab>": "\t", "<cr>": "\r"}
+
+# Only a top-level literal assignment counts. Anything indented is inside an if,
+# a loop or a function, and reading it would mean deciding whether that branch
+# runs - which is interpreting the configuration.
+LEADER = re.compile(
+    r'^vim\.g\.(mapleader|maplocalleader)\s*=\s*'
+    r'(?:"((?:[^"\\]|\\.)*)"|\'((?:[^\'\\]|\\.)*)\')'
+    r'\s*(?:--.*)?$'
+)
+
+# A line that is about the option but not in a shape this may read. Telling
+# "you never set it" from "you set it somewhere I cannot follow" is the whole
+# difference between "the upstream default applies" and "please check this":
+# the first needs no attention, the second does.
+LEADER_MENTION = re.compile(r'\bvim\.g[.\[]["\']?(mapleader|maplocalleader)\b')
+TMUX_PREFIX_MENTION = re.compile(r'\bset(?:-option)?\b.*\bprefix\b')
+
+
+def is_comment(line: str) -> bool:
+    stripped = line.lstrip()
+    return stripped.startswith("--") or stripped.startswith("#")
+
+# tmux's own syntax, and equally fixed: `set -g prefix C-Space`.
+TMUX_PREFIX = re.compile(
+    r'^set(?:-option)?\s+(?:-[a-zA-Z]+\s+)*(prefix2?)\s+(\S+)\s*(?:#.*)?$'
+)
+
+# The whole contract, written out. Nothing else is opened.
+FILES: dict[str, dict[str, list[str]]] = {
+    "lazyvim": {
+        # LazyVim's starter says options are loaded before lazy.nvim starts and
+        # tells you to add yours here; the other two are where a minimal config
+        # puts them instead.
+        "leader": [
+            ".config/nvim/lua/config/options.lua",
+            ".config/nvim/lua/config/lazy.lua",
+            ".config/nvim/init.lua",
+        ],
+        "extras": [".config/nvim/lazyvim.json"],
+        "lock": [".config/nvim/lazy-lock.json"],
+    },
+    "tmux": {
+        "prefix": [".config/tmux/tmux.conf", ".tmux.conf"],
+    },
+}
+
+
+class Skipped(Exception):
+    """The value is there but not in a shape this may read."""
+
+
+def read_text(home: Path, relative: str) -> str | None:
+    """One file, by exact name, bounded, without following a symlink."""
+    path = home / relative
+    try:
+        # O_NOFOLLOW refuses a symlinked final component: the list of files is
+        # the contract, and a link would let it point somewhere else.
+        descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+    except OSError:
+        return None
+    try:
+        with os.fdopen(descriptor, "rb") as handle:
+            raw = handle.read(MAX_FILE_BYTES + 1)
+    except OSError:
+        return None
+    if len(raw) > MAX_FILE_BYTES:
+        raise Skipped(f"{relative} exceeds {MAX_FILE_BYTES} bytes")
+    try:
+        return raw.decode("utf-8")
+    except UnicodeDecodeError:
+        raise Skipped(f"{relative} is not UTF-8") from None
+
+
+def unescape(raw: str) -> str:
+    try:
+        return raw.encode("utf-8").decode("unicode_escape")
+    except UnicodeDecodeError:
+        raise Skipped("unreadable escape") from None
+
+
+def option_value(value: str) -> str:
+    value = NOTATION.get(value.lower(), value)
+    if not value or len(value) > MAX_OPTION_CHARS or re.search(r"[\x00-\x1f\x7f]", value):
+        raise Skipped("value is not a key")
+    return value
+
+
+def read_leader(home: Path, files: list[str]) -> tuple[dict[str, str], dict[str, str]]:
+    """`vim.g.mapleader` and `vim.g.maplocalleader`, or nothing."""
+    found: dict[str, set[str]] = {}
+    mentioned: set[str] = set()
+    for relative in files:
+        text = read_text(home, relative)
+        if text is None:
+            continue
+        for line in text.splitlines():
+            match = LEADER.match(line)
+            if match:
+                raw = match.group(2) if match.group(2) is not None else match.group(3)
+                found.setdefault(match.group(1), set()).add(option_value(unescape(raw)))
+                continue
+            if is_comment(line):
+                continue
+            mention = LEADER_MENTION.search(line)
+            if mention:
+                mentioned.add(mention.group(1))
+
+    options: dict[str, str] = {}
+    skipped: dict[str, str] = {}
+    for name, option in (("mapleader", "leader"), ("maplocalleader", "localleader")):
+        values = found.get(name)
+        if values and len(values) == 1:
+            options[option] = next(iter(values))
+        elif values:
+            # Which one wins depends on load order, which is a question about
+            # running the configuration rather than reading it.
+            skipped[option] = "assigned more than one value"
+        elif name in mentioned:
+            skipped[option] = "assigned in a shape this cannot read"
+        else:
+            skipped[option] = "never assigned"
+    return options, skipped
+
+
+def read_tmux_prefix(home: Path, files: list[str]) -> tuple[dict[str, str], dict[str, str]]:
+    """`set -g prefix C-Space`. prefix2 is read but never chosen: it is the
+    spare, and a card teaches the key the status line calls the prefix."""
+    found: set[str] = set()
+    mentioned = False
+    for relative in files:
+        text = read_text(home, relative)
+        if text is None:
+            continue
+        for line in text.splitlines():
+            match = TMUX_PREFIX.match(line.strip())
+            if match and match.group(1) == "prefix":
+                found.add(option_value(match.group(2)))
+            elif not is_comment(line) and TMUX_PREFIX_MENTION.search(line):
+                mentioned = True
+    if len(found) == 1:
+        return {"prefix": next(iter(found))}, {}
+    if len(found) > 1:
+        return {}, {"prefix": "set more than once"}
+    return {}, {"prefix": "set in a shape this cannot read" if mentioned else "never set"}
+
+
+def read_json(home: Path, relative: str) -> Any:
+    text = read_text(home, relative)
+    if text is None:
+        return None
+    try:
+        return json.loads(text)
+    except ValueError:
+        raise Skipped(f"{relative} is not valid JSON") from None
+
+
+def read_extras(home: Path, files: list[str]) -> tuple[list[str], dict[str, str]]:
+    """Which opt-in bundles are turned on. Declarative, so no shape to guess."""
+    for relative in files:
+        value = read_json(home, relative)
+        if value is None:
+            continue
+        if not isinstance(value, dict) or not isinstance(value.get("extras"), list):
+            return [], {"extras": f"{relative} has no extras array"}
+        names = []
+        for name in value["extras"][:MAX_EXTRAS]:
+            if isinstance(name, str) and 0 < len(name) <= MAX_EXTRA_CHARS \
+                    and re.fullmatch(r"[A-Za-z0-9_.\-]+", name):
+                names.append(name)
+        return sorted(set(names)), {}
+    return [], {"extras": "not found"}
+
+
+def read_lock(home: Path, files: list[str]) -> tuple[dict[str, str], dict[str, str]]:
+    """Which upstream version is installed, so a stale table can say so."""
+    for relative in files:
+        value = read_json(home, relative)
+        if value is None:
+            continue
+        entry = value.get("LazyVim") if isinstance(value, dict) else None
+        commit = entry.get("commit") if isinstance(entry, dict) else None
+        if isinstance(commit, str) and re.fullmatch(r"[0-9a-f]{7,40}", commit):
+            return {"commit": commit[:MAX_COMMIT_CHARS]}, {}
+        return {}, {"upstream": f"{relative} names no LazyVim commit"}
+    return {}, {"upstream": "not found"}
+
+
+def snapshot(profile: str, home: Path) -> dict[str, Any]:
+    files = FILES[profile]
+    options: dict[str, str] = {}
+    skipped: dict[str, str] = {}
+    extras: list[str] = []
+    upstream: dict[str, str] = {}
+
+    def attempt(reader, *args) -> tuple[Any, dict[str, str]]:
+        try:
+            return reader(*args)
+        except Skipped as error:
+            return None, {"file": str(error)}
+
+    if profile == "lazyvim":
+        found, reasons = attempt(read_leader, home, files["leader"])
+        options.update(found or {})
+        skipped.update(reasons)
+        found, reasons = attempt(read_extras, home, files["extras"])
+        extras = found or []
+        skipped.update(reasons)
+        found, reasons = attempt(read_lock, home, files["lock"])
+        upstream = found or {}
+        skipped.update(reasons)
+    else:
+        found, reasons = attempt(read_tmux_prefix, home, files["prefix"])
+        options.update(found or {})
+        skipped.update(reasons)
+
+    return {
+        "schemaVersion": SCHEMA_VERSION,
+        "profile": profile,
+        "options": options,
+        "extras": extras,
+        "upstream": upstream,
+        # Every value this could not read, and why. A skipped value is visible
+        # in the interface; a guessed one would not be.
+        "skipped": skipped,
+    }
+
+
+def resolved_home(value: str | None) -> Path:
+    """The home to read under, as one token, checked before it is used."""
+    home = value if value is not None else os.environ.get("HOME", "")
+    if not home or not home.startswith("/") or len(home) > 4096 \
+            or re.search(r"[\x00-\x1f\x7f]", home):
+        raise SystemExit(json.dumps({"schemaVersion": SCHEMA_VERSION, "type": "error",
+                                     "error": "no usable home directory"}))
+    return Path(home)
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--profile", choices=sorted(FILES), required=True)
+    parser.add_argument("--home", default=None,
+                        help="read under this directory instead of $HOME (tests)")
+    arguments = parser.parse_args()
+
+    try:
+        payload = snapshot(arguments.profile, resolved_home(arguments.home))
+    except Exception as error:  # noqa: BLE001 - one line out, never a traceback
+        payload = {"schemaVersion": SCHEMA_VERSION, "type": "error",
+                   "error": type(error).__name__}
+
+    text = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
+    if len(text.encode("utf-8")) > MAX_PAYLOAD_BYTES:
+        text = json.dumps({"schemaVersion": SCHEMA_VERSION, "type": "error",
+                           "error": "payload exceeds its limit"})
+    sys.stdout.write(text + "\n")
+
+
+if __name__ == "__main__":
+    main()

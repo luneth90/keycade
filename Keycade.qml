@@ -172,9 +172,10 @@ Item {
   // asked once the settings that name its leader have arrived.
   function loadActiveGround() {
     if (root.packGround) {
-      packs.profileId = root.profileId
-      packs.options = root.profileOptions()
-      packs.refresh()
+      // Ask the machine what it changed, then build the table against the
+      // answer. A ground with nothing readable answers immediately.
+      appConfig.profileId = root.profileId
+      appConfig.refresh()
       return
     }
     keybinds.refresh()
@@ -454,14 +455,9 @@ Item {
   // to right now, short enough for a button.
   function optionSummary() {
     var names = Profiles.optionNames(root.profileId)
-    var options = root.profileOptions()
-    var defaults = Profiles.options(root.profileId)
     var parts = []
-    for (var index = 0; index < names.length; index++) {
-      var value = options[names[index]] !== undefined
-          ? options[names[index]] : defaults[names[index]]
-      parts.push(names[index] + " " + root.optionLabel(value))
-    }
+    for (var index = 0; index < names.length; index++)
+      parts.push(names[index] + " " + root.optionLabel(root.optionValue(names[index])))
     return parts.join("  ")
   }
 
@@ -475,23 +471,70 @@ Item {
   // be chosen without typing.
   function optionRows() {
     var names = Profiles.optionNames(root.profileId)
-    var options = root.profileOptions()
-    var defaults = Profiles.options(root.profileId)
     var rows = []
     for (var index = 0; index < names.length; index++) {
       var name = names[index]
       rows.push({
         name: name,
-        value: options[name] !== undefined ? options[name] : defaults[name],
+        value: root.optionValue(name),
+        origin: root.optionOrigin(name),
+        unreadable: root.optionUnreadable(name),
         choices: Profiles.optionChoices(root.profileId, name)
       })
     }
     return rows
   }
 
-  function profileOptions() {
+  // What the reader chose by hand, and only that. The store keeps nothing else
+  // here, so an absent name means "whatever the machine or upstream says".
+  function profileOverrides() {
     var stored = store.settings.profileOptions
     return stored && stored[root.profileId] ? stored[root.profileId] : ({})
+  }
+
+  // Where a value came from, which is what the menu shows and what decides
+  // whether anything needs the reader's attention.
+  //   "manual"   chosen here, and it wins
+  //   "machine"  read from this ground's own configuration
+  //   "default"  the upstream default, because nothing on this machine changed
+  //              it - or because whatever did could not be read
+  function optionOrigin(name) {
+    if (root.profileOverrides()[name] !== undefined) return "manual"
+    if (appConfig.options[name] !== undefined) return "machine"
+    return "default"
+  }
+
+  // "never set" means the upstream default applies and nothing needs looking
+  // at. Any other reason means the machine changed this and the change could
+  // not be read, which is the one case worth telling the reader about.
+  function optionUnreadable(name) {
+    var reason = String(appConfig.skipped[name] || "")
+    return Boolean(reason) && reason !== "never assigned" && reason !== "never set"
+  }
+
+  function optionValue(name) {
+    var overrides = root.profileOverrides()
+    if (overrides[name] !== undefined) return String(overrides[name])
+    if (appConfig.options[name] !== undefined) return String(appConfig.options[name])
+    var defaults = Profiles.options(root.profileId)
+    return defaults[name] === undefined ? "" : String(defaults[name])
+  }
+
+  // What the source is handed: every declared option, already resolved.
+  function profileOptions() {
+    var names = Profiles.optionNames(root.profileId)
+    var resolved = ({})
+    for (var index = 0; index < names.length; index++)
+      resolved[names[index]] = root.optionValue(names[index])
+    return resolved
+  }
+
+  // The reader answered; build the table against what it said.
+  function applyDetectedConfig() {
+    if (!root.packGround) return
+    packs.profileId = root.profileId
+    packs.options = root.profileOptions()
+    packs.refresh()
   }
 
   // Set one of them. Empty puts the ground's own default back.
@@ -501,15 +544,18 @@ Item {
     var ground = options[root.profileId] ? options[root.profileId] : ({})
     var next = ({})
     Object.keys(ground).forEach(function(key) { next[key] = ground[key] })
-    next[String(name)] = String(value === undefined || value === null ? "" : value)
+    var chosen = String(value === undefined || value === null ? "" : value)
+    if (chosen) next[String(name)] = chosen
+    else delete next[String(name)]
     var updated = ({})
     Object.keys(options).forEach(function(key) { updated[key] = options[key] })
     updated[root.profileId] = next
     store.settings.profileOptions = updated
     store.settings = Object.assign({}, store.settings)
     store.saveSettings()
-    // The table is rebuilt against the new key, and the deck with it.
-    root.loadActiveGround()
+    // The table is rebuilt against the new key, and the deck with it. The
+    // machine has already been read, so this does not ask it again.
+    root.applyDetectedConfig()
     root.applyEligibility()
     root.refreshProgressCounts()
   }
@@ -990,6 +1036,10 @@ Item {
       root.errorMessage = message
       guard.fail(message)
     }
+  }
+  AppConfigSource {
+    id: appConfig
+    onFinished: root.applyDetectedConfig()
   }
   PackSource {
     id: packs
@@ -1507,8 +1557,8 @@ Item {
         id: optionsMenu
         x: Math.max(4, topbar.x + topControls.x + optionsButton.x + (optionsButton.width - width) / 2)
         y: topbar.y + topbar.height + 8
-        width: 232
-        height: root.optionRows().length * 30 + 34
+        width: 306
+        height: root.optionRows().length * 34 + 34
         visible: root.optionsMenuOpen && Profiles.optionNames(root.profileId).length > 0
         z: 100
         color: root.cabinetColor; border.width: 3; border.color: root.primaryColor
@@ -1526,11 +1576,29 @@ Item {
               id: optionRow
               required property var modelData
               spacing: 6
-              SafeText {
-                width: 72; anchors.verticalCenter: parent.verticalCenter
-                text: optionRow.modelData.name; color: root.mutedColor
-                font.family: "monospace"; font.pixelSize: 10; font.bold: true
-                elide: Text.ElideRight; maximumLineCount: 1
+              Column {
+                width: 96; anchors.verticalCenter: parent.verticalCenter
+                spacing: 0
+                SafeText {
+                  width: parent.width
+                  text: optionRow.modelData.name; color: root.inkColor
+                  font.family: "monospace"; font.pixelSize: 10; font.bold: true
+                  elide: Text.ElideRight; maximumLineCount: 1
+                }
+                // Where the value came from. A machine-read one needs nothing
+                // from the reader; one this could not read is the only case
+                // worth their attention, and it says so rather than sitting
+                // silently on a default.
+                SafeText {
+                  width: parent.width
+                  text: i18n.t(optionRow.modelData.unreadable ? "optionUnreadable"
+                               : "optionFrom_" + optionRow.modelData.origin)
+                  color: optionRow.modelData.unreadable ? root.coinColor
+                       : optionRow.modelData.origin === "machine" ? root.successColor
+                       : root.mutedColor
+                  font.family: "monospace"; font.pixelSize: 8
+                  elide: Text.ElideRight; maximumLineCount: 1
+                }
               }
               Repeater {
                 model: optionRow.modelData.choices
@@ -1553,6 +1621,21 @@ Item {
                     anchors.fill: parent
                     onClicked: root.setProfileOption(optionRow.modelData.name, optionChoice.modelData)
                   }
+                }
+              }
+              // Clearing the override puts the machine's own answer back.
+              Rectangle {
+                anchors.verticalCenter: parent.verticalCenter
+                visible: optionRow.modelData.origin === "manual"
+                width: 34; height: 26
+                color: root.screenColor; border.width: 2; border.color: root.mutedColor
+                SafeText {
+                  anchors.centerIn: parent; text: "↺"; color: root.mutedColor
+                  font.family: "monospace"; font.pixelSize: 12; font.bold: true
+                }
+                MouseArea {
+                  anchors.fill: parent
+                  onClicked: root.setProfileOption(optionRow.modelData.name, "")
                 }
               }
             }
