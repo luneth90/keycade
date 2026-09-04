@@ -1682,10 +1682,58 @@ Item {
           width: Math.min(parent.width, 340); height: 60
           color: "transparent"
           border.width: 4; border.color: root.coinColor
-          Rectangle {
-            anchors.fill: parent; anchors.margins: 5
-            color: "transparent"
-            border.width: 2; border.color: root.coinColor
+          // A hairline inner rule read as a border from a word processor next
+          // to the chunky outer one. Dashes on a fixed grid read as pixels,
+          // which is the language the rest of this screen is speaking.
+          Item {
+            id: stampDashes
+            anchors.fill: parent
+            anchors.margins: 8
+            readonly property int unit: 4
+            readonly property int step: stampDashes.unit * 2
+            readonly property int columns: Math.floor(stampDashes.width / stampDashes.step)
+            readonly property int rows: Math.floor(stampDashes.height / stampDashes.step)
+
+            Repeater {
+              model: stampDashes.columns
+              delegate: Rectangle {
+                required property int index
+                x: index * stampDashes.step
+                y: 0
+                width: stampDashes.unit; height: stampDashes.unit
+                color: root.coinColor
+              }
+            }
+            Repeater {
+              model: stampDashes.columns
+              delegate: Rectangle {
+                required property int index
+                x: index * stampDashes.step
+                y: stampDashes.height - stampDashes.unit
+                width: stampDashes.unit; height: stampDashes.unit
+                color: root.coinColor
+              }
+            }
+            Repeater {
+              model: stampDashes.rows
+              delegate: Rectangle {
+                required property int index
+                x: 0
+                y: index * stampDashes.step
+                width: stampDashes.unit; height: stampDashes.unit
+                color: root.coinColor
+              }
+            }
+            Repeater {
+              model: stampDashes.rows
+              delegate: Rectangle {
+                required property int index
+                x: stampDashes.width - stampDashes.unit
+                y: index * stampDashes.step
+                width: stampDashes.unit; height: stampDashes.unit
+                color: root.coinColor
+              }
+            }
           }
           SafeText {
             anchors.centerIn: parent; width: parent.width - 24
