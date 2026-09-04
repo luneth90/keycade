@@ -4,7 +4,7 @@
   "name": "Keycade",
   "version": "0.6.0",
   "author": "luneth90",
-  "description": "Keycade — a shortcut recall arcade for Omarchy. It trains the shortcuts your machine actually uses.",
+  "description": "Keycade — a shortcut recall arcade for Omarchy. Six cabinets: Hyprland, herdr, tmux, VIM, NEOVIM and LazyVim, each with its own deck, progress and mastery.",
   "kinds": [
     "overlay"
   ],

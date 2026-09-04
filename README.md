@@ -30,9 +30,14 @@ grounds are there when you want them.
 
 ## Core features
 
-- Trains your active Hyprland shortcuts instead of a fixed generic list.
-- Also trains application shortcuts that come in sequences - `<leader>ff`,
-  `gcc`, `C-b %` - showing each step and lighting it as you type it.
+- Reads three of its six cabinets off this machine rather than dealing a
+  generic list: Hyprland from the running compositor, herdr from Omarchy's own
+  read-only listing, tmux from a server that is already up.
+- Ships the other three as their upstreams publish them: Vim's grammar and
+  Neovim's built-in mappings, which are the same everywhere, and LazyVim's
+  keymaps, calibrated by your own leader, extras and literal overrides.
+- Judges sequences as well as chords - `<leader>ff`, `gcc`, `C-b %` - showing
+  each step and lighting it as you type it.
 - Uses a protected full-screen overlay with Exclusive focus and Wayland
   Shortcuts Inhibitor, so training input does not trigger desktop actions.
 - Builds one continuous 24-card run from new, due, weak, and mastered
