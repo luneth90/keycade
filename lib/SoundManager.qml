@@ -67,19 +67,19 @@ Item {
   SoundEffect {
     id: correctSound
     source: Qt.resolvedUrl("../assets/sfx/correct.wav")
-    volume: root.volume * 0.85
+    volume: root.volume * 0.4
   }
 
   SoundEffect {
     id: wrongSound
     source: Qt.resolvedUrl("../assets/sfx/wrong.wav")
-    volume: root.volume * 0.8
+    volume: root.volume * 0.4
   }
 
   SoundEffect {
     id: ejectSound
     source: Qt.resolvedUrl("../assets/sfx/eject.wav")
-    volume: root.volume * 0.45
+    volume: root.volume * 0.22
   }
 
   SoundEffect {
@@ -97,12 +97,12 @@ Item {
   SoundEffect {
     id: countdownSound
     source: Qt.resolvedUrl("../assets/sfx/countdown.wav")
-    volume: root.volume * 0.8
+    volume: root.volume * 0.3
   }
 
   SoundEffect {
     id: countdownFinalSound
     source: Qt.resolvedUrl("../assets/sfx/countdown-final.wav")
-    volume: root.volume * 0.9
+    volume: root.volume * 0.4
   }
 }
