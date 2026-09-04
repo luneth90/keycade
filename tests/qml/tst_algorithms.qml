@@ -268,7 +268,7 @@ TestCase {
   // glyph with the wrong number of rows would silently deform the digit.
   function test_dotFontGlyphsAreFiveBySeven() {
     var supported = DotFont.supported()
-    compare(supported.length, 13)
+    compare(supported.length, 14)
     for (var i = 0; i < supported.length; i++) {
       var rows = DotFont.glyph(supported[i])
       compare(rows.length, 7, supported[i])

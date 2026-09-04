@@ -1381,7 +1381,13 @@ Item {
               anchors.verticalCenter: parent.verticalCenter
               spacing: 8
               SafeText { anchors.horizontalCenter: parent.horizontalCenter; text: i18n.t("newLearned"); color: root.mutedColor; font.family: "monospace"; font.pixelSize: 10; font.bold: true }
-              SafeText { anchors.horizontalCenter: parent.horizontalCenter; text: "+" + root.newLearned; color: root.successColor; font.family: "monospace"; font.pixelSize: 28; font.bold: true }
+              DotNumber {
+                anchors.horizontalCenter: parent.horizontalCenter
+                value: "+" + root.newLearned
+                cell: 4
+                gap: 1
+                color: root.successColor
+              }
             }
 
             Column {
@@ -1390,7 +1396,13 @@ Item {
               anchors.verticalCenter: parent.verticalCenter
               spacing: 8
               SafeText { anchors.horizontalCenter: parent.horizontalCenter; text: i18n.t("due"); color: root.mutedColor; font.family: "monospace"; font.pixelSize: 10; font.bold: true }
-              SafeText { anchors.horizontalCenter: parent.horizontalCenter; text: root.progressCounts.due; color: root.coinColor; font.family: "monospace"; font.pixelSize: 28; font.bold: true }
+              DotNumber {
+                anchors.horizontalCenter: parent.horizontalCenter
+                value: String(root.progressCounts.due)
+                cell: 4
+                gap: 1
+                color: root.coinColor
+              }
             }
 
             Item {
