@@ -67,7 +67,9 @@ Item {
     var category = root.safeText(record.category, 32)
     var context = root.safeText(record.context, 32)
     if (!localId || !description || categories.indexOf(category) === -1) return null
-    if (["normal", "visual", "insert", "operator"].indexOf(context) === -1) return null
+    // The modes a card can pose belong to the ground, not to this loader. The
+    // first pack's were Neovim's; the second's are not.
+    if (Profiles.contexts(root.profileId).indexOf(context) === -1) return null
     if (!Array.isArray(record.steps) || !record.steps.length
         || record.steps.length > root.maxSteps) return null
     var steps = []
@@ -135,8 +137,7 @@ Item {
     root.bindings = accepted
     root.rejected = refused
     root.sourceLabel = root.provenanceLabel(pack)
-    root.fingerprint = root.safeText(pack.provenance && pack.provenance.site
-                                     ? pack.provenance.site.commit : "", 64)
+    root.fingerprint = root.packFingerprint(pack)
     root.loading = false
     if (refused > 0) console.warn("Keycade skipped " + refused + " invalid pack entr(ies)")
     root.loaded()
@@ -152,14 +153,22 @@ Item {
     return names
   }
 
-  // What the ground says about itself on screen. It names the upstream and the
-  // date the table was published, and never implies it read your machine.
+  // A table is identified by whatever its authority can be pinned to: a
+  // commit for a generated page, a checksum for a vendor listing.
+  function packFingerprint(pack) {
+    var source = (pack.provenance || {}).source || {}
+    return root.safeText(source.commit, 64) || root.safeText(source.checksum, 64)
+  }
+
+  // What the ground says about itself on screen. It names the upstream, the
+  // version the table describes and the day it was taken, and never implies
+  // it read your machine.
   function provenanceLabel(pack) {
     var provenance = pack.provenance || {}
-    var site = provenance.site || {}
-    var tag = provenance.crossCheck ? root.safeText(provenance.crossCheck.tag, 32) : ""
-    var published = root.safeText(site.date, 32)
-    return [root.safeText(provenance.upstream, 64), tag, published]
+    var source = provenance.source || {}
+    var tag = root.safeText(source.tag, 32)
+        || (provenance.crossCheck ? root.safeText(provenance.crossCheck.tag, 32) : "")
+    return [root.safeText(provenance.upstream, 64), tag, root.safeText(source.date, 32)]
         .filter(Boolean).join(" · ")
   }
 }

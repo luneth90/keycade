@@ -75,6 +75,26 @@ class PackTests(unittest.TestCase):
         for forbidden in ("FileView", "XMLHttpRequest", "Qt.include", "import "):
             self.assertNotIn(forbidden, generated)
 
+    def test_every_pack_declares_its_own_categories(self):
+        # Not a shared table: one ground sorts by which-key group, the next by
+        # panes and layouts, and neither list means anything to the other.
+        for name, pack in self.packs.items():
+            with self.subTest(pack=name):
+                self.assertTrue(pack["categories"])
+                self.assertEqual(sorted(pack["categories"]), sorted(set(pack["categories"])))
+                used = {entry["category"] for entry in pack["bindings"]}
+                self.assertEqual(used, set(pack["categories"]),
+                                 "a declared category with no entries, or the other way round")
+
+    def test_every_pack_declares_the_contexts_its_cards_pose(self):
+        for name, pack in self.packs.items():
+            with self.subTest(pack=name):
+                self.assertTrue(pack["contexts"])
+                self.assertEqual(sorted(pack["contexts"]), sorted(set(pack["contexts"])))
+                for context in pack["contexts"]:
+                    self.assertIn(f"context_{context}",
+                                  json.loads((ROOT / "assets/locales/en.json").read_text("utf-8")))
+
     def test_packs_stay_within_their_limits(self):
         # Bounded here and again in PackSource.qml. "The generator checked it"
         # is not a property the runtime can verify.
@@ -91,8 +111,8 @@ class PackTests(unittest.TestCase):
                     self.assertLessEqual(len(entry["localId"]), 128)
                     self.assertLessEqual(len(entry["desc"]), 512)
                     self.assertTrue(1 <= len(entry["steps"]) <= 8)
-                    self.assertIn(entry["context"], {"normal", "visual", "insert", "operator"})
-                    self.assertIn(entry["category"], build_packs.CATEGORIES)
+                    self.assertIn(entry["context"], pack["contexts"])
+                    self.assertIn(entry["category"], pack["categories"])
 
     def test_pack_entries_are_unique_and_answerable(self):
         for name, pack in self.packs.items():
@@ -109,25 +129,37 @@ class PackTests(unittest.TestCase):
                         self.assertNotEqual(step.get("named"), "ESC")
                         self.assertNotIn(step.get("named"), build_packs.DEVICE_SPECIAL)
 
-    def test_provenance_names_its_authority_and_its_drift(self):
+    def test_provenance_names_its_authority(self):
         # "Where did this come from, and who notices when it changes" has to be
-        # answerable from the file itself.
+        # answerable from the file itself. What pins it differs by authority: a
+        # generated page has a commit, a vendor listing has a version and a
+        # checksum. Both are pinned; neither is assumed.
         for name, pack in self.packs.items():
             with self.subTest(pack=name):
                 provenance = pack["provenance"]
+                source = provenance["source"]
                 self.assertTrue(provenance["upstream"])
                 self.assertTrue(provenance["authority"])
-                self.assertRegex(provenance["site"]["commit"], r"^[0-9a-f]{40}$")
-                self.assertRegex(provenance["site"]["checksum"], r"^[0-9a-f]{64}$")
-                self.assertRegex(provenance["site"]["date"], r"^\d{4}-\d{2}-\d{2}$")
-                self.assertRegex(provenance["crossCheck"]["tag"], r"^v\d+\.\d+\.\d+$")
-                self.assertIsInstance(provenance["crossCheck"]["inCheckoutOnly"], list)
+                self.assertTrue(source["url"])
+                self.assertRegex(source["checksum"], r"^[0-9a-f]{64}$")
+                self.assertRegex(source["date"], r"^\d{4}-\d{2}-\d{2}$")
+                self.assertTrue(source.get("commit") or source.get("tag"),
+                                "a pack must name the commit or the version it was taken from")
+                if source.get("commit"):
+                    self.assertRegex(source["commit"], r"^[0-9a-f]{40}$")
                 self.assertRegex(provenance["generator"], r"^tools/build_packs\.py@\d+$")
+
+    def test_a_second_authority_is_recorded_when_there_is_one(self):
+        # Only the LazyVim table has one, and its drift is data rather than
+        # something a reader has to go and discover.
+        lazyvim = self.packs["lazyvim"]["provenance"]["crossCheck"]
+        self.assertRegex(lazyvim["tag"], r"^v\d+\.\d+\.\d+$")
+        self.assertIsInstance(lazyvim["inCheckoutOnly"], list)
 
     def test_every_pack_category_has_a_locale_string(self):
         english = json.loads((ROOT / "assets/locales/en.json").read_text(encoding="utf-8"))
         chinese = json.loads((ROOT / "assets/locales/zh-CN.json").read_text(encoding="utf-8"))
-        used = {entry["category"] for pack in self.packs.values() for entry in pack["bindings"]}
+        used = {name for pack in self.packs.values() for name in pack["categories"]}
         for category in sorted(used):
             with self.subTest(category=category):
                 self.assertIn(f"category_{category}", english)

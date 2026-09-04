@@ -1,0 +1,1429 @@
+{
+ "schemaVersion": 1,
+ "profile": "tmux",
+ "judgeMode": "text",
+ "contexts": [
+  "prefix"
+ ],
+ "categories": [
+  "pane",
+  "window",
+  "session",
+  "layout",
+  "copy",
+  "misc"
+ ],
+ "provenance": {
+  "upstream": "tmux",
+  "authority": "tmux -f /dev/null list-keys -N -T prefix (the vendor's own read-only listing, with no configuration sourced)",
+  "source": {
+   "url": "https://github.com/tmux/tmux",
+   "commit": "",
+   "tag": "3.7c",
+   "date": "2026-09-04",
+   "checksum": "af5127697c30678bd7e016a49017fd2524ca7154c3b4c8db45c9a3568660106d"
+  },
+  "generatedAt": "2026-09-04",
+  "generator": "tools/build_packs.py@1"
+ },
+ "dropped": {
+  "device-special-key": 2,
+  "unreadable-notation": 4
+ },
+ "bindings": [
+  {
+   "localId": "prefix/C-b Space",
+   "context": "prefix",
+   "notation": "C-b Space",
+   "steps": [
+    {
+     "mods": 4,
+     "text": "b"
+    },
+    {
+     "mods": 0,
+     "named": "SPACE"
+    }
+   ],
+   "category": "layout",
+   "desc": "Select next layout"
+  },
+  {
+   "localId": "prefix/C-b !",
+   "context": "prefix",
+   "notation": "C-b !",
+   "steps": [
+    {
+     "mods": 4,
+     "text": "b"
+    },
+    {
+     "mods": 0,
+     "text": "!"
+    }
+   ],
+   "category": "pane",
+   "desc": "Break pane to a new window"
+  },
+  {
+   "localId": "prefix/C-b \"",
+   "context": "prefix",
+   "notation": "C-b \"",
+   "steps": [
+    {
+     "mods": 4,
+     "text": "b"
+    },
+    {
+     "mods": 0,
+     "text": "\""
+    }
+   ],
+   "category": "window",
+   "desc": "Split window vertically"
+  },
+  {
+   "localId": "prefix/C-b #",
+   "context": "prefix",
+   "notation": "C-b #",
+   "steps": [
+    {
+     "mods": 4,
+     "text": "b"
+    },
+    {
+     "mods": 0,
+     "text": "#"
+    }
+   ],
+   "category": "copy",
+   "desc": "List all paste buffers"
+  },
+  {
+   "localId": "prefix/C-b $",
+   "context": "prefix",
+   "notation": "C-b $",
+   "steps": [
+    {
+     "mods": 4,
+     "text": "b"
+    },
+    {
+     "mods": 0,
+     "text": "$"
+    }
+   ],
+   "category": "session",
+   "desc": "Rename current session"
+  },
+  {
+   "localId": "prefix/C-b %",
+   "context": "prefix",
+   "notation": "C-b %",
+   "steps": [
+    {
+     "mods": 4,
+     "text": "b"
+    },
+    {
+     "mods": 0,
+     "text": "%"
+    }
+   ],
+   "category": "window",
+   "desc": "Split window horizontally"
+  },
+  {
+   "localId": "prefix/C-b &",
+   "context": "prefix",
+   "notation": "C-b &",
+   "steps": [
+    {
+     "mods": 4,
+     "text": "b"
+    },
+    {
+     "mods": 0,
+     "text": "&"
+    }
+   ],
+   "category": "window",
+   "desc": "Kill current window"
+  },
+  {
+   "localId": "prefix/C-b '",
+   "context": "prefix",
+   "notation": "C-b '",
+   "steps": [
+    {
+     "mods": 4,
+     "text": "b"
+    },
+    {
+     "mods": 0,
+     "text": "'"
+    }
+   ],
+   "category": "window",
+   "desc": "Prompt for window index to select"
+  },
+  {
+   "localId": "prefix/C-b (",
+   "context": "prefix",
+   "notation": "C-b (",
+   "steps": [
+    {
+     "mods": 4,
+     "text": "b"
+    },
+    {
+     "mods": 0,
+     "text": "("
+    }
+   ],
+   "category": "session",
+   "desc": "Switch to previous client"
+  },
+  {
+   "localId": "prefix/C-b )",
+   "context": "prefix",
+   "notation": "C-b )",
+   "steps": [
+    {
+     "mods": 4,
+     "text": "b"
+    },
+    {
+     "mods": 0,
+     "text": ")"
+    }
+   ],
+   "category": "session",
+   "desc": "Switch to next client"
+  },
+  {
+   "localId": "prefix/C-b *",
+   "context": "prefix",
+   "notation": "C-b *",
+   "steps": [
+    {
+     "mods": 4,
+     "text": "b"
+    },
+    {
+     "mods": 0,
+     "text": "*"
+    }
+   ],
+   "category": "pane",
+   "desc": "New floating pane"
+  },
+  {
+   "localId": "prefix/C-b ,",
+   "context": "prefix",
+   "notation": "C-b ,",
+   "steps": [
+    {
+     "mods": 4,
+     "text": "b"
+    },
+    {
+     "mods": 0,
+     "text": ","
+    }
+   ],
+   "category": "window",
+   "desc": "Rename current window"
+  },
+  {
+   "localId": "prefix/C-b -",
+   "context": "prefix",
+   "notation": "C-b -",
+   "steps": [
+    {
+     "mods": 4,
+     "text": "b"
+    },
+    {
+     "mods": 0,
+     "text": "-"
+    }
+   ],
+   "category": "copy",
+   "desc": "Delete the most recent paste buffer"
+  },
+  {
+   "localId": "prefix/C-b .",
+   "context": "prefix",
+   "notation": "C-b .",
+   "steps": [
+    {
+     "mods": 4,
+     "text": "b"
+    },
+    {
+     "mods": 0,
+     "text": "."
+    }
+   ],
+   "category": "window",
+   "desc": "Move the current window"
+  },
+  {
+   "localId": "prefix/C-b /",
+   "context": "prefix",
+   "notation": "C-b /",
+   "steps": [
+    {
+     "mods": 4,
+     "text": "b"
+    },
+    {
+     "mods": 0,
+     "text": "/"
+    }
+   ],
+   "category": "misc",
+   "desc": "Describe key binding"
+  },
+  {
+   "localId": "prefix/C-b 0",
+   "context": "prefix",
+   "notation": "C-b 0",
+   "steps": [
+    {
+     "mods": 4,
+     "text": "b"
+    },
+    {
+     "mods": 0,
+     "text": "0"
+    }
+   ],
+   "category": "window",
+   "desc": "Select window 0"
+  },
+  {
+   "localId": "prefix/C-b 1",
+   "context": "prefix",
+   "notation": "C-b 1",
+   "steps": [
+    {
+     "mods": 4,
+     "text": "b"
+    },
+    {
+     "mods": 0,
+     "text": "1"
+    }
+   ],
+   "category": "window",
+   "desc": "Select window 1"
+  },
+  {
+   "localId": "prefix/C-b 2",
+   "context": "prefix",
+   "notation": "C-b 2",
+   "steps": [
+    {
+     "mods": 4,
+     "text": "b"
+    },
+    {
+     "mods": 0,
+     "text": "2"
+    }
+   ],
+   "category": "window",
+   "desc": "Select window 2"
+  },
+  {
+   "localId": "prefix/C-b 3",
+   "context": "prefix",
+   "notation": "C-b 3",
+   "steps": [
+    {
+     "mods": 4,
+     "text": "b"
+    },
+    {
+     "mods": 0,
+     "text": "3"
+    }
+   ],
+   "category": "window",
+   "desc": "Select window 3"
+  },
+  {
+   "localId": "prefix/C-b 4",
+   "context": "prefix",
+   "notation": "C-b 4",
+   "steps": [
+    {
+     "mods": 4,
+     "text": "b"
+    },
+    {
+     "mods": 0,
+     "text": "4"
+    }
+   ],
+   "category": "window",
+   "desc": "Select window 4"
+  },
+  {
+   "localId": "prefix/C-b 5",
+   "context": "prefix",
+   "notation": "C-b 5",
+   "steps": [
+    {
+     "mods": 4,
+     "text": "b"
+    },
+    {
+     "mods": 0,
+     "text": "5"
+    }
+   ],
+   "category": "window",
+   "desc": "Select window 5"
+  },
+  {
+   "localId": "prefix/C-b 6",
+   "context": "prefix",
+   "notation": "C-b 6",
+   "steps": [
+    {
+     "mods": 4,
+     "text": "b"
+    },
+    {
+     "mods": 0,
+     "text": "6"
+    }
+   ],
+   "category": "window",
+   "desc": "Select window 6"
+  },
+  {
+   "localId": "prefix/C-b 7",
+   "context": "prefix",
+   "notation": "C-b 7",
+   "steps": [
+    {
+     "mods": 4,
+     "text": "b"
+    },
+    {
+     "mods": 0,
+     "text": "7"
+    }
+   ],
+   "category": "window",
+   "desc": "Select window 7"
+  },
+  {
+   "localId": "prefix/C-b 8",
+   "context": "prefix",
+   "notation": "C-b 8",
+   "steps": [
+    {
+     "mods": 4,
+     "text": "b"
+    },
+    {
+     "mods": 0,
+     "text": "8"
+    }
+   ],
+   "category": "window",
+   "desc": "Select window 8"
+  },
+  {
+   "localId": "prefix/C-b 9",
+   "context": "prefix",
+   "notation": "C-b 9",
+   "steps": [
+    {
+     "mods": 4,
+     "text": "b"
+    },
+    {
+     "mods": 0,
+     "text": "9"
+    }
+   ],
+   "category": "window",
+   "desc": "Select window 9"
+  },
+  {
+   "localId": "prefix/C-b :",
+   "context": "prefix",
+   "notation": "C-b :",
+   "steps": [
+    {
+     "mods": 4,
+     "text": "b"
+    },
+    {
+     "mods": 0,
+     "text": ":"
+    }
+   ],
+   "category": "misc",
+   "desc": "Prompt for a command"
+  },
+  {
+   "localId": "prefix/C-b ;",
+   "context": "prefix",
+   "notation": "C-b ;",
+   "steps": [
+    {
+     "mods": 4,
+     "text": "b"
+    },
+    {
+     "mods": 0,
+     "text": ";"
+    }
+   ],
+   "category": "pane",
+   "desc": "Move to the previously active pane"
+  },
+  {
+   "localId": "prefix/C-b <",
+   "context": "prefix",
+   "notation": "C-b <",
+   "steps": [
+    {
+     "mods": 4,
+     "text": "b"
+    },
+    {
+     "mods": 0,
+     "text": "<"
+    }
+   ],
+   "category": "window",
+   "desc": "Display window menu"
+  },
+  {
+   "localId": "prefix/C-b =",
+   "context": "prefix",
+   "notation": "C-b =",
+   "steps": [
+    {
+     "mods": 4,
+     "text": "b"
+    },
+    {
+     "mods": 0,
+     "text": "="
+    }
+   ],
+   "category": "copy",
+   "desc": "Choose a paste buffer from a list"
+  },
+  {
+   "localId": "prefix/C-b >",
+   "context": "prefix",
+   "notation": "C-b >",
+   "steps": [
+    {
+     "mods": 4,
+     "text": "b"
+    },
+    {
+     "mods": 0,
+     "text": ">"
+    }
+   ],
+   "category": "pane",
+   "desc": "Display pane menu"
+  },
+  {
+   "localId": "prefix/C-b ?",
+   "context": "prefix",
+   "notation": "C-b ?",
+   "steps": [
+    {
+     "mods": 4,
+     "text": "b"
+    },
+    {
+     "mods": 0,
+     "text": "?"
+    }
+   ],
+   "category": "misc",
+   "desc": "List key bindings"
+  },
+  {
+   "localId": "prefix/C-b C",
+   "context": "prefix",
+   "notation": "C-b C",
+   "steps": [
+    {
+     "mods": 4,
+     "text": "b"
+    },
+    {
+     "mods": 0,
+     "text": "C"
+    }
+   ],
+   "category": "misc",
+   "desc": "Customize options"
+  },
+  {
+   "localId": "prefix/C-b D",
+   "context": "prefix",
+   "notation": "C-b D",
+   "steps": [
+    {
+     "mods": 4,
+     "text": "b"
+    },
+    {
+     "mods": 0,
+     "text": "D"
+    }
+   ],
+   "category": "session",
+   "desc": "Choose and detach a client from a list"
+  },
+  {
+   "localId": "prefix/C-b E",
+   "context": "prefix",
+   "notation": "C-b E",
+   "steps": [
+    {
+     "mods": 4,
+     "text": "b"
+    },
+    {
+     "mods": 0,
+     "text": "E"
+    }
+   ],
+   "category": "misc",
+   "desc": "Spread panes out evenly"
+  },
+  {
+   "localId": "prefix/C-b L",
+   "context": "prefix",
+   "notation": "C-b L",
+   "steps": [
+    {
+     "mods": 4,
+     "text": "b"
+    },
+    {
+     "mods": 0,
+     "text": "L"
+    }
+   ],
+   "category": "session",
+   "desc": "Switch to the last client"
+  },
+  {
+   "localId": "prefix/C-b M",
+   "context": "prefix",
+   "notation": "C-b M",
+   "steps": [
+    {
+     "mods": 4,
+     "text": "b"
+    },
+    {
+     "mods": 0,
+     "text": "M"
+    }
+   ],
+   "category": "pane",
+   "desc": "Clear the marked pane"
+  },
+  {
+   "localId": "prefix/C-b [",
+   "context": "prefix",
+   "notation": "C-b [",
+   "steps": [
+    {
+     "mods": 4,
+     "text": "b"
+    },
+    {
+     "mods": 0,
+     "text": "["
+    }
+   ],
+   "category": "copy",
+   "desc": "Enter copy mode"
+  },
+  {
+   "localId": "prefix/C-b ]",
+   "context": "prefix",
+   "notation": "C-b ]",
+   "steps": [
+    {
+     "mods": 4,
+     "text": "b"
+    },
+    {
+     "mods": 0,
+     "text": "]"
+    }
+   ],
+   "category": "copy",
+   "desc": "Paste the most recent paste buffer"
+  },
+  {
+   "localId": "prefix/C-b c",
+   "context": "prefix",
+   "notation": "C-b c",
+   "steps": [
+    {
+     "mods": 4,
+     "text": "b"
+    },
+    {
+     "mods": 0,
+     "text": "c"
+    }
+   ],
+   "category": "window",
+   "desc": "Create a new window"
+  },
+  {
+   "localId": "prefix/C-b d",
+   "context": "prefix",
+   "notation": "C-b d",
+   "steps": [
+    {
+     "mods": 4,
+     "text": "b"
+    },
+    {
+     "mods": 0,
+     "text": "d"
+    }
+   ],
+   "category": "session",
+   "desc": "Detach the current client"
+  },
+  {
+   "localId": "prefix/C-b f",
+   "context": "prefix",
+   "notation": "C-b f",
+   "steps": [
+    {
+     "mods": 4,
+     "text": "b"
+    },
+    {
+     "mods": 0,
+     "text": "f"
+    }
+   ],
+   "category": "pane",
+   "desc": "Search for a pane"
+  },
+  {
+   "localId": "prefix/C-b i",
+   "context": "prefix",
+   "notation": "C-b i",
+   "steps": [
+    {
+     "mods": 4,
+     "text": "b"
+    },
+    {
+     "mods": 0,
+     "text": "i"
+    }
+   ],
+   "category": "window",
+   "desc": "Display window information"
+  },
+  {
+   "localId": "prefix/C-b l",
+   "context": "prefix",
+   "notation": "C-b l",
+   "steps": [
+    {
+     "mods": 4,
+     "text": "b"
+    },
+    {
+     "mods": 0,
+     "text": "l"
+    }
+   ],
+   "category": "window",
+   "desc": "Select the previously current window"
+  },
+  {
+   "localId": "prefix/C-b m",
+   "context": "prefix",
+   "notation": "C-b m",
+   "steps": [
+    {
+     "mods": 4,
+     "text": "b"
+    },
+    {
+     "mods": 0,
+     "text": "m"
+    }
+   ],
+   "category": "pane",
+   "desc": "Toggle the marked pane"
+  },
+  {
+   "localId": "prefix/C-b n",
+   "context": "prefix",
+   "notation": "C-b n",
+   "steps": [
+    {
+     "mods": 4,
+     "text": "b"
+    },
+    {
+     "mods": 0,
+     "text": "n"
+    }
+   ],
+   "category": "window",
+   "desc": "Select the next window"
+  },
+  {
+   "localId": "prefix/C-b o",
+   "context": "prefix",
+   "notation": "C-b o",
+   "steps": [
+    {
+     "mods": 4,
+     "text": "b"
+    },
+    {
+     "mods": 0,
+     "text": "o"
+    }
+   ],
+   "category": "pane",
+   "desc": "Select the next pane"
+  },
+  {
+   "localId": "prefix/C-b p",
+   "context": "prefix",
+   "notation": "C-b p",
+   "steps": [
+    {
+     "mods": 4,
+     "text": "b"
+    },
+    {
+     "mods": 0,
+     "text": "p"
+    }
+   ],
+   "category": "window",
+   "desc": "Select the previous window"
+  },
+  {
+   "localId": "prefix/C-b q",
+   "context": "prefix",
+   "notation": "C-b q",
+   "steps": [
+    {
+     "mods": 4,
+     "text": "b"
+    },
+    {
+     "mods": 0,
+     "text": "q"
+    }
+   ],
+   "category": "pane",
+   "desc": "Display pane numbers"
+  },
+  {
+   "localId": "prefix/C-b r",
+   "context": "prefix",
+   "notation": "C-b r",
+   "steps": [
+    {
+     "mods": 4,
+     "text": "b"
+    },
+    {
+     "mods": 0,
+     "text": "r"
+    }
+   ],
+   "category": "session",
+   "desc": "Redraw the current client"
+  },
+  {
+   "localId": "prefix/C-b s",
+   "context": "prefix",
+   "notation": "C-b s",
+   "steps": [
+    {
+     "mods": 4,
+     "text": "b"
+    },
+    {
+     "mods": 0,
+     "text": "s"
+    }
+   ],
+   "category": "session",
+   "desc": "Choose a session from a list"
+  },
+  {
+   "localId": "prefix/C-b t",
+   "context": "prefix",
+   "notation": "C-b t",
+   "steps": [
+    {
+     "mods": 4,
+     "text": "b"
+    },
+    {
+     "mods": 0,
+     "text": "t"
+    }
+   ],
+   "category": "misc",
+   "desc": "Show a clock"
+  },
+  {
+   "localId": "prefix/C-b w",
+   "context": "prefix",
+   "notation": "C-b w",
+   "steps": [
+    {
+     "mods": 4,
+     "text": "b"
+    },
+    {
+     "mods": 0,
+     "text": "w"
+    }
+   ],
+   "category": "window",
+   "desc": "Choose a window from a list"
+  },
+  {
+   "localId": "prefix/C-b x",
+   "context": "prefix",
+   "notation": "C-b x",
+   "steps": [
+    {
+     "mods": 4,
+     "text": "b"
+    },
+    {
+     "mods": 0,
+     "text": "x"
+    }
+   ],
+   "category": "pane",
+   "desc": "Kill the active pane"
+  },
+  {
+   "localId": "prefix/C-b z",
+   "context": "prefix",
+   "notation": "C-b z",
+   "steps": [
+    {
+     "mods": 4,
+     "text": "b"
+    },
+    {
+     "mods": 0,
+     "text": "z"
+    }
+   ],
+   "category": "pane",
+   "desc": "Zoom the active pane"
+  },
+  {
+   "localId": "prefix/C-b {",
+   "context": "prefix",
+   "notation": "C-b {",
+   "steps": [
+    {
+     "mods": 4,
+     "text": "b"
+    },
+    {
+     "mods": 0,
+     "text": "{"
+    }
+   ],
+   "category": "pane",
+   "desc": "Swap the active pane with the pane above"
+  },
+  {
+   "localId": "prefix/C-b }",
+   "context": "prefix",
+   "notation": "C-b }",
+   "steps": [
+    {
+     "mods": 4,
+     "text": "b"
+    },
+    {
+     "mods": 0,
+     "text": "}"
+    }
+   ],
+   "category": "pane",
+   "desc": "Swap the active pane with the pane below"
+  },
+  {
+   "localId": "prefix/C-b ~",
+   "context": "prefix",
+   "notation": "C-b ~",
+   "steps": [
+    {
+     "mods": 4,
+     "text": "b"
+    },
+    {
+     "mods": 0,
+     "text": "~"
+    }
+   ],
+   "category": "misc",
+   "desc": "Show messages"
+  },
+  {
+   "localId": "prefix/C-b Up",
+   "context": "prefix",
+   "notation": "C-b Up",
+   "steps": [
+    {
+     "mods": 4,
+     "text": "b"
+    },
+    {
+     "mods": 0,
+     "named": "UP"
+    }
+   ],
+   "category": "pane",
+   "desc": "Select the pane above the active pane"
+  },
+  {
+   "localId": "prefix/C-b Down",
+   "context": "prefix",
+   "notation": "C-b Down",
+   "steps": [
+    {
+     "mods": 4,
+     "text": "b"
+    },
+    {
+     "mods": 0,
+     "named": "DOWN"
+    }
+   ],
+   "category": "pane",
+   "desc": "Select the pane below the active pane"
+  },
+  {
+   "localId": "prefix/C-b Left",
+   "context": "prefix",
+   "notation": "C-b Left",
+   "steps": [
+    {
+     "mods": 4,
+     "text": "b"
+    },
+    {
+     "mods": 0,
+     "named": "LEFT"
+    }
+   ],
+   "category": "pane",
+   "desc": "Select the pane to the left of the active pane"
+  },
+  {
+   "localId": "prefix/C-b Right",
+   "context": "prefix",
+   "notation": "C-b Right",
+   "steps": [
+    {
+     "mods": 4,
+     "text": "b"
+    },
+    {
+     "mods": 0,
+     "named": "RIGHT"
+    }
+   ],
+   "category": "pane",
+   "desc": "Select the pane to the right of the active pane"
+  },
+  {
+   "localId": "prefix/C-b M-1",
+   "context": "prefix",
+   "notation": "C-b M-1",
+   "steps": [
+    {
+     "mods": 4,
+     "text": "b"
+    },
+    {
+     "mods": 8,
+     "text": "1"
+    }
+   ],
+   "category": "layout",
+   "desc": "Set the even-horizontal layout"
+  },
+  {
+   "localId": "prefix/C-b M-2",
+   "context": "prefix",
+   "notation": "C-b M-2",
+   "steps": [
+    {
+     "mods": 4,
+     "text": "b"
+    },
+    {
+     "mods": 8,
+     "text": "2"
+    }
+   ],
+   "category": "layout",
+   "desc": "Set the even-vertical layout"
+  },
+  {
+   "localId": "prefix/C-b M-3",
+   "context": "prefix",
+   "notation": "C-b M-3",
+   "steps": [
+    {
+     "mods": 4,
+     "text": "b"
+    },
+    {
+     "mods": 8,
+     "text": "3"
+    }
+   ],
+   "category": "layout",
+   "desc": "Set the main-horizontal layout"
+  },
+  {
+   "localId": "prefix/C-b M-4",
+   "context": "prefix",
+   "notation": "C-b M-4",
+   "steps": [
+    {
+     "mods": 4,
+     "text": "b"
+    },
+    {
+     "mods": 8,
+     "text": "4"
+    }
+   ],
+   "category": "layout",
+   "desc": "Set the main-vertical layout"
+  },
+  {
+   "localId": "prefix/C-b M-5",
+   "context": "prefix",
+   "notation": "C-b M-5",
+   "steps": [
+    {
+     "mods": 4,
+     "text": "b"
+    },
+    {
+     "mods": 8,
+     "text": "5"
+    }
+   ],
+   "category": "layout",
+   "desc": "Select the tiled layout"
+  },
+  {
+   "localId": "prefix/C-b M-6",
+   "context": "prefix",
+   "notation": "C-b M-6",
+   "steps": [
+    {
+     "mods": 4,
+     "text": "b"
+    },
+    {
+     "mods": 8,
+     "text": "6"
+    }
+   ],
+   "category": "layout",
+   "desc": "Set the main-horizontal-mirrored layout"
+  },
+  {
+   "localId": "prefix/C-b M-7",
+   "context": "prefix",
+   "notation": "C-b M-7",
+   "steps": [
+    {
+     "mods": 4,
+     "text": "b"
+    },
+    {
+     "mods": 8,
+     "text": "7"
+    }
+   ],
+   "category": "layout",
+   "desc": "Set the main-vertical-mirrored layout"
+  },
+  {
+   "localId": "prefix/C-b M-n",
+   "context": "prefix",
+   "notation": "C-b M-n",
+   "steps": [
+    {
+     "mods": 4,
+     "text": "b"
+    },
+    {
+     "mods": 8,
+     "text": "n"
+    }
+   ],
+   "category": "window",
+   "desc": "Select the next window with an alert"
+  },
+  {
+   "localId": "prefix/C-b M-o",
+   "context": "prefix",
+   "notation": "C-b M-o",
+   "steps": [
+    {
+     "mods": 4,
+     "text": "b"
+    },
+    {
+     "mods": 8,
+     "text": "o"
+    }
+   ],
+   "category": "misc",
+   "desc": "Rotate through the panes in reverse"
+  },
+  {
+   "localId": "prefix/C-b M-p",
+   "context": "prefix",
+   "notation": "C-b M-p",
+   "steps": [
+    {
+     "mods": 4,
+     "text": "b"
+    },
+    {
+     "mods": 8,
+     "text": "p"
+    }
+   ],
+   "category": "window",
+   "desc": "Select the previous window with an alert"
+  },
+  {
+   "localId": "prefix/C-b M-Up",
+   "context": "prefix",
+   "notation": "C-b M-Up",
+   "steps": [
+    {
+     "mods": 4,
+     "text": "b"
+    },
+    {
+     "mods": 8,
+     "named": "UP"
+    }
+   ],
+   "category": "pane",
+   "desc": "Resize the pane up by 5"
+  },
+  {
+   "localId": "prefix/C-b M-Down",
+   "context": "prefix",
+   "notation": "C-b M-Down",
+   "steps": [
+    {
+     "mods": 4,
+     "text": "b"
+    },
+    {
+     "mods": 8,
+     "named": "DOWN"
+    }
+   ],
+   "category": "pane",
+   "desc": "Resize the pane down by 5"
+  },
+  {
+   "localId": "prefix/C-b M-Left",
+   "context": "prefix",
+   "notation": "C-b M-Left",
+   "steps": [
+    {
+     "mods": 4,
+     "text": "b"
+    },
+    {
+     "mods": 8,
+     "named": "LEFT"
+    }
+   ],
+   "category": "pane",
+   "desc": "Resize the pane left by 5"
+  },
+  {
+   "localId": "prefix/C-b M-Right",
+   "context": "prefix",
+   "notation": "C-b M-Right",
+   "steps": [
+    {
+     "mods": 4,
+     "text": "b"
+    },
+    {
+     "mods": 8,
+     "named": "RIGHT"
+    }
+   ],
+   "category": "pane",
+   "desc": "Resize the pane right by 5"
+  },
+  {
+   "localId": "prefix/C-b C-b",
+   "context": "prefix",
+   "notation": "C-b C-b",
+   "steps": [
+    {
+     "mods": 4,
+     "text": "b"
+    },
+    {
+     "mods": 4,
+     "text": "b"
+    }
+   ],
+   "category": "misc",
+   "desc": "Send the prefix key"
+  },
+  {
+   "localId": "prefix/C-b C-o",
+   "context": "prefix",
+   "notation": "C-b C-o",
+   "steps": [
+    {
+     "mods": 4,
+     "text": "b"
+    },
+    {
+     "mods": 4,
+     "text": "o"
+    }
+   ],
+   "category": "misc",
+   "desc": "Rotate through the panes"
+  },
+  {
+   "localId": "prefix/C-b C-z",
+   "context": "prefix",
+   "notation": "C-b C-z",
+   "steps": [
+    {
+     "mods": 4,
+     "text": "b"
+    },
+    {
+     "mods": 4,
+     "text": "z"
+    }
+   ],
+   "category": "session",
+   "desc": "Suspend the current client"
+  },
+  {
+   "localId": "prefix/C-b C-Up",
+   "context": "prefix",
+   "notation": "C-b C-Up",
+   "steps": [
+    {
+     "mods": 4,
+     "text": "b"
+    },
+    {
+     "mods": 4,
+     "named": "UP"
+    }
+   ],
+   "category": "pane",
+   "desc": "Resize the pane up"
+  },
+  {
+   "localId": "prefix/C-b C-Down",
+   "context": "prefix",
+   "notation": "C-b C-Down",
+   "steps": [
+    {
+     "mods": 4,
+     "text": "b"
+    },
+    {
+     "mods": 4,
+     "named": "DOWN"
+    }
+   ],
+   "category": "pane",
+   "desc": "Resize the pane down"
+  },
+  {
+   "localId": "prefix/C-b C-Left",
+   "context": "prefix",
+   "notation": "C-b C-Left",
+   "steps": [
+    {
+     "mods": 4,
+     "text": "b"
+    },
+    {
+     "mods": 4,
+     "named": "LEFT"
+    }
+   ],
+   "category": "pane",
+   "desc": "Resize the pane left"
+  },
+  {
+   "localId": "prefix/C-b C-Right",
+   "context": "prefix",
+   "notation": "C-b C-Right",
+   "steps": [
+    {
+     "mods": 4,
+     "text": "b"
+    },
+    {
+     "mods": 4,
+     "named": "RIGHT"
+    }
+   ],
+   "category": "pane",
+   "desc": "Resize the pane right"
+  }
+ ]
+}

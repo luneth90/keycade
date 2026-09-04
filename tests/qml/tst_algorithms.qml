@@ -17,6 +17,7 @@ import "../../lib/Palettes.js" as Palettes
 import "../fixtures/canonical-keys.js" as CanonicalKeys
 import "../fixtures/text-keys.js" as TextKeys
 import "../../lib/sources/pack/Eligibility.js" as PackEligibility
+import "../../lib/Packs.js" as Packs
 
 TestCase {
   name: "KeycadeAlgorithms"
@@ -647,11 +648,13 @@ TestCase {
     compare(Profiles.qualify("__proto__", "x"), "")
     verify(Profiles.known("hyprland"))
     verify(Profiles.known("lazyvim"))
-    verify(!Profiles.known("tmux"))
+    verify(Profiles.known("tmux"))
+    verify(!Profiles.known("lazygit"))
     // A ground either reads the machine or carries a table; the two take
     // different sources and judge answers differently.
     verify(!Profiles.isPack("hyprland"))
     verify(Profiles.isPack("lazyvim"))
+    verify(Profiles.isPack("tmux"))
   }
 
   // The eligible model carries both: the local id is what an exclusion names
@@ -1417,6 +1420,32 @@ TestCase {
   // A run on a pack ground, end to end: the deck comes from the pack, the
   // scheduler keys on qualified ids, the counters land in that ground's own
   // record, and the answers are typed rather than held.
+  // Each pack declares the contexts and categories of its own ground, and the
+  // registry has to agree with it: the loader validates against the registry
+  // while the pack is what the table was actually built to.
+  function test_everyPackAgreesWithTheRegistryAboutItsContexts() {
+    var ids = Profiles.ids()
+    for (var index = 0; index < ids.length; index++) {
+      var id = ids[index]
+      if (!Profiles.isPack(id)) continue
+      var pack = Packs.pack(id)
+      verify(pack !== null, id + " is registered but ships no pack")
+      compare(pack.profile, id)
+      // The registry says what the ground can pose; the pack says what its
+      // table actually holds. A pack context outside the registry would be
+      // dropped by the loader without a word, so it is the subset that has
+      // to hold.
+      var allowed = Profiles.contexts(id)
+      verify(allowed.length > 0, id)
+      for (var context = 0; context < pack.contexts.length; context++)
+        verify(allowed.indexOf(pack.contexts[context]) !== -1,
+               id + " ships context " + pack.contexts[context] + " its ground does not pose")
+      verify(pack.categories.length > 0, id)
+    }
+    // And a ground that reads the machine ships no pack at all.
+    compare(Packs.pack("hyprland"), null)
+  }
+
   function test_aRunOnAPackGroundGoesThroughTheSameMachinery() {
     testPack.leader = " "
     testPack.refresh()
