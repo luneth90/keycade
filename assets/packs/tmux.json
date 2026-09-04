@@ -5,6 +5,7 @@
  "contexts": [
   "prefix"
  ],
+ "extras": [],
  "categories": [
   "pane",
   "window",
@@ -46,7 +47,8 @@
    ],
    "category": "layout",
    "descKey": "packdesc_select_next_layout",
-   "desc": "Select next layout"
+   "desc": "Select next layout",
+   "extras": []
   },
   {
    "localId": "prefix/!",
@@ -63,7 +65,8 @@
    ],
    "category": "pane",
    "descKey": "packdesc_break_pane_to_a_new_window",
-   "desc": "Break pane to a new window"
+   "desc": "Break pane to a new window",
+   "extras": []
   },
   {
    "localId": "prefix/\"",
@@ -80,7 +83,8 @@
    ],
    "category": "window",
    "descKey": "packdesc_split_window_vertically",
-   "desc": "Split window vertically"
+   "desc": "Split window vertically",
+   "extras": []
   },
   {
    "localId": "prefix/#",
@@ -97,7 +101,8 @@
    ],
    "category": "copy",
    "descKey": "packdesc_list_all_paste_buffers",
-   "desc": "List all paste buffers"
+   "desc": "List all paste buffers",
+   "extras": []
   },
   {
    "localId": "prefix/$",
@@ -114,7 +119,8 @@
    ],
    "category": "session",
    "descKey": "packdesc_rename_current_session",
-   "desc": "Rename current session"
+   "desc": "Rename current session",
+   "extras": []
   },
   {
    "localId": "prefix/%",
@@ -131,7 +137,8 @@
    ],
    "category": "window",
    "descKey": "packdesc_split_window_horizontally",
-   "desc": "Split window horizontally"
+   "desc": "Split window horizontally",
+   "extras": []
   },
   {
    "localId": "prefix/&",
@@ -148,7 +155,8 @@
    ],
    "category": "window",
    "descKey": "packdesc_kill_current_window",
-   "desc": "Kill current window"
+   "desc": "Kill current window",
+   "extras": []
   },
   {
    "localId": "prefix/'",
@@ -165,7 +173,8 @@
    ],
    "category": "window",
    "descKey": "packdesc_prompt_for_window_index_to_select",
-   "desc": "Prompt for window index to select"
+   "desc": "Prompt for window index to select",
+   "extras": []
   },
   {
    "localId": "prefix/(",
@@ -182,7 +191,8 @@
    ],
    "category": "session",
    "descKey": "packdesc_switch_to_previous_client",
-   "desc": "Switch to previous client"
+   "desc": "Switch to previous client",
+   "extras": []
   },
   {
    "localId": "prefix/)",
@@ -199,7 +209,8 @@
    ],
    "category": "session",
    "descKey": "packdesc_switch_to_next_client",
-   "desc": "Switch to next client"
+   "desc": "Switch to next client",
+   "extras": []
   },
   {
    "localId": "prefix/*",
@@ -216,7 +227,8 @@
    ],
    "category": "pane",
    "descKey": "packdesc_new_floating_pane",
-   "desc": "New floating pane"
+   "desc": "New floating pane",
+   "extras": []
   },
   {
    "localId": "prefix/,",
@@ -233,7 +245,8 @@
    ],
    "category": "window",
    "descKey": "packdesc_rename_current_window",
-   "desc": "Rename current window"
+   "desc": "Rename current window",
+   "extras": []
   },
   {
    "localId": "prefix/-",
@@ -250,7 +263,8 @@
    ],
    "category": "copy",
    "descKey": "packdesc_delete_the_most_recent_paste_buffer",
-   "desc": "Delete the most recent paste buffer"
+   "desc": "Delete the most recent paste buffer",
+   "extras": []
   },
   {
    "localId": "prefix/.",
@@ -267,7 +281,8 @@
    ],
    "category": "window",
    "descKey": "packdesc_move_the_current_window",
-   "desc": "Move the current window"
+   "desc": "Move the current window",
+   "extras": []
   },
   {
    "localId": "prefix//",
@@ -284,7 +299,8 @@
    ],
    "category": "misc",
    "descKey": "packdesc_describe_key_binding",
-   "desc": "Describe key binding"
+   "desc": "Describe key binding",
+   "extras": []
   },
   {
    "localId": "prefix/0",
@@ -301,7 +317,8 @@
    ],
    "category": "window",
    "descKey": "packdesc_select_window_0",
-   "desc": "Select window 0"
+   "desc": "Select window 0",
+   "extras": []
   },
   {
    "localId": "prefix/1",
@@ -318,7 +335,8 @@
    ],
    "category": "window",
    "descKey": "packdesc_select_window_1",
-   "desc": "Select window 1"
+   "desc": "Select window 1",
+   "extras": []
   },
   {
    "localId": "prefix/2",
@@ -335,7 +353,8 @@
    ],
    "category": "window",
    "descKey": "packdesc_select_window_2",
-   "desc": "Select window 2"
+   "desc": "Select window 2",
+   "extras": []
   },
   {
    "localId": "prefix/3",
@@ -352,7 +371,8 @@
    ],
    "category": "window",
    "descKey": "packdesc_select_window_3",
-   "desc": "Select window 3"
+   "desc": "Select window 3",
+   "extras": []
   },
   {
    "localId": "prefix/4",
@@ -369,7 +389,8 @@
    ],
    "category": "window",
    "descKey": "packdesc_select_window_4",
-   "desc": "Select window 4"
+   "desc": "Select window 4",
+   "extras": []
   },
   {
    "localId": "prefix/5",
@@ -386,7 +407,8 @@
    ],
    "category": "window",
    "descKey": "packdesc_select_window_5",
-   "desc": "Select window 5"
+   "desc": "Select window 5",
+   "extras": []
   },
   {
    "localId": "prefix/6",
@@ -403,7 +425,8 @@
    ],
    "category": "window",
    "descKey": "packdesc_select_window_6",
-   "desc": "Select window 6"
+   "desc": "Select window 6",
+   "extras": []
   },
   {
    "localId": "prefix/7",
@@ -420,7 +443,8 @@
    ],
    "category": "window",
    "descKey": "packdesc_select_window_7",
-   "desc": "Select window 7"
+   "desc": "Select window 7",
+   "extras": []
   },
   {
    "localId": "prefix/8",
@@ -437,7 +461,8 @@
    ],
    "category": "window",
    "descKey": "packdesc_select_window_8",
-   "desc": "Select window 8"
+   "desc": "Select window 8",
+   "extras": []
   },
   {
    "localId": "prefix/9",
@@ -454,7 +479,8 @@
    ],
    "category": "window",
    "descKey": "packdesc_select_window_9",
-   "desc": "Select window 9"
+   "desc": "Select window 9",
+   "extras": []
   },
   {
    "localId": "prefix/:",
@@ -471,7 +497,8 @@
    ],
    "category": "misc",
    "descKey": "packdesc_prompt_for_a_command",
-   "desc": "Prompt for a command"
+   "desc": "Prompt for a command",
+   "extras": []
   },
   {
    "localId": "prefix/;",
@@ -488,7 +515,8 @@
    ],
    "category": "pane",
    "descKey": "packdesc_move_to_the_previously_active_pane",
-   "desc": "Move to the previously active pane"
+   "desc": "Move to the previously active pane",
+   "extras": []
   },
   {
    "localId": "prefix/<",
@@ -505,7 +533,8 @@
    ],
    "category": "window",
    "descKey": "packdesc_display_window_menu",
-   "desc": "Display window menu"
+   "desc": "Display window menu",
+   "extras": []
   },
   {
    "localId": "prefix/=",
@@ -522,7 +551,8 @@
    ],
    "category": "copy",
    "descKey": "packdesc_choose_a_paste_buffer_from_a_list",
-   "desc": "Choose a paste buffer from a list"
+   "desc": "Choose a paste buffer from a list",
+   "extras": []
   },
   {
    "localId": "prefix/>",
@@ -539,7 +569,8 @@
    ],
    "category": "pane",
    "descKey": "packdesc_display_pane_menu",
-   "desc": "Display pane menu"
+   "desc": "Display pane menu",
+   "extras": []
   },
   {
    "localId": "prefix/?",
@@ -556,7 +587,8 @@
    ],
    "category": "misc",
    "descKey": "packdesc_list_key_bindings",
-   "desc": "List key bindings"
+   "desc": "List key bindings",
+   "extras": []
   },
   {
    "localId": "prefix/C",
@@ -573,7 +605,8 @@
    ],
    "category": "misc",
    "descKey": "packdesc_customize_options",
-   "desc": "Customize options"
+   "desc": "Customize options",
+   "extras": []
   },
   {
    "localId": "prefix/D",
@@ -590,7 +623,8 @@
    ],
    "category": "session",
    "descKey": "packdesc_choose_and_detach_a_client_from_a_list",
-   "desc": "Choose and detach a client from a list"
+   "desc": "Choose and detach a client from a list",
+   "extras": []
   },
   {
    "localId": "prefix/E",
@@ -607,7 +641,8 @@
    ],
    "category": "misc",
    "descKey": "packdesc_spread_panes_out_evenly",
-   "desc": "Spread panes out evenly"
+   "desc": "Spread panes out evenly",
+   "extras": []
   },
   {
    "localId": "prefix/L",
@@ -624,7 +659,8 @@
    ],
    "category": "session",
    "descKey": "packdesc_switch_to_the_last_client",
-   "desc": "Switch to the last client"
+   "desc": "Switch to the last client",
+   "extras": []
   },
   {
    "localId": "prefix/M",
@@ -641,7 +677,8 @@
    ],
    "category": "pane",
    "descKey": "packdesc_clear_the_marked_pane",
-   "desc": "Clear the marked pane"
+   "desc": "Clear the marked pane",
+   "extras": []
   },
   {
    "localId": "prefix/[",
@@ -658,7 +695,8 @@
    ],
    "category": "copy",
    "descKey": "packdesc_enter_copy_mode",
-   "desc": "Enter copy mode"
+   "desc": "Enter copy mode",
+   "extras": []
   },
   {
    "localId": "prefix/]",
@@ -675,7 +713,8 @@
    ],
    "category": "copy",
    "descKey": "packdesc_paste_the_most_recent_paste_buffer",
-   "desc": "Paste the most recent paste buffer"
+   "desc": "Paste the most recent paste buffer",
+   "extras": []
   },
   {
    "localId": "prefix/c",
@@ -692,7 +731,8 @@
    ],
    "category": "window",
    "descKey": "packdesc_create_a_new_window",
-   "desc": "Create a new window"
+   "desc": "Create a new window",
+   "extras": []
   },
   {
    "localId": "prefix/d",
@@ -709,7 +749,8 @@
    ],
    "category": "session",
    "descKey": "packdesc_detach_the_current_client",
-   "desc": "Detach the current client"
+   "desc": "Detach the current client",
+   "extras": []
   },
   {
    "localId": "prefix/f",
@@ -726,7 +767,8 @@
    ],
    "category": "pane",
    "descKey": "packdesc_search_for_a_pane",
-   "desc": "Search for a pane"
+   "desc": "Search for a pane",
+   "extras": []
   },
   {
    "localId": "prefix/i",
@@ -743,7 +785,8 @@
    ],
    "category": "window",
    "descKey": "packdesc_display_window_information",
-   "desc": "Display window information"
+   "desc": "Display window information",
+   "extras": []
   },
   {
    "localId": "prefix/l",
@@ -760,7 +803,8 @@
    ],
    "category": "window",
    "descKey": "packdesc_select_the_previously_current_window",
-   "desc": "Select the previously current window"
+   "desc": "Select the previously current window",
+   "extras": []
   },
   {
    "localId": "prefix/m",
@@ -777,7 +821,8 @@
    ],
    "category": "pane",
    "descKey": "packdesc_toggle_the_marked_pane",
-   "desc": "Toggle the marked pane"
+   "desc": "Toggle the marked pane",
+   "extras": []
   },
   {
    "localId": "prefix/n",
@@ -794,7 +839,8 @@
    ],
    "category": "window",
    "descKey": "packdesc_select_the_next_window",
-   "desc": "Select the next window"
+   "desc": "Select the next window",
+   "extras": []
   },
   {
    "localId": "prefix/o",
@@ -811,7 +857,8 @@
    ],
    "category": "pane",
    "descKey": "packdesc_select_the_next_pane",
-   "desc": "Select the next pane"
+   "desc": "Select the next pane",
+   "extras": []
   },
   {
    "localId": "prefix/p",
@@ -828,7 +875,8 @@
    ],
    "category": "window",
    "descKey": "packdesc_select_the_previous_window",
-   "desc": "Select the previous window"
+   "desc": "Select the previous window",
+   "extras": []
   },
   {
    "localId": "prefix/q",
@@ -845,7 +893,8 @@
    ],
    "category": "pane",
    "descKey": "packdesc_display_pane_numbers",
-   "desc": "Display pane numbers"
+   "desc": "Display pane numbers",
+   "extras": []
   },
   {
    "localId": "prefix/r",
@@ -862,7 +911,8 @@
    ],
    "category": "session",
    "descKey": "packdesc_redraw_the_current_client",
-   "desc": "Redraw the current client"
+   "desc": "Redraw the current client",
+   "extras": []
   },
   {
    "localId": "prefix/s",
@@ -879,7 +929,8 @@
    ],
    "category": "session",
    "descKey": "packdesc_choose_a_session_from_a_list",
-   "desc": "Choose a session from a list"
+   "desc": "Choose a session from a list",
+   "extras": []
   },
   {
    "localId": "prefix/t",
@@ -896,7 +947,8 @@
    ],
    "category": "misc",
    "descKey": "packdesc_show_a_clock",
-   "desc": "Show a clock"
+   "desc": "Show a clock",
+   "extras": []
   },
   {
    "localId": "prefix/w",
@@ -913,7 +965,8 @@
    ],
    "category": "window",
    "descKey": "packdesc_choose_a_window_from_a_list",
-   "desc": "Choose a window from a list"
+   "desc": "Choose a window from a list",
+   "extras": []
   },
   {
    "localId": "prefix/x",
@@ -930,7 +983,8 @@
    ],
    "category": "pane",
    "descKey": "packdesc_kill_the_active_pane",
-   "desc": "Kill the active pane"
+   "desc": "Kill the active pane",
+   "extras": []
   },
   {
    "localId": "prefix/z",
@@ -947,7 +1001,8 @@
    ],
    "category": "pane",
    "descKey": "packdesc_zoom_the_active_pane",
-   "desc": "Zoom the active pane"
+   "desc": "Zoom the active pane",
+   "extras": []
   },
   {
    "localId": "prefix/{",
@@ -964,7 +1019,8 @@
    ],
    "category": "pane",
    "descKey": "packdesc_swap_the_active_pane_with_the_pane_above",
-   "desc": "Swap the active pane with the pane above"
+   "desc": "Swap the active pane with the pane above",
+   "extras": []
   },
   {
    "localId": "prefix/}",
@@ -981,7 +1037,8 @@
    ],
    "category": "pane",
    "descKey": "packdesc_swap_the_active_pane_with_the_pane_below",
-   "desc": "Swap the active pane with the pane below"
+   "desc": "Swap the active pane with the pane below",
+   "extras": []
   },
   {
    "localId": "prefix/~",
@@ -998,7 +1055,8 @@
    ],
    "category": "misc",
    "descKey": "packdesc_show_messages",
-   "desc": "Show messages"
+   "desc": "Show messages",
+   "extras": []
   },
   {
    "localId": "prefix/Up",
@@ -1015,7 +1073,8 @@
    ],
    "category": "pane",
    "descKey": "packdesc_select_the_pane_above_the_active_pane",
-   "desc": "Select the pane above the active pane"
+   "desc": "Select the pane above the active pane",
+   "extras": []
   },
   {
    "localId": "prefix/Down",
@@ -1032,7 +1091,8 @@
    ],
    "category": "pane",
    "descKey": "packdesc_select_the_pane_below_the_active_pane",
-   "desc": "Select the pane below the active pane"
+   "desc": "Select the pane below the active pane",
+   "extras": []
   },
   {
    "localId": "prefix/Left",
@@ -1049,7 +1109,8 @@
    ],
    "category": "pane",
    "descKey": "packdesc_select_the_pane_to_the_left_of_the_active_pane",
-   "desc": "Select the pane to the left of the active pane"
+   "desc": "Select the pane to the left of the active pane",
+   "extras": []
   },
   {
    "localId": "prefix/Right",
@@ -1066,7 +1127,8 @@
    ],
    "category": "pane",
    "descKey": "packdesc_select_the_pane_to_the_right_of_the_active_pane",
-   "desc": "Select the pane to the right of the active pane"
+   "desc": "Select the pane to the right of the active pane",
+   "extras": []
   },
   {
    "localId": "prefix/M-1",
@@ -1083,7 +1145,8 @@
    ],
    "category": "layout",
    "descKey": "packdesc_set_the_even_horizontal_layout",
-   "desc": "Set the even-horizontal layout"
+   "desc": "Set the even-horizontal layout",
+   "extras": []
   },
   {
    "localId": "prefix/M-2",
@@ -1100,7 +1163,8 @@
    ],
    "category": "layout",
    "descKey": "packdesc_set_the_even_vertical_layout",
-   "desc": "Set the even-vertical layout"
+   "desc": "Set the even-vertical layout",
+   "extras": []
   },
   {
    "localId": "prefix/M-3",
@@ -1117,7 +1181,8 @@
    ],
    "category": "layout",
    "descKey": "packdesc_set_the_main_horizontal_layout",
-   "desc": "Set the main-horizontal layout"
+   "desc": "Set the main-horizontal layout",
+   "extras": []
   },
   {
    "localId": "prefix/M-4",
@@ -1134,7 +1199,8 @@
    ],
    "category": "layout",
    "descKey": "packdesc_set_the_main_vertical_layout",
-   "desc": "Set the main-vertical layout"
+   "desc": "Set the main-vertical layout",
+   "extras": []
   },
   {
    "localId": "prefix/M-5",
@@ -1151,7 +1217,8 @@
    ],
    "category": "layout",
    "descKey": "packdesc_select_the_tiled_layout",
-   "desc": "Select the tiled layout"
+   "desc": "Select the tiled layout",
+   "extras": []
   },
   {
    "localId": "prefix/M-6",
@@ -1168,7 +1235,8 @@
    ],
    "category": "layout",
    "descKey": "packdesc_set_the_main_horizontal_mirrored_layout",
-   "desc": "Set the main-horizontal-mirrored layout"
+   "desc": "Set the main-horizontal-mirrored layout",
+   "extras": []
   },
   {
    "localId": "prefix/M-7",
@@ -1185,7 +1253,8 @@
    ],
    "category": "layout",
    "descKey": "packdesc_set_the_main_vertical_mirrored_layout",
-   "desc": "Set the main-vertical-mirrored layout"
+   "desc": "Set the main-vertical-mirrored layout",
+   "extras": []
   },
   {
    "localId": "prefix/M-n",
@@ -1202,7 +1271,8 @@
    ],
    "category": "window",
    "descKey": "packdesc_select_the_next_window_with_an_alert",
-   "desc": "Select the next window with an alert"
+   "desc": "Select the next window with an alert",
+   "extras": []
   },
   {
    "localId": "prefix/M-o",
@@ -1219,7 +1289,8 @@
    ],
    "category": "misc",
    "descKey": "packdesc_rotate_through_the_panes_in_reverse",
-   "desc": "Rotate through the panes in reverse"
+   "desc": "Rotate through the panes in reverse",
+   "extras": []
   },
   {
    "localId": "prefix/M-p",
@@ -1236,7 +1307,8 @@
    ],
    "category": "window",
    "descKey": "packdesc_select_the_previous_window_with_an_alert",
-   "desc": "Select the previous window with an alert"
+   "desc": "Select the previous window with an alert",
+   "extras": []
   },
   {
    "localId": "prefix/M-Up",
@@ -1253,7 +1325,8 @@
    ],
    "category": "pane",
    "descKey": "packdesc_resize_the_pane_up_by_5",
-   "desc": "Resize the pane up by 5"
+   "desc": "Resize the pane up by 5",
+   "extras": []
   },
   {
    "localId": "prefix/M-Down",
@@ -1270,7 +1343,8 @@
    ],
    "category": "pane",
    "descKey": "packdesc_resize_the_pane_down_by_5",
-   "desc": "Resize the pane down by 5"
+   "desc": "Resize the pane down by 5",
+   "extras": []
   },
   {
    "localId": "prefix/M-Left",
@@ -1287,7 +1361,8 @@
    ],
    "category": "pane",
    "descKey": "packdesc_resize_the_pane_left_by_5",
-   "desc": "Resize the pane left by 5"
+   "desc": "Resize the pane left by 5",
+   "extras": []
   },
   {
    "localId": "prefix/M-Right",
@@ -1304,7 +1379,8 @@
    ],
    "category": "pane",
    "descKey": "packdesc_resize_the_pane_right_by_5",
-   "desc": "Resize the pane right by 5"
+   "desc": "Resize the pane right by 5",
+   "extras": []
   },
   {
    "localId": "prefix/prefix",
@@ -1320,7 +1396,8 @@
    ],
    "category": "misc",
    "descKey": "packdesc_send_the_prefix_key",
-   "desc": "Send the prefix key"
+   "desc": "Send the prefix key",
+   "extras": []
   },
   {
    "localId": "prefix/C-o",
@@ -1337,7 +1414,8 @@
    ],
    "category": "misc",
    "descKey": "packdesc_rotate_through_the_panes",
-   "desc": "Rotate through the panes"
+   "desc": "Rotate through the panes",
+   "extras": []
   },
   {
    "localId": "prefix/C-z",
@@ -1354,7 +1432,8 @@
    ],
    "category": "session",
    "descKey": "packdesc_suspend_the_current_client",
-   "desc": "Suspend the current client"
+   "desc": "Suspend the current client",
+   "extras": []
   },
   {
    "localId": "prefix/C-Up",
@@ -1371,7 +1450,8 @@
    ],
    "category": "pane",
    "descKey": "packdesc_resize_the_pane_up",
-   "desc": "Resize the pane up"
+   "desc": "Resize the pane up",
+   "extras": []
   },
   {
    "localId": "prefix/C-Down",
@@ -1388,7 +1468,8 @@
    ],
    "category": "pane",
    "descKey": "packdesc_resize_the_pane_down",
-   "desc": "Resize the pane down"
+   "desc": "Resize the pane down",
+   "extras": []
   },
   {
    "localId": "prefix/C-Left",
@@ -1405,7 +1486,8 @@
    ],
    "category": "pane",
    "descKey": "packdesc_resize_the_pane_left",
-   "desc": "Resize the pane left"
+   "desc": "Resize the pane left",
+   "extras": []
   },
   {
    "localId": "prefix/C-Right",
@@ -1422,7 +1504,8 @@
    ],
    "category": "pane",
    "descKey": "packdesc_resize_the_pane_right",
-   "desc": "Resize the pane right"
+   "desc": "Resize the pane right",
+   "extras": []
   }
  ]
 }

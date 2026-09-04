@@ -18,8 +18,8 @@ in an arcade. Each keeps its own deck, its own progress and its own mastery:
 | Ground | Where its shortcuts come from |
 | --- | --- |
 | **Hyprland** | The shortcuts active on your machine, read from the running compositor |
-| **LazyVim** | LazyVim's own published default keymaps, shipped with the plugin |
-| **tmux** | tmux's own default key table, shipped with the plugin |
+| **LazyVim** | LazyVim's own published default keymaps, shipped with the plugin, matched to your leader and your enabled extras |
+| **tmux** | tmux's own default key table, shipped with the plugin, matched to your prefix |
 
 Hyprland is what you get on a fresh install and after an upgrade; the other
 two are there when you want them.
@@ -150,6 +150,17 @@ Keycade intentionally does not provide a script that deletes user state or
 edits Hyprland configuration during removal.
 
 ## Development
+
+### What the application grounds read from your machine
+
+The tables are the upstream defaults. What a machine changed about them is read
+from the small, fixed-shape part of its own configuration: which key every
+other binding hangs off (`vim.g.mapleader`, `set -g prefix`), which LazyVim
+extras are enabled, and which upstream version is installed. Nothing is
+executed - no Lua runs, no editor starts, no socket opens, nothing is fetched,
+no `require` chain is followed - and `bin/app-config-json` names every file it
+opens. A value it cannot read is skipped and said so rather than guessed at,
+and the top bar lets you set it by hand.
 
 ### Application shortcut packs
 

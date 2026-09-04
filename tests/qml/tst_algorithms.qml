@@ -1426,6 +1426,58 @@ TestCase {
     source.refresh()
   }
 
+  // A bundle LazyVim ships but does not enable is real on a machine that
+  // turned it on and absent on one that did not, so what a table carries and
+  // what it deals are two different things.
+  function test_onlyTheBundlesAMachineTurnedOnAreDealt() {
+    testPack.profileId = "lazyvim"
+    testPack.options = ({ leader: " " })
+
+    testPack.enabledExtras = []
+    testPack.refresh()
+    var core = testPack.bindings.length
+    verify(core > 100)
+    verify(testPack.disabledCount > 100, "a table with no bundles on deals only its core")
+    for (var index = 0; index < testPack.bindings.length; index++)
+      compare(testPack.bindings[index].extras.length, 0)
+
+    // Turning one on deals exactly what it provides, and nothing else.
+    testPack.enabledExtras = ["lazyvim.plugins.extras.dap.core"]
+    testPack.refresh()
+    verify(testPack.bindings.length > core)
+    var added = []
+    for (var second = 0; second < testPack.bindings.length; second++) {
+      var item = testPack.bindings[second]
+      if (item.extras.length) added.push(item)
+    }
+    verify(added.length > 10)
+    for (var third = 0; third < added.length; third++)
+      verify(added[third].extras.indexOf("lazyvim.plugins.extras.dap.core") !== -1,
+             added[third].localId + " came from a bundle that is not on")
+
+    // And an entry the core provides is dealt whatever is enabled.
+    testPack.enabledExtras = []
+    testPack.refresh()
+    compare(testPack.bindings.length, core)
+  }
+
+  // The table declares every bundle it carries keys for, so the runtime has
+  // something to match a machine's own list against.
+  function test_thePackDeclaresTheBundlesItCarries() {
+    var pack = Packs.pack("lazyvim")
+    verify(pack.extras.length > 10)
+    var declared = ({})
+    for (var index = 0; index < pack.extras.length; index++) {
+      verify(pack.extras[index].indexOf("lazyvim.plugins.extras.") === 0, pack.extras[index])
+      declared[pack.extras[index]] = true
+    }
+    for (var entry = 0; entry < pack.bindings.length; entry++) {
+      var providers = pack.bindings[entry].extras
+      for (var name = 0; name < providers.length; name++)
+        verify(declared[providers[name]], providers[name] + " is used but not declared")
+    }
+  }
+
   function test_theLeaderIsResolvedFromSettingsNotBakedIntoThePack() {
     testPack.options = ({ leader: " " })
     testPack.refresh()

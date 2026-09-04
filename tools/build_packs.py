@@ -230,6 +230,17 @@ DEVICE_SPECIAL = {"HOME", "END", "PAGEUP", "PAGEDOWN", "INSERT", "DEL"}
 CATEGORY_PREFIXES = [
     ("<leader><tab>", "tab"),
     ("<leader>gh", "git"),
+    # The opt-in bundles bring their own prefixes, and which-key groups them
+    # the same way: capital G is gh.nvim, R is the REST client, r is
+    # refactoring, o is the task runner, m is Metals, and localleader is
+    # whatever the language extra put there.
+    ("<leader>G", "git"),
+    ("<leader>R", "http"),
+    ("<leader>r", "code"),
+    ("<leader>o", "task"),
+    ("<leader>m", "code"),
+    ("<leader>h", "navigation"),
+    ("<localleader>", "code"),
     ("<leader>a", "ai"),
     ("<leader>b", "buffer"),
     ("<leader>c", "code"),
@@ -248,13 +259,15 @@ CATEGORY_PREFIXES = [
 # second ground's categories are panes and layouts, which mean nothing here.
 LAZYVIM_CATEGORIES = [
     "find", "search", "git", "buffer", "tab", "code", "lsp", "debug", "test",
-    "diagnostics", "window", "session", "ui", "terminal", "edit", "navigation", "misc",
+    "task", "diagnostics", "window", "session", "ui", "terminal", "ai", "http",
+    "edit", "navigation", "misc",
 ]
 
 # The prefix says what a key belongs to for most of the table; for the rest,
 # what it does says it. Same shape as the Hyprland ground's categoriser, and
 # for the same reason: a category nobody recognises is worse than none.
 DESCRIPTION_CATEGORIES = [
+    (r"prompt|sidekick|copilot|avante|\bchat\b|\bai\b", "ai"),
     (r"terminal", "terminal"),
     (r"\btab\b", "tab"),
     (r"window|split", "window"),
@@ -617,6 +630,9 @@ def collect_tmux(listing: Path) -> dict:
             "category": category,
             "descKey": description_key(desc),
             "desc": desc,
+            # tmux ships no opt-in bundles; an empty list is what says every
+            # entry is dealt unconditionally, in the shape every pack uses.
+            "extras": [],
         })
 
     return {
@@ -624,6 +640,7 @@ def collect_tmux(listing: Path) -> dict:
         "profile": "tmux",
         "judgeMode": "text",
         "contexts": ["prefix"],
+        "extras": [],
         "categories": [name for name in TMUX_CATEGORY_NAMES
                        if any(entry["category"] == name for entry in bindings)],
         "provenance": {

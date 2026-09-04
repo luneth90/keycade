@@ -96,6 +96,26 @@ class PackTests(unittest.TestCase):
                         # so moving the prefix keeps the entry's progress.
                         self.assertNotIn("C-b", entry["localId"])
 
+    def test_a_pack_declares_every_bundle_it_carries_keys_for(self):
+        # The runtime matches these against the bundles a machine turned on, so
+        # a name used but not declared is a key that could never be dealt.
+        for name, pack in self.packs.items():
+            with self.subTest(pack=name):
+                declared = set(pack["extras"])
+                used = {extra for entry in pack["bindings"] for extra in entry["extras"]}
+                self.assertEqual(used - declared, set())
+                self.assertEqual(declared - used, set())
+                for entry in pack["bindings"]:
+                    # An entry the ground's own defaults provide carries none,
+                    # which is what says "always dealt".
+                    self.assertIsInstance(entry["extras"], list)
+
+    def test_the_core_of_a_pack_is_what_a_bare_install_has(self):
+        # 203 was the whole table before the bundles came in; it has to stay
+        # exactly what a machine with none of them enabled is dealt.
+        core = [e for e in self.packs["lazyvim"]["bindings"] if not e["extras"]]
+        self.assertEqual(len(core), 203)
+
     def test_every_pack_declares_its_own_categories(self):
         # Not a shared table: one ground sorts by which-key group, the next by
         # panes and layouts, and neither list means anything to the other.

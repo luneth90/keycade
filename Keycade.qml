@@ -530,10 +530,31 @@ Item {
   }
 
   // The reader answered; build the table against what it said.
+  // What this ground read from the machine, in one line. It says what was
+  // taken from the configuration rather than leaving the reader to wonder
+  // whether the table matches their install.
+  function groundConfigNotice() {
+    if (!root.packGround) return ""
+    var parts = []
+    var read = []
+    var names = Profiles.optionNames(root.profileId)
+    for (var index = 0; index < names.length; index++) {
+      if (root.optionOrigin(names[index]) === "machine")
+        read.push(names[index] + " " + root.optionLabel(root.optionValue(names[index])))
+      else if (root.optionUnreadable(names[index]))
+        parts.push(i18n.t("packOptionUnreadable", { option: names[index] }))
+    }
+    if (read.length) parts.push(i18n.t("packOptionRead", { options: read.join(" ") }))
+    if (appConfig.extras.length)
+      parts.push(i18n.t("packExtrasOn", { count: appConfig.extras.length }))
+    return parts.length ? parts.join("  ·  ") : i18n.t("packNotice")
+  }
+
   function applyDetectedConfig() {
     if (!root.packGround) return
     packs.profileId = root.profileId
     packs.options = root.profileOptions()
+    packs.enabledExtras = appConfig.extras
     packs.refresh()
   }
 
@@ -2035,7 +2056,7 @@ Item {
           }
           SafeText {
             width: parent.width; horizontalAlignment: Text.AlignHCenter
-            text: i18n.t("packNotice")
+            text: root.groundConfigNotice()
             color: root.mutedColor; font.family: "monospace"; font.pixelSize: 10
             elide: Text.ElideRight; maximumLineCount: 1
           }

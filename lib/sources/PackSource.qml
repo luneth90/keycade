@@ -26,12 +26,17 @@ Item {
   // someone who moved theirs trains the mapping rather than a key they never
   // press. Anything absent here falls back to the profile's own default.
   property var options: ({})
+  // The opt-in bundles this machine has turned on, as its own configuration
+  // named them. An entry provided only by a bundle that is off is not dealt:
+  // teaching a plugin nobody installed is worse than teaching nothing.
+  property var enabledExtras: []
 
   readonly property int maxBindings: 512
   readonly property int maxSteps: 8
   readonly property int maxLocalIdChars: 128
   readonly property int maxDescriptionChars: 512
   readonly property int maxOptionChars: 32
+  readonly property int maxExtras: 128
 
   property var bindings: []
   property string fingerprint: ""
@@ -42,6 +47,9 @@ Item {
   // reason the Hyprland source surfaces its own: a dropped entry has to be
   // observable rather than quietly missing from training.
   property int rejected: 0
+  // Entries this table carries for bundles this machine has not turned on.
+  // Not a rejection - they are simply not here.
+  property int disabledCount: 0
 
   signal loaded()
   signal failed(string message)
@@ -72,6 +80,14 @@ Item {
     return TextKey.normalizedStep(step)
   }
 
+  // Whether any bundle that provides an entry is turned on here.
+  function anyEnabled(providers) {
+    for (var index = 0; index < providers.length; index++) {
+      if (root.enabledExtras.indexOf(providers[index]) !== -1) return true
+    }
+    return false
+  }
+
   function acceptedBinding(record, categories) {
     if (!record || typeof record !== "object" || Array.isArray(record)) return null
     var localId = root.safeText(record.localId, root.maxLocalIdChars)
@@ -84,6 +100,15 @@ Item {
     if (Profiles.contexts(root.profileId).indexOf(context) === -1) return null
     if (!Array.isArray(record.steps) || !record.steps.length
         || record.steps.length > root.maxSteps) return null
+    var providers = []
+    if (Array.isArray(record.extras)) {
+      for (var provider = 0; provider < record.extras.length
+           && providers.length <= root.maxExtras; provider++) {
+        var name = root.safeText(record.extras[provider], 128)
+        if (name && providers.indexOf(name) === -1) providers.push(name)
+      }
+    }
+    if (providers.length && !root.anyEnabled(providers)) return "disabled"
     var steps = []
     for (var index = 0; index < record.steps.length; index++) {
       var step = root.resolvedStep(record.steps[index])
@@ -97,6 +122,9 @@ Item {
       localId: localId,
       id: Profiles.qualify(root.profileId, localId),
       category: category,
+      // Empty means the ground's own defaults provide it, so it is always
+      // dealt. Otherwise at least one of these has to be on.
+      extras: providers,
       actionName: description,
       // The upstream's own English, and the key a language pack answers with
       // a translation of it. An entry whose key no pack answers keeps the
@@ -145,15 +173,18 @@ Item {
     var categories = Array.isArray(pack.categories) ? pack.categories : root.packCategories(pack)
     var accepted = []
     var refused = 0
+    var disabled = 0
     var seen = ({})
     for (var index = 0; index < pack.bindings.length; index++) {
       var item = root.acceptedBinding(pack.bindings[index], categories)
+      if (item === "disabled") { disabled += 1; continue }
       if (!item || !item.id || seen[item.id]) { refused += 1; continue }
       seen[item.id] = true
       accepted.push(item)
     }
     root.bindings = accepted
     root.rejected = refused
+    root.disabledCount = disabled
     root.sourceLabel = root.provenanceLabel(pack)
     root.fingerprint = root.packFingerprint(pack)
     root.loading = false
