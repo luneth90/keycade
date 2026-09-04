@@ -106,7 +106,7 @@
     }
    ],
    "category": "window",
-   "descKey": "packdesc_go_to_left_window",
+   "descKey": "packdesc_lazyvim_go_to_left_window",
    "desc": "Go to Left Window",
    "extras": []
   },
@@ -121,7 +121,7 @@
     }
    ],
    "category": "window",
-   "descKey": "packdesc_go_to_lower_window",
+   "descKey": "packdesc_lazyvim_go_to_lower_window",
    "desc": "Go to Lower Window",
    "extras": []
   },
@@ -136,7 +136,7 @@
     }
    ],
    "category": "window",
-   "descKey": "packdesc_go_to_upper_window",
+   "descKey": "packdesc_lazyvim_go_to_upper_window",
    "desc": "Go to Upper Window",
    "extras": []
   },
@@ -151,7 +151,7 @@
     }
    ],
    "category": "window",
-   "descKey": "packdesc_go_to_right_window",
+   "descKey": "packdesc_lazyvim_go_to_right_window",
    "desc": "Go to Right Window",
    "extras": []
   },
@@ -166,7 +166,7 @@
     }
    ],
    "category": "window",
-   "descKey": "packdesc_increase_window_height",
+   "descKey": "packdesc_lazyvim_increase_window_height",
    "desc": "Increase Window Height",
    "extras": []
   },
@@ -181,7 +181,7 @@
     }
    ],
    "category": "window",
-   "descKey": "packdesc_decrease_window_height",
+   "descKey": "packdesc_lazyvim_decrease_window_height",
    "desc": "Decrease Window Height",
    "extras": []
   },
@@ -196,7 +196,7 @@
     }
    ],
    "category": "window",
-   "descKey": "packdesc_decrease_window_width",
+   "descKey": "packdesc_lazyvim_decrease_window_width",
    "desc": "Decrease Window Width",
    "extras": []
   },
@@ -211,7 +211,7 @@
     }
    ],
    "category": "window",
-   "descKey": "packdesc_increase_window_width",
+   "descKey": "packdesc_lazyvim_increase_window_width",
    "desc": "Increase Window Width",
    "extras": []
   },
@@ -226,7 +226,7 @@
     }
    ],
    "category": "edit",
-   "descKey": "packdesc_move_down",
+   "descKey": "packdesc_lazyvim_move_down",
    "desc": "Move Down",
    "extras": []
   },
@@ -241,7 +241,7 @@
     }
    ],
    "category": "edit",
-   "descKey": "packdesc_move_up",
+   "descKey": "packdesc_lazyvim_move_up",
    "desc": "Move Up",
    "extras": []
   },
@@ -256,7 +256,7 @@
     }
    ],
    "category": "edit",
-   "descKey": "packdesc_prev_buffer",
+   "descKey": "packdesc_lazyvim_prev_buffer",
    "desc": "Prev Buffer",
    "extras": []
   },
@@ -271,7 +271,7 @@
     }
    ],
    "category": "edit",
-   "descKey": "packdesc_next_buffer",
+   "descKey": "packdesc_lazyvim_next_buffer",
    "desc": "Next Buffer",
    "extras": []
   },
@@ -290,7 +290,7 @@
     }
    ],
    "category": "navigation",
-   "descKey": "packdesc_prev_buffer",
+   "descKey": "packdesc_lazyvim_prev_buffer",
    "desc": "Prev Buffer",
    "extras": []
   },
@@ -309,7 +309,7 @@
     }
    ],
    "category": "navigation",
-   "descKey": "packdesc_next_buffer",
+   "descKey": "packdesc_lazyvim_next_buffer",
    "desc": "Next Buffer",
    "extras": []
   },
@@ -331,7 +331,7 @@
     }
    ],
    "category": "buffer",
-   "descKey": "packdesc_switch_to_other_buffer",
+   "descKey": "packdesc_lazyvim_switch_to_other_buffer",
    "desc": "Switch to Other Buffer",
    "extras": []
   },
@@ -349,7 +349,7 @@
     }
    ],
    "category": "buffer",
-   "descKey": "packdesc_switch_to_other_buffer",
+   "descKey": "packdesc_lazyvim_switch_to_other_buffer",
    "desc": "Switch to Other Buffer",
    "extras": []
   },
@@ -371,7 +371,7 @@
     }
    ],
    "category": "buffer",
-   "descKey": "packdesc_delete_buffer",
+   "descKey": "packdesc_lazyvim_delete_buffer",
    "desc": "Delete Buffer",
    "extras": []
   },
@@ -393,7 +393,7 @@
     }
    ],
    "category": "buffer",
-   "descKey": "packdesc_delete_other_buffers",
+   "descKey": "packdesc_lazyvim_delete_other_buffers",
    "desc": "Delete Other Buffers",
    "extras": []
   },
@@ -415,7 +415,7 @@
     }
    ],
    "category": "buffer",
-   "descKey": "packdesc_delete_invisible_buffers",
+   "descKey": "packdesc_lazyvim_delete_invisible_buffers",
    "desc": "Delete Invisible Buffers",
    "extras": []
   },
@@ -437,7 +437,7 @@
     }
    ],
    "category": "buffer",
-   "descKey": "packdesc_delete_buffer_and_window",
+   "descKey": "packdesc_lazyvim_delete_buffer_and_window",
    "desc": "Delete Buffer and Window",
    "extras": []
   },
@@ -459,7 +459,7 @@
     }
    ],
    "category": "ui",
-   "descKey": "packdesc_redraw_clear_hlsearch_diff_update",
+   "descKey": "packdesc_lazyvim_redraw_clear_hlsearch_diff_update",
    "desc": "Redraw / Clear hlsearch / Diff Update",
    "extras": []
   },
@@ -474,7 +474,7 @@
     }
    ],
    "category": "find",
-   "descKey": "packdesc_save_file",
+   "descKey": "packdesc_lazyvim_save_file",
    "desc": "Save File",
    "extras": []
   },
@@ -492,7 +492,7 @@
     }
    ],
    "category": "misc",
-   "descKey": "packdesc_keywordprg",
+   "descKey": "packdesc_lazyvim_keywordprg",
    "desc": "Keywordprg",
    "extras": []
   },
@@ -515,7 +515,7 @@
     }
    ],
    "category": "edit",
-   "descKey": "packdesc_add_comment_below",
+   "descKey": "packdesc_lazyvim_add_comment_below",
    "desc": "Add Comment Below",
    "extras": []
   },
@@ -538,7 +538,7 @@
     }
    ],
    "category": "edit",
-   "descKey": "packdesc_add_comment_above",
+   "descKey": "packdesc_lazyvim_add_comment_above",
    "desc": "Add Comment Above",
    "extras": []
   },
@@ -556,7 +556,7 @@
     }
    ],
    "category": "misc",
-   "descKey": "packdesc_lazy",
+   "descKey": "packdesc_lazyvim_lazy",
    "desc": "Lazy",
    "extras": []
   },
@@ -578,7 +578,7 @@
     }
    ],
    "category": "find",
-   "descKey": "packdesc_new_file",
+   "descKey": "packdesc_lazyvim_new_file",
    "desc": "New File",
    "extras": []
   },
@@ -600,7 +600,7 @@
     }
    ],
    "category": "diagnostics",
-   "descKey": "packdesc_location_list",
+   "descKey": "packdesc_lazyvim_location_list",
    "desc": "Location List",
    "extras": []
   },
@@ -622,7 +622,7 @@
     }
    ],
    "category": "diagnostics",
-   "descKey": "packdesc_quickfix_list",
+   "descKey": "packdesc_lazyvim_quickfix_list",
    "desc": "Quickfix List",
    "extras": []
   },
@@ -641,7 +641,7 @@
     }
    ],
    "category": "navigation",
-   "descKey": "packdesc_previous_quickfix",
+   "descKey": "packdesc_lazyvim_previous_quickfix",
    "desc": "Previous Quickfix",
    "extras": []
   },
@@ -660,7 +660,7 @@
     }
    ],
    "category": "navigation",
-   "descKey": "packdesc_next_quickfix",
+   "descKey": "packdesc_lazyvim_next_quickfix",
    "desc": "Next Quickfix",
    "extras": []
   },
@@ -682,7 +682,7 @@
     }
    ],
    "category": "code",
-   "descKey": "packdesc_format",
+   "descKey": "packdesc_lazyvim_format",
    "desc": "Format",
    "extras": []
   },
@@ -704,7 +704,7 @@
     }
    ],
    "category": "code",
-   "descKey": "packdesc_line_diagnostics",
+   "descKey": "packdesc_lazyvim_line_diagnostics",
    "desc": "Line Diagnostics",
    "extras": []
   },
@@ -723,7 +723,7 @@
     }
    ],
    "category": "navigation",
-   "descKey": "packdesc_next_diagnostic",
+   "descKey": "packdesc_lazyvim_next_diagnostic",
    "desc": "Next Diagnostic",
    "extras": []
   },
@@ -742,7 +742,7 @@
     }
    ],
    "category": "navigation",
-   "descKey": "packdesc_prev_diagnostic",
+   "descKey": "packdesc_lazyvim_prev_diagnostic",
    "desc": "Prev Diagnostic",
    "extras": []
   },
@@ -761,7 +761,7 @@
     }
    ],
    "category": "navigation",
-   "descKey": "packdesc_next_error",
+   "descKey": "packdesc_lazyvim_next_error",
    "desc": "Next Error",
    "extras": []
   },
@@ -780,7 +780,7 @@
     }
    ],
    "category": "navigation",
-   "descKey": "packdesc_prev_error",
+   "descKey": "packdesc_lazyvim_prev_error",
    "desc": "Prev Error",
    "extras": []
   },
@@ -799,7 +799,7 @@
     }
    ],
    "category": "navigation",
-   "descKey": "packdesc_next_warning",
+   "descKey": "packdesc_lazyvim_next_warning",
    "desc": "Next Warning",
    "extras": []
   },
@@ -818,7 +818,7 @@
     }
    ],
    "category": "navigation",
-   "descKey": "packdesc_prev_warning",
+   "descKey": "packdesc_lazyvim_prev_warning",
    "desc": "Prev Warning",
    "extras": []
   },
@@ -840,7 +840,7 @@
     }
    ],
    "category": "ui",
-   "descKey": "packdesc_toggle_auto_format_global",
+   "descKey": "packdesc_lazyvim_toggle_auto_format_global",
    "desc": "Toggle Auto Format (Global)",
    "extras": []
   },
@@ -862,7 +862,7 @@
     }
    ],
    "category": "ui",
-   "descKey": "packdesc_toggle_auto_format_buffer",
+   "descKey": "packdesc_lazyvim_toggle_auto_format_buffer",
    "desc": "Toggle Auto Format (Buffer)",
    "extras": []
   },
@@ -884,7 +884,7 @@
     }
    ],
    "category": "ui",
-   "descKey": "packdesc_toggle_spelling",
+   "descKey": "packdesc_lazyvim_toggle_spelling",
    "desc": "Toggle Spelling",
    "extras": []
   },
@@ -906,7 +906,7 @@
     }
    ],
    "category": "ui",
-   "descKey": "packdesc_toggle_wrap",
+   "descKey": "packdesc_lazyvim_toggle_wrap",
    "desc": "Toggle Wrap",
    "extras": []
   },
@@ -928,7 +928,7 @@
     }
    ],
    "category": "ui",
-   "descKey": "packdesc_toggle_relative_number",
+   "descKey": "packdesc_lazyvim_toggle_relative_number",
    "desc": "Toggle Relative Number",
    "extras": []
   },
@@ -950,7 +950,7 @@
     }
    ],
    "category": "ui",
-   "descKey": "packdesc_toggle_diagnostics",
+   "descKey": "packdesc_lazyvim_toggle_diagnostics",
    "desc": "Toggle Diagnostics",
    "extras": []
   },
@@ -972,7 +972,7 @@
     }
    ],
    "category": "ui",
-   "descKey": "packdesc_toggle_line_numbers",
+   "descKey": "packdesc_lazyvim_toggle_line_numbers",
    "desc": "Toggle Line Numbers",
    "extras": []
   },
@@ -994,7 +994,7 @@
     }
    ],
    "category": "ui",
-   "descKey": "packdesc_toggle_conceal_level",
+   "descKey": "packdesc_lazyvim_toggle_conceal_level",
    "desc": "Toggle Conceal Level",
    "extras": []
   },
@@ -1016,7 +1016,7 @@
     }
    ],
    "category": "ui",
-   "descKey": "packdesc_toggle_tabline",
+   "descKey": "packdesc_lazyvim_toggle_tabline",
    "desc": "Toggle Tabline",
    "extras": []
   },
@@ -1038,7 +1038,7 @@
     }
    ],
    "category": "ui",
-   "descKey": "packdesc_toggle_treesitter_highlight",
+   "descKey": "packdesc_lazyvim_toggle_treesitter_highlight",
    "desc": "Toggle Treesitter Highlight",
    "extras": []
   },
@@ -1060,7 +1060,7 @@
     }
    ],
    "category": "ui",
-   "descKey": "packdesc_toggle_dark_background",
+   "descKey": "packdesc_lazyvim_toggle_dark_background",
    "desc": "Toggle Dark Background",
    "extras": []
   },
@@ -1082,7 +1082,7 @@
     }
    ],
    "category": "ui",
-   "descKey": "packdesc_toggle_dimming",
+   "descKey": "packdesc_lazyvim_toggle_dimming",
    "desc": "Toggle Dimming",
    "extras": []
   },
@@ -1104,7 +1104,7 @@
     }
    ],
    "category": "ui",
-   "descKey": "packdesc_toggle_animations",
+   "descKey": "packdesc_lazyvim_toggle_animations",
    "desc": "Toggle Animations",
    "extras": []
   },
@@ -1126,7 +1126,7 @@
     }
    ],
    "category": "ui",
-   "descKey": "packdesc_toggle_indent_guides",
+   "descKey": "packdesc_lazyvim_toggle_indent_guides",
    "desc": "Toggle Indent Guides",
    "extras": []
   },
@@ -1148,7 +1148,7 @@
     }
    ],
    "category": "ui",
-   "descKey": "packdesc_toggle_smooth_scroll",
+   "descKey": "packdesc_lazyvim_toggle_smooth_scroll",
    "desc": "Toggle Smooth Scroll",
    "extras": []
   },
@@ -1174,7 +1174,7 @@
     }
    ],
    "category": "debug",
-   "descKey": "packdesc_toggle_profiler",
+   "descKey": "packdesc_lazyvim_toggle_profiler",
    "desc": "Toggle Profiler",
    "extras": []
   },
@@ -1200,7 +1200,7 @@
     }
    ],
    "category": "debug",
-   "descKey": "packdesc_toggle_profiler_highlights",
+   "descKey": "packdesc_lazyvim_toggle_profiler_highlights",
    "desc": "Toggle Profiler Highlights",
    "extras": []
   },
@@ -1222,7 +1222,7 @@
     }
    ],
    "category": "ui",
-   "descKey": "packdesc_toggle_inlay_hints",
+   "descKey": "packdesc_lazyvim_toggle_inlay_hints",
    "desc": "Toggle Inlay Hints",
    "extras": []
   },
@@ -1244,7 +1244,7 @@
     }
    ],
    "category": "git",
-   "descKey": "packdesc_git_log_cwd",
+   "descKey": "packdesc_lazyvim_git_log_cwd",
    "desc": "Git Log (cwd)",
    "extras": []
   },
@@ -1266,7 +1266,7 @@
     }
    ],
    "category": "git",
-   "descKey": "packdesc_git_blame_line",
+   "descKey": "packdesc_lazyvim_git_blame_line",
    "desc": "Git Blame Line",
    "extras": []
   },
@@ -1288,7 +1288,7 @@
     }
    ],
    "category": "git",
-   "descKey": "packdesc_git_current_file_history",
+   "descKey": "packdesc_lazyvim_git_current_file_history",
    "desc": "Git Current File History",
    "extras": []
   },
@@ -1310,7 +1310,7 @@
     }
    ],
    "category": "git",
-   "descKey": "packdesc_git_log",
+   "descKey": "packdesc_lazyvim_git_log",
    "desc": "Git Log",
    "extras": []
   },
@@ -1332,7 +1332,7 @@
     }
    ],
    "category": "git",
-   "descKey": "packdesc_git_browse_open",
+   "descKey": "packdesc_lazyvim_git_browse_open",
    "desc": "Git Browse (open)",
    "extras": []
   },
@@ -1354,7 +1354,7 @@
     }
    ],
    "category": "git",
-   "descKey": "packdesc_git_browse_copy",
+   "descKey": "packdesc_lazyvim_git_browse_copy",
    "desc": "Git Browse (copy)",
    "extras": []
   },
@@ -1376,7 +1376,7 @@
     }
    ],
    "category": "session",
-   "descKey": "packdesc_quit_all",
+   "descKey": "packdesc_lazyvim_quit_all",
    "desc": "Quit All",
    "extras": []
   },
@@ -1398,7 +1398,7 @@
     }
    ],
    "category": "ui",
-   "descKey": "packdesc_inspect_pos",
+   "descKey": "packdesc_lazyvim_inspect_pos",
    "desc": "Inspect Pos",
    "extras": []
   },
@@ -1420,7 +1420,7 @@
     }
    ],
    "category": "ui",
-   "descKey": "packdesc_inspect_tree",
+   "descKey": "packdesc_lazyvim_inspect_tree",
    "desc": "Inspect Tree",
    "extras": []
   },
@@ -1438,7 +1438,7 @@
     }
    ],
    "category": "misc",
-   "descKey": "packdesc_lazyvim_changelog",
+   "descKey": "packdesc_lazyvim_lazyvim_changelog",
    "desc": "LazyVim Changelog",
    "extras": []
   },
@@ -1460,7 +1460,7 @@
     }
    ],
    "category": "find",
-   "descKey": "packdesc_terminal_cwd",
+   "descKey": "packdesc_lazyvim_terminal_cwd",
    "desc": "Terminal (cwd)",
    "extras": []
   },
@@ -1482,7 +1482,7 @@
     }
    ],
    "category": "find",
-   "descKey": "packdesc_terminal_root_dir",
+   "descKey": "packdesc_lazyvim_terminal_root_dir",
    "desc": "Terminal (Root Dir)",
    "extras": []
   },
@@ -1497,7 +1497,7 @@
     }
    ],
    "category": "terminal",
-   "descKey": "packdesc_terminal_root_dir",
+   "descKey": "packdesc_lazyvim_terminal_root_dir",
    "desc": "Terminal (Root Dir)",
    "extras": []
   },
@@ -1515,7 +1515,7 @@
     }
    ],
    "category": "window",
-   "descKey": "packdesc_split_window_below",
+   "descKey": "packdesc_lazyvim_split_window_below",
    "desc": "Split Window Below",
    "extras": []
   },
@@ -1533,7 +1533,7 @@
     }
    ],
    "category": "window",
-   "descKey": "packdesc_split_window_right",
+   "descKey": "packdesc_lazyvim_split_window_right",
    "desc": "Split Window Right",
    "extras": []
   },
@@ -1555,7 +1555,7 @@
     }
    ],
    "category": "window",
-   "descKey": "packdesc_delete_window",
+   "descKey": "packdesc_lazyvim_delete_window",
    "desc": "Delete Window",
    "extras": []
   },
@@ -1577,7 +1577,7 @@
     }
    ],
    "category": "window",
-   "descKey": "packdesc_toggle_zoom_mode",
+   "descKey": "packdesc_lazyvim_toggle_zoom_mode",
    "desc": "Toggle Zoom Mode",
    "extras": []
   },
@@ -1599,7 +1599,7 @@
     }
    ],
    "category": "ui",
-   "descKey": "packdesc_toggle_zoom_mode",
+   "descKey": "packdesc_lazyvim_toggle_zoom_mode",
    "desc": "Toggle Zoom Mode",
    "extras": []
   },
@@ -1621,7 +1621,7 @@
     }
    ],
    "category": "ui",
-   "descKey": "packdesc_toggle_zen_mode",
+   "descKey": "packdesc_lazyvim_toggle_zen_mode",
    "desc": "Toggle Zen Mode",
    "extras": []
   },
@@ -1643,7 +1643,7 @@
     }
    ],
    "category": "tab",
-   "descKey": "packdesc_last_tab",
+   "descKey": "packdesc_lazyvim_last_tab",
    "desc": "Last Tab",
    "extras": []
   },
@@ -1665,7 +1665,7 @@
     }
    ],
    "category": "tab",
-   "descKey": "packdesc_close_other_tabs",
+   "descKey": "packdesc_lazyvim_close_other_tabs",
    "desc": "Close Other Tabs",
    "extras": []
   },
@@ -1687,7 +1687,7 @@
     }
    ],
    "category": "tab",
-   "descKey": "packdesc_first_tab",
+   "descKey": "packdesc_lazyvim_first_tab",
    "desc": "First Tab",
    "extras": []
   },
@@ -1709,7 +1709,7 @@
     }
    ],
    "category": "tab",
-   "descKey": "packdesc_new_tab",
+   "descKey": "packdesc_lazyvim_new_tab",
    "desc": "New Tab",
    "extras": []
   },
@@ -1731,7 +1731,7 @@
     }
    ],
    "category": "tab",
-   "descKey": "packdesc_next_tab",
+   "descKey": "packdesc_lazyvim_next_tab",
    "desc": "Next Tab",
    "extras": []
   },
@@ -1753,7 +1753,7 @@
     }
    ],
    "category": "tab",
-   "descKey": "packdesc_close_tab",
+   "descKey": "packdesc_lazyvim_close_tab",
    "desc": "Close Tab",
    "extras": []
   },
@@ -1775,7 +1775,7 @@
     }
    ],
    "category": "tab",
-   "descKey": "packdesc_previous_tab",
+   "descKey": "packdesc_lazyvim_previous_tab",
    "desc": "Previous Tab",
    "extras": []
   },
@@ -1797,7 +1797,7 @@
     }
    ],
    "category": "code",
-   "descKey": "packdesc_lsp_info",
+   "descKey": "packdesc_lazyvim_lsp_info",
    "desc": "Lsp Info",
    "extras": []
   },
@@ -1816,7 +1816,7 @@
     }
    ],
    "category": "lsp",
-   "descKey": "packdesc_goto_definition",
+   "descKey": "packdesc_lazyvim_goto_definition",
    "desc": "Goto Definition",
    "extras": []
   },
@@ -1835,7 +1835,7 @@
     }
    ],
    "category": "lsp",
-   "descKey": "packdesc_references",
+   "descKey": "packdesc_lazyvim_references",
    "desc": "References",
    "extras": []
   },
@@ -1854,7 +1854,7 @@
     }
    ],
    "category": "lsp",
-   "descKey": "packdesc_goto_implementation",
+   "descKey": "packdesc_lazyvim_goto_implementation",
    "desc": "Goto Implementation",
    "extras": []
   },
@@ -1873,7 +1873,7 @@
     }
    ],
    "category": "lsp",
-   "descKey": "packdesc_goto_t_y_pe_definition",
+   "descKey": "packdesc_lazyvim_goto_t_y_pe_definition",
    "desc": "Goto T[y]pe Definition",
    "extras": []
   },
@@ -1892,7 +1892,7 @@
     }
    ],
    "category": "lsp",
-   "descKey": "packdesc_goto_declaration",
+   "descKey": "packdesc_lazyvim_goto_declaration",
    "desc": "Goto Declaration",
    "extras": []
   },
@@ -1907,7 +1907,7 @@
     }
    ],
    "category": "lsp",
-   "descKey": "packdesc_hover",
+   "descKey": "packdesc_lazyvim_hover",
    "desc": "Hover",
    "extras": []
   },
@@ -1926,7 +1926,7 @@
     }
    ],
    "category": "lsp",
-   "descKey": "packdesc_signature_help",
+   "descKey": "packdesc_lazyvim_signature_help",
    "desc": "Signature Help",
    "extras": []
   },
@@ -1941,7 +1941,7 @@
     }
    ],
    "category": "lsp",
-   "descKey": "packdesc_signature_help",
+   "descKey": "packdesc_lazyvim_signature_help",
    "desc": "Signature Help",
    "extras": []
   },
@@ -1963,7 +1963,7 @@
     }
    ],
    "category": "code",
-   "descKey": "packdesc_code_action",
+   "descKey": "packdesc_lazyvim_code_action",
    "desc": "Code Action",
    "extras": []
   },
@@ -1985,7 +1985,7 @@
     }
    ],
    "category": "code",
-   "descKey": "packdesc_run_codelens",
+   "descKey": "packdesc_lazyvim_run_codelens",
    "desc": "Run Codelens",
    "extras": []
   },
@@ -2007,7 +2007,7 @@
     }
    ],
    "category": "code",
-   "descKey": "packdesc_refresh_display_codelens",
+   "descKey": "packdesc_lazyvim_refresh_display_codelens",
    "desc": "Refresh & Display Codelens",
    "extras": []
   },
@@ -2029,7 +2029,7 @@
     }
    ],
    "category": "code",
-   "descKey": "packdesc_rename_file",
+   "descKey": "packdesc_lazyvim_rename_file",
    "desc": "Rename File",
    "extras": []
   },
@@ -2051,7 +2051,7 @@
     }
    ],
    "category": "code",
-   "descKey": "packdesc_rename",
+   "descKey": "packdesc_lazyvim_rename",
    "desc": "Rename",
    "extras": []
   },
@@ -2073,7 +2073,7 @@
     }
    ],
    "category": "code",
-   "descKey": "packdesc_source_action",
+   "descKey": "packdesc_lazyvim_source_action",
    "desc": "Source Action",
    "extras": []
   },
@@ -2092,7 +2092,7 @@
     }
    ],
    "category": "lsp",
-   "descKey": "packdesc_next_reference",
+   "descKey": "packdesc_lazyvim_next_reference",
    "desc": "Next Reference",
    "extras": []
   },
@@ -2111,7 +2111,7 @@
     }
    ],
    "category": "lsp",
-   "descKey": "packdesc_prev_reference",
+   "descKey": "packdesc_lazyvim_prev_reference",
    "desc": "Prev Reference",
    "extras": []
   },
@@ -2126,7 +2126,7 @@
     }
    ],
    "category": "lsp",
-   "descKey": "packdesc_next_reference",
+   "descKey": "packdesc_lazyvim_next_reference",
    "desc": "Next Reference",
    "extras": []
   },
@@ -2141,7 +2141,7 @@
     }
    ],
    "category": "lsp",
-   "descKey": "packdesc_prev_reference",
+   "descKey": "packdesc_lazyvim_prev_reference",
    "desc": "Prev Reference",
    "extras": []
   },
@@ -2163,7 +2163,7 @@
     }
    ],
    "category": "code",
-   "descKey": "packdesc_organize_imports",
+   "descKey": "packdesc_lazyvim_organize_imports",
    "desc": "Organize Imports",
    "extras": []
   },
@@ -2185,7 +2185,7 @@
     }
    ],
    "category": "search",
-   "descKey": "packdesc_lsp_symbols",
+   "descKey": "packdesc_lazyvim_lsp_symbols",
    "desc": "LSP Symbols",
    "extras": []
   },
@@ -2207,7 +2207,7 @@
     }
    ],
    "category": "search",
-   "descKey": "packdesc_lsp_workspace_symbols",
+   "descKey": "packdesc_lazyvim_lsp_workspace_symbols",
    "desc": "LSP Workspace Symbols",
    "extras": []
   },
@@ -2230,7 +2230,7 @@
     }
    ],
    "category": "lsp",
-   "descKey": "packdesc_c_a_lls_incoming",
+   "descKey": "packdesc_lazyvim_c_a_lls_incoming",
    "desc": "C[a]lls Incoming",
    "extras": []
   },
@@ -2253,7 +2253,7 @@
     }
    ],
    "category": "lsp",
-   "descKey": "packdesc_c_a_lls_outgoing",
+   "descKey": "packdesc_lazyvim_c_a_lls_outgoing",
    "desc": "C[a]lls Outgoing",
    "extras": []
   },
@@ -2275,7 +2275,7 @@
     }
    ],
    "category": "buffer",
-   "descKey": "packdesc_pick_buffer",
+   "descKey": "packdesc_lazyvim_pick_buffer",
    "desc": "Pick Buffer",
    "extras": []
   },
@@ -2297,7 +2297,7 @@
     }
    ],
    "category": "buffer",
-   "descKey": "packdesc_delete_buffers_to_the_left",
+   "descKey": "packdesc_lazyvim_delete_buffers_to_the_left",
    "desc": "Delete Buffers to the Left",
    "extras": []
   },
@@ -2319,7 +2319,7 @@
     }
    ],
    "category": "buffer",
-   "descKey": "packdesc_toggle_pin",
+   "descKey": "packdesc_lazyvim_toggle_pin",
    "desc": "Toggle Pin",
    "extras": []
   },
@@ -2341,7 +2341,7 @@
     }
    ],
    "category": "buffer",
-   "descKey": "packdesc_delete_non_pinned_buffers",
+   "descKey": "packdesc_lazyvim_delete_non_pinned_buffers",
    "desc": "Delete Non-Pinned Buffers",
    "extras": []
   },
@@ -2363,7 +2363,7 @@
     }
    ],
    "category": "buffer",
-   "descKey": "packdesc_delete_buffers_to_the_right",
+   "descKey": "packdesc_lazyvim_delete_buffers_to_the_right",
    "desc": "Delete Buffers to the Right",
    "extras": []
   },
@@ -2382,7 +2382,7 @@
     }
    ],
    "category": "navigation",
-   "descKey": "packdesc_move_buffer_prev",
+   "descKey": "packdesc_lazyvim_move_buffer_prev",
    "desc": "Move buffer prev",
    "extras": []
   },
@@ -2401,7 +2401,7 @@
     }
    ],
    "category": "navigation",
-   "descKey": "packdesc_move_buffer_next",
+   "descKey": "packdesc_lazyvim_move_buffer_next",
    "desc": "Move buffer next",
    "extras": []
   },
@@ -2423,7 +2423,7 @@
     }
    ],
    "category": "code",
-   "descKey": "packdesc_format_injected_langs",
+   "descKey": "packdesc_lazyvim_format_injected_langs",
    "desc": "Format Injected Langs",
    "extras": []
   },
@@ -2438,7 +2438,7 @@
     }
    ],
    "category": "navigation",
-   "descKey": "packdesc_remote_flash",
+   "descKey": "packdesc_lazyvim_remote_flash",
    "desc": "Remote Flash",
    "extras": []
   },
@@ -2453,7 +2453,7 @@
     }
    ],
    "category": "search",
-   "descKey": "packdesc_treesitter_search",
+   "descKey": "packdesc_lazyvim_treesitter_search",
    "desc": "Treesitter Search",
    "extras": []
   },
@@ -2468,7 +2468,7 @@
     }
    ],
    "category": "navigation",
-   "descKey": "packdesc_flash",
+   "descKey": "packdesc_lazyvim_flash",
    "desc": "Flash",
    "extras": []
   },
@@ -2483,7 +2483,7 @@
     }
    ],
    "category": "navigation",
-   "descKey": "packdesc_flash_treesitter",
+   "descKey": "packdesc_lazyvim_flash_treesitter",
    "desc": "Flash Treesitter",
    "extras": []
   },
@@ -2498,7 +2498,7 @@
     }
    ],
    "category": "edit",
-   "descKey": "packdesc_treesitter_incremental_selection",
+   "descKey": "packdesc_lazyvim_treesitter_incremental_selection",
    "desc": "Treesitter Incremental Selection",
    "extras": []
   },
@@ -2520,7 +2520,7 @@
     }
    ],
    "category": "search",
-   "descKey": "packdesc_search_and_replace",
+   "descKey": "packdesc_lazyvim_search_and_replace",
    "desc": "Search and Replace",
    "extras": []
   },
@@ -2542,7 +2542,7 @@
     }
    ],
    "category": "code",
-   "descKey": "packdesc_mason",
+   "descKey": "packdesc_lazyvim_mason",
    "desc": "Mason",
    "extras": []
   },
@@ -2557,7 +2557,7 @@
     }
    ],
    "category": "navigation",
-   "descKey": "packdesc_scroll_backward",
+   "descKey": "packdesc_lazyvim_scroll_backward",
    "desc": "Scroll Backward",
    "extras": []
   },
@@ -2572,7 +2572,7 @@
     }
    ],
    "category": "navigation",
-   "descKey": "packdesc_scroll_forward",
+   "descKey": "packdesc_lazyvim_scroll_forward",
    "desc": "Scroll Forward",
    "extras": []
   },
@@ -2598,7 +2598,7 @@
     }
    ],
    "category": "search",
-   "descKey": "packdesc_noice_all",
+   "descKey": "packdesc_lazyvim_noice_all",
    "desc": "Noice All",
    "extras": []
   },
@@ -2624,7 +2624,7 @@
     }
    ],
    "category": "search",
-   "descKey": "packdesc_dismiss_all",
+   "descKey": "packdesc_lazyvim_dismiss_all",
    "desc": "Dismiss All",
    "extras": []
   },
@@ -2650,7 +2650,7 @@
     }
    ],
    "category": "search",
-   "descKey": "packdesc_noice_history",
+   "descKey": "packdesc_lazyvim_noice_history",
    "desc": "Noice History",
    "extras": []
   },
@@ -2676,7 +2676,7 @@
     }
    ],
    "category": "search",
-   "descKey": "packdesc_noice_last_message",
+   "descKey": "packdesc_lazyvim_noice_last_message",
    "desc": "Noice Last Message",
    "extras": []
   },
@@ -2702,7 +2702,7 @@
     }
    ],
    "category": "search",
-   "descKey": "packdesc_noice_picker_telescope_fzflua",
+   "descKey": "packdesc_lazyvim_noice_picker_telescope_fzflua",
    "desc": "Noice Picker (Telescope/FzfLua)",
    "extras": []
   },
@@ -2724,7 +2724,7 @@
     }
    ],
    "category": "session",
-   "descKey": "packdesc_don_t_save_current_session",
+   "descKey": "packdesc_lazyvim_don_t_save_current_session",
    "desc": "Don't Save Current Session",
    "extras": []
   },
@@ -2746,7 +2746,7 @@
     }
    ],
    "category": "session",
-   "descKey": "packdesc_restore_last_session",
+   "descKey": "packdesc_lazyvim_restore_last_session",
    "desc": "Restore Last Session",
    "extras": []
   },
@@ -2768,7 +2768,7 @@
     }
    ],
    "category": "session",
-   "descKey": "packdesc_restore_session",
+   "descKey": "packdesc_lazyvim_restore_session",
    "desc": "Restore Session",
    "extras": []
   },
@@ -2790,7 +2790,7 @@
     }
    ],
    "category": "session",
-   "descKey": "packdesc_select_session",
+   "descKey": "packdesc_lazyvim_select_session",
    "desc": "Select Session",
    "extras": []
   },
@@ -2808,7 +2808,7 @@
     }
    ],
    "category": "find",
-   "descKey": "packdesc_find_files_root_dir",
+   "descKey": "packdesc_lazyvim_find_files_root_dir",
    "desc": "Find Files (Root Dir)",
    "extras": []
   },
@@ -2826,7 +2826,7 @@
     }
    ],
    "category": "buffer",
-   "descKey": "packdesc_buffers",
+   "descKey": "packdesc_lazyvim_buffers",
    "desc": "Buffers",
    "extras": []
   },
@@ -2844,7 +2844,7 @@
     }
    ],
    "category": "buffer",
-   "descKey": "packdesc_toggle_scratch_buffer",
+   "descKey": "packdesc_lazyvim_toggle_scratch_buffer",
    "desc": "Toggle Scratch Buffer",
    "extras": []
   },
@@ -2862,7 +2862,7 @@
     }
    ],
    "category": "search",
-   "descKey": "packdesc_grep_root_dir",
+   "descKey": "packdesc_lazyvim_grep_root_dir",
    "desc": "Grep (Root Dir)",
    "extras": []
   },
@@ -2880,7 +2880,7 @@
     }
    ],
    "category": "search",
-   "descKey": "packdesc_command_history",
+   "descKey": "packdesc_lazyvim_command_history",
    "desc": "Command History",
    "extras": []
   },
@@ -2906,7 +2906,7 @@
     }
    ],
    "category": "debug",
-   "descKey": "packdesc_profiler_scratch_buffer",
+   "descKey": "packdesc_lazyvim_profiler_scratch_buffer",
    "desc": "Profiler Scratch Buffer",
    "extras": []
   },
@@ -2924,7 +2924,7 @@
     }
    ],
    "category": "find",
-   "descKey": "packdesc_explorer_snacks_root_dir",
+   "descKey": "packdesc_lazyvim_explorer_snacks_root_dir",
    "desc": "Explorer Snacks (root dir)",
    "extras": []
   },
@@ -2942,7 +2942,7 @@
     }
    ],
    "category": "find",
-   "descKey": "packdesc_explorer_snacks_cwd",
+   "descKey": "packdesc_lazyvim_explorer_snacks_cwd",
    "desc": "Explorer Snacks (cwd)",
    "extras": []
   },
@@ -2964,7 +2964,7 @@
     }
    ],
    "category": "find",
-   "descKey": "packdesc_buffers",
+   "descKey": "packdesc_lazyvim_buffers",
    "desc": "Buffers",
    "extras": []
   },
@@ -2986,7 +2986,7 @@
     }
    ],
    "category": "find",
-   "descKey": "packdesc_buffers_all",
+   "descKey": "packdesc_lazyvim_buffers_all",
    "desc": "Buffers (all)",
    "extras": []
   },
@@ -3008,7 +3008,7 @@
     }
    ],
    "category": "find",
-   "descKey": "packdesc_find_config_file",
+   "descKey": "packdesc_lazyvim_find_config_file",
    "desc": "Find Config File",
    "extras": []
   },
@@ -3030,7 +3030,7 @@
     }
    ],
    "category": "find",
-   "descKey": "packdesc_explorer_snacks_root_dir",
+   "descKey": "packdesc_lazyvim_explorer_snacks_root_dir",
    "desc": "Explorer Snacks (root dir)",
    "extras": []
   },
@@ -3052,7 +3052,7 @@
     }
    ],
    "category": "find",
-   "descKey": "packdesc_explorer_snacks_cwd",
+   "descKey": "packdesc_lazyvim_explorer_snacks_cwd",
    "desc": "Explorer Snacks (cwd)",
    "extras": []
   },
@@ -3074,7 +3074,7 @@
     }
    ],
    "category": "find",
-   "descKey": "packdesc_find_files_root_dir",
+   "descKey": "packdesc_lazyvim_find_files_root_dir",
    "desc": "Find Files (Root Dir)",
    "extras": []
   },
@@ -3096,7 +3096,7 @@
     }
    ],
    "category": "find",
-   "descKey": "packdesc_find_files_cwd",
+   "descKey": "packdesc_lazyvim_find_files_cwd",
    "desc": "Find Files (cwd)",
    "extras": []
   },
@@ -3118,7 +3118,7 @@
     }
    ],
    "category": "find",
-   "descKey": "packdesc_find_files_git_files",
+   "descKey": "packdesc_lazyvim_find_files_git_files",
    "desc": "Find Files (git-files)",
    "extras": []
   },
@@ -3140,7 +3140,7 @@
     }
    ],
    "category": "find",
-   "descKey": "packdesc_projects",
+   "descKey": "packdesc_lazyvim_projects",
    "desc": "Projects",
    "extras": []
   },
@@ -3162,7 +3162,7 @@
     }
    ],
    "category": "find",
-   "descKey": "packdesc_recent",
+   "descKey": "packdesc_lazyvim_recent",
    "desc": "Recent",
    "extras": []
   },
@@ -3184,7 +3184,7 @@
     }
    ],
    "category": "find",
-   "descKey": "packdesc_recent_cwd",
+   "descKey": "packdesc_lazyvim_recent_cwd",
    "desc": "Recent (cwd)",
    "extras": []
   },
@@ -3206,7 +3206,7 @@
     }
    ],
    "category": "git",
-   "descKey": "packdesc_git_diff_hunks",
+   "descKey": "packdesc_lazyvim_git_diff_hunks",
    "desc": "Git Diff (hunks)",
    "extras": []
   },
@@ -3228,7 +3228,7 @@
     }
    ],
    "category": "git",
-   "descKey": "packdesc_git_diff_origin",
+   "descKey": "packdesc_lazyvim_git_diff_origin",
    "desc": "Git Diff (origin)",
    "extras": []
   },
@@ -3250,7 +3250,7 @@
     }
    ],
    "category": "git",
-   "descKey": "packdesc_github_issues_open",
+   "descKey": "packdesc_lazyvim_github_issues_open",
    "desc": "GitHub Issues (open)",
    "extras": []
   },
@@ -3272,7 +3272,7 @@
     }
    ],
    "category": "git",
-   "descKey": "packdesc_github_issues_all",
+   "descKey": "packdesc_lazyvim_github_issues_all",
    "desc": "GitHub Issues (all)",
    "extras": []
   },
@@ -3294,7 +3294,7 @@
     }
    ],
    "category": "git",
-   "descKey": "packdesc_github_pull_requests_open",
+   "descKey": "packdesc_lazyvim_github_pull_requests_open",
    "desc": "GitHub Pull Requests (open)",
    "extras": []
   },
@@ -3316,7 +3316,7 @@
     }
    ],
    "category": "git",
-   "descKey": "packdesc_github_pull_requests_all",
+   "descKey": "packdesc_lazyvim_github_pull_requests_all",
    "desc": "GitHub Pull Requests (all)",
    "extras": []
   },
@@ -3338,7 +3338,7 @@
     }
    ],
    "category": "git",
-   "descKey": "packdesc_git_status",
+   "descKey": "packdesc_lazyvim_git_status",
    "desc": "Git Status",
    "extras": []
   },
@@ -3360,7 +3360,7 @@
     }
    ],
    "category": "git",
-   "descKey": "packdesc_git_stash",
+   "descKey": "packdesc_lazyvim_git_stash",
    "desc": "Git Stash",
    "extras": []
   },
@@ -3378,7 +3378,7 @@
     }
    ],
    "category": "search",
-   "descKey": "packdesc_notification_history",
+   "descKey": "packdesc_lazyvim_notification_history",
    "desc": "Notification History",
    "extras": []
   },
@@ -3396,7 +3396,7 @@
     }
    ],
    "category": "buffer",
-   "descKey": "packdesc_select_scratch_buffer",
+   "descKey": "packdesc_lazyvim_select_scratch_buffer",
    "desc": "Select Scratch Buffer",
    "extras": []
   },
@@ -3418,7 +3418,7 @@
     }
    ],
    "category": "search",
-   "descKey": "packdesc_registers",
+   "descKey": "packdesc_lazyvim_registers",
    "desc": "Registers",
    "extras": []
   },
@@ -3440,7 +3440,7 @@
     }
    ],
    "category": "search",
-   "descKey": "packdesc_search_history",
+   "descKey": "packdesc_lazyvim_search_history",
    "desc": "Search History",
    "extras": []
   },
@@ -3462,7 +3462,7 @@
     }
    ],
    "category": "search",
-   "descKey": "packdesc_autocmds",
+   "descKey": "packdesc_lazyvim_autocmds",
    "desc": "Autocmds",
    "extras": []
   },
@@ -3484,7 +3484,7 @@
     }
    ],
    "category": "search",
-   "descKey": "packdesc_buffer_lines",
+   "descKey": "packdesc_lazyvim_buffer_lines",
    "desc": "Buffer Lines",
    "extras": []
   },
@@ -3506,7 +3506,7 @@
     }
    ],
    "category": "search",
-   "descKey": "packdesc_grep_open_buffers",
+   "descKey": "packdesc_lazyvim_grep_open_buffers",
    "desc": "Grep Open Buffers",
    "extras": []
   },
@@ -3528,7 +3528,7 @@
     }
    ],
    "category": "search",
-   "descKey": "packdesc_command_history",
+   "descKey": "packdesc_lazyvim_command_history",
    "desc": "Command History",
    "extras": []
   },
@@ -3550,7 +3550,7 @@
     }
    ],
    "category": "search",
-   "descKey": "packdesc_commands",
+   "descKey": "packdesc_lazyvim_commands",
    "desc": "Commands",
    "extras": []
   },
@@ -3572,7 +3572,7 @@
     }
    ],
    "category": "search",
-   "descKey": "packdesc_diagnostics",
+   "descKey": "packdesc_lazyvim_diagnostics",
    "desc": "Diagnostics",
    "extras": []
   },
@@ -3594,7 +3594,7 @@
     }
    ],
    "category": "search",
-   "descKey": "packdesc_buffer_diagnostics",
+   "descKey": "packdesc_lazyvim_buffer_diagnostics",
    "desc": "Buffer Diagnostics",
    "extras": []
   },
@@ -3616,7 +3616,7 @@
     }
    ],
    "category": "search",
-   "descKey": "packdesc_grep_root_dir",
+   "descKey": "packdesc_lazyvim_grep_root_dir",
    "desc": "Grep (Root Dir)",
    "extras": []
   },
@@ -3638,7 +3638,7 @@
     }
    ],
    "category": "search",
-   "descKey": "packdesc_grep_cwd",
+   "descKey": "packdesc_lazyvim_grep_cwd",
    "desc": "Grep (cwd)",
    "extras": []
   },
@@ -3660,7 +3660,7 @@
     }
    ],
    "category": "search",
-   "descKey": "packdesc_help_pages",
+   "descKey": "packdesc_lazyvim_help_pages",
    "desc": "Help Pages",
    "extras": []
   },
@@ -3682,7 +3682,7 @@
     }
    ],
    "category": "search",
-   "descKey": "packdesc_highlights",
+   "descKey": "packdesc_lazyvim_highlights",
    "desc": "Highlights",
    "extras": []
   },
@@ -3704,7 +3704,7 @@
     }
    ],
    "category": "search",
-   "descKey": "packdesc_icons",
+   "descKey": "packdesc_lazyvim_icons",
    "desc": "Icons",
    "extras": []
   },
@@ -3726,7 +3726,7 @@
     }
    ],
    "category": "search",
-   "descKey": "packdesc_jumps",
+   "descKey": "packdesc_lazyvim_jumps",
    "desc": "Jumps",
    "extras": []
   },
@@ -3748,7 +3748,7 @@
     }
    ],
    "category": "search",
-   "descKey": "packdesc_keymaps",
+   "descKey": "packdesc_lazyvim_keymaps",
    "desc": "Keymaps",
    "extras": []
   },
@@ -3770,7 +3770,7 @@
     }
    ],
    "category": "search",
-   "descKey": "packdesc_location_list",
+   "descKey": "packdesc_lazyvim_location_list",
    "desc": "Location List",
    "extras": []
   },
@@ -3792,7 +3792,7 @@
     }
    ],
    "category": "search",
-   "descKey": "packdesc_marks",
+   "descKey": "packdesc_lazyvim_marks",
    "desc": "Marks",
    "extras": []
   },
@@ -3814,7 +3814,7 @@
     }
    ],
    "category": "search",
-   "descKey": "packdesc_man_pages",
+   "descKey": "packdesc_lazyvim_man_pages",
    "desc": "Man Pages",
    "extras": []
   },
@@ -3836,7 +3836,7 @@
     }
    ],
    "category": "search",
-   "descKey": "packdesc_search_for_plugin_spec",
+   "descKey": "packdesc_lazyvim_search_for_plugin_spec",
    "desc": "Search for Plugin Spec",
    "extras": []
   },
@@ -3858,7 +3858,7 @@
     }
    ],
    "category": "search",
-   "descKey": "packdesc_quickfix_list",
+   "descKey": "packdesc_lazyvim_quickfix_list",
    "desc": "Quickfix List",
    "extras": []
   },
@@ -3880,7 +3880,7 @@
     }
    ],
    "category": "search",
-   "descKey": "packdesc_resume",
+   "descKey": "packdesc_lazyvim_resume",
    "desc": "Resume",
    "extras": []
   },
@@ -3902,7 +3902,7 @@
     }
    ],
    "category": "search",
-   "descKey": "packdesc_undotree",
+   "descKey": "packdesc_lazyvim_undotree",
    "desc": "Undotree",
    "extras": []
   },
@@ -3924,7 +3924,7 @@
     }
    ],
    "category": "search",
-   "descKey": "packdesc_visual_selection_or_word_root_dir",
+   "descKey": "packdesc_lazyvim_visual_selection_or_word_root_dir",
    "desc": "Visual selection or word (Root Dir)",
    "extras": []
   },
@@ -3946,7 +3946,7 @@
     }
    ],
    "category": "search",
-   "descKey": "packdesc_visual_selection_or_word_cwd",
+   "descKey": "packdesc_lazyvim_visual_selection_or_word_cwd",
    "desc": "Visual selection or word (cwd)",
    "extras": []
   },
@@ -3968,7 +3968,7 @@
     }
    ],
    "category": "ui",
-   "descKey": "packdesc_colorschemes",
+   "descKey": "packdesc_lazyvim_colorschemes",
    "desc": "Colorschemes",
    "extras": []
   },
@@ -3990,7 +3990,7 @@
     }
    ],
    "category": "ui",
-   "descKey": "packdesc_dismiss_all_notifications",
+   "descKey": "packdesc_lazyvim_dismiss_all_notifications",
    "desc": "Dismiss All Notifications",
    "extras": []
   },
@@ -4012,7 +4012,7 @@
     }
    ],
    "category": "search",
-   "descKey": "packdesc_todo",
+   "descKey": "packdesc_lazyvim_todo",
    "desc": "Todo",
    "extras": []
   },
@@ -4034,7 +4034,7 @@
     }
    ],
    "category": "search",
-   "descKey": "packdesc_todo_fix_fixme",
+   "descKey": "packdesc_lazyvim_todo_fix_fixme",
    "desc": "Todo/Fix/Fixme",
    "extras": []
   },
@@ -4056,7 +4056,7 @@
     }
    ],
    "category": "diagnostics",
-   "descKey": "packdesc_todo_trouble",
+   "descKey": "packdesc_lazyvim_todo_trouble",
    "desc": "Todo (Trouble)",
    "extras": []
   },
@@ -4078,7 +4078,7 @@
     }
    ],
    "category": "diagnostics",
-   "descKey": "packdesc_todo_fix_fixme_trouble",
+   "descKey": "packdesc_lazyvim_todo_fix_fixme_trouble",
    "desc": "Todo/Fix/Fixme (Trouble)",
    "extras": []
   },
@@ -4097,7 +4097,7 @@
     }
    ],
    "category": "navigation",
-   "descKey": "packdesc_previous_todo_comment",
+   "descKey": "packdesc_lazyvim_previous_todo_comment",
    "desc": "Previous Todo Comment",
    "extras": []
   },
@@ -4116,7 +4116,7 @@
     }
    ],
    "category": "navigation",
-   "descKey": "packdesc_next_todo_comment",
+   "descKey": "packdesc_lazyvim_next_todo_comment",
    "desc": "Next Todo Comment",
    "extras": []
   },
@@ -4138,7 +4138,7 @@
     }
    ],
    "category": "code",
-   "descKey": "packdesc_symbols_trouble",
+   "descKey": "packdesc_lazyvim_symbols_trouble",
    "desc": "Symbols (Trouble)",
    "extras": []
   },
@@ -4160,7 +4160,7 @@
     }
    ],
    "category": "code",
-   "descKey": "packdesc_lsp_references_definitions_trouble",
+   "descKey": "packdesc_lazyvim_lsp_references_definitions_trouble",
    "desc": "LSP references/definitions/... (Trouble)",
    "extras": []
   },
@@ -4182,7 +4182,7 @@
     }
    ],
    "category": "diagnostics",
-   "descKey": "packdesc_location_list_trouble",
+   "descKey": "packdesc_lazyvim_location_list_trouble",
    "desc": "Location List (Trouble)",
    "extras": []
   },
@@ -4204,7 +4204,7 @@
     }
    ],
    "category": "diagnostics",
-   "descKey": "packdesc_quickfix_list_trouble",
+   "descKey": "packdesc_lazyvim_quickfix_list_trouble",
    "desc": "Quickfix List (Trouble)",
    "extras": []
   },
@@ -4226,7 +4226,7 @@
     }
    ],
    "category": "diagnostics",
-   "descKey": "packdesc_diagnostics_trouble",
+   "descKey": "packdesc_lazyvim_diagnostics_trouble",
    "desc": "Diagnostics (Trouble)",
    "extras": []
   },
@@ -4248,7 +4248,7 @@
     }
    ],
    "category": "diagnostics",
-   "descKey": "packdesc_buffer_diagnostics_trouble",
+   "descKey": "packdesc_lazyvim_buffer_diagnostics_trouble",
    "desc": "Buffer Diagnostics (Trouble)",
    "extras": []
   },
@@ -4267,7 +4267,7 @@
     }
    ],
    "category": "window",
-   "descKey": "packdesc_window_hydra_mode_which_key",
+   "descKey": "packdesc_lazyvim_window_hydra_mode_which_key",
    "desc": "Window Hydra Mode (which-key)",
    "extras": []
   },
@@ -4285,7 +4285,7 @@
     }
    ],
    "category": "buffer",
-   "descKey": "packdesc_buffer_keymaps_which_key",
+   "descKey": "packdesc_lazyvim_buffer_keymaps_which_key",
    "desc": "Buffer Keymaps (which-key)",
    "extras": []
   },
@@ -4307,7 +4307,7 @@
     }
    ],
    "category": "ai",
-   "descKey": "packdesc_ask_avante",
+   "descKey": "packdesc_lazyvim_ask_avante",
    "desc": "Ask Avante",
    "extras": [
     "lazyvim.plugins.extras.ai.avante",
@@ -4334,7 +4334,7 @@
     }
    ],
    "category": "ai",
-   "descKey": "packdesc_chat_with_avante",
+   "descKey": "packdesc_lazyvim_chat_with_avante",
    "desc": "Chat with Avante",
    "extras": [
     "lazyvim.plugins.extras.ai.avante",
@@ -4359,7 +4359,7 @@
     }
    ],
    "category": "ai",
-   "descKey": "packdesc_edit_avante",
+   "descKey": "packdesc_lazyvim_edit_avante",
    "desc": "Edit Avante",
    "extras": [
     "lazyvim.plugins.extras.ai.avante"
@@ -4383,7 +4383,7 @@
     }
    ],
    "category": "ai",
-   "descKey": "packdesc_focus_avante",
+   "descKey": "packdesc_lazyvim_focus_avante",
    "desc": "Focus Avante",
    "extras": [
     "lazyvim.plugins.extras.ai.avante",
@@ -4409,7 +4409,7 @@
     }
    ],
    "category": "ai",
-   "descKey": "packdesc_avante_history",
+   "descKey": "packdesc_lazyvim_avante_history",
    "desc": "Avante History",
    "extras": [
     "lazyvim.plugins.extras.ai.avante"
@@ -4433,7 +4433,7 @@
     }
    ],
    "category": "ai",
-   "descKey": "packdesc_select_avante_model",
+   "descKey": "packdesc_lazyvim_select_avante_model",
    "desc": "Select Avante Model",
    "extras": [
     "lazyvim.plugins.extras.ai.avante"
@@ -4457,7 +4457,7 @@
     }
    ],
    "category": "ai",
-   "descKey": "packdesc_new_avante_chat",
+   "descKey": "packdesc_lazyvim_new_avante_chat",
    "desc": "New Avante Chat",
    "extras": [
     "lazyvim.plugins.extras.ai.avante"
@@ -4481,7 +4481,7 @@
     }
    ],
    "category": "ai",
-   "descKey": "packdesc_switch_avante_provider",
+   "descKey": "packdesc_lazyvim_switch_avante_provider",
    "desc": "Switch Avante Provider",
    "extras": [
     "lazyvim.plugins.extras.ai.avante",
@@ -4507,7 +4507,7 @@
     }
    ],
    "category": "ai",
-   "descKey": "packdesc_refresh_avante",
+   "descKey": "packdesc_lazyvim_refresh_avante",
    "desc": "Refresh Avante",
    "extras": [
     "lazyvim.plugins.extras.ai.avante",
@@ -4532,7 +4532,7 @@
     }
    ],
    "category": "ai",
-   "descKey": "packdesc_stop_avante",
+   "descKey": "packdesc_lazyvim_stop_avante",
    "desc": "Stop Avante",
    "extras": [
     "lazyvim.plugins.extras.ai.avante",
@@ -4558,7 +4558,7 @@
     }
    ],
    "category": "ai",
-   "descKey": "packdesc_toggle_avante",
+   "descKey": "packdesc_lazyvim_toggle_avante",
    "desc": "Toggle Avante",
    "extras": [
     "lazyvim.plugins.extras.ai.avante",
@@ -4583,7 +4583,7 @@
     }
    ],
    "category": "ai",
-   "descKey": "packdesc_add_current_buffer",
+   "descKey": "packdesc_lazyvim_add_current_buffer",
    "desc": "Add current buffer",
    "extras": [
     "lazyvim.plugins.extras.ai.claudecode"
@@ -4607,7 +4607,7 @@
     }
    ],
    "category": "ai",
-   "descKey": "packdesc_continue_claude",
+   "descKey": "packdesc_lazyvim_continue_claude",
    "desc": "Continue Claude",
    "extras": [
     "lazyvim.plugins.extras.ai.claudecode"
@@ -4631,7 +4631,7 @@
     }
    ],
    "category": "ai",
-   "descKey": "packdesc_deny_diff",
+   "descKey": "packdesc_lazyvim_deny_diff",
    "desc": "Deny diff",
    "extras": [
     "lazyvim.plugins.extras.ai.claudecode",
@@ -4656,7 +4656,7 @@
     }
    ],
    "category": "ai",
-   "descKey": "packdesc_send_to_claude",
+   "descKey": "packdesc_lazyvim_send_to_claude",
    "desc": "Send to Claude",
    "extras": [
     "lazyvim.plugins.extras.ai.claudecode"
@@ -4673,7 +4673,7 @@
     }
    ],
    "category": "ai",
-   "descKey": "packdesc_submit_prompt",
+   "descKey": "packdesc_lazyvim_submit_prompt",
    "desc": "Submit Prompt",
    "extras": [
     "lazyvim.plugins.extras.ai.copilot-chat"
@@ -4697,7 +4697,7 @@
     }
    ],
    "category": "ai",
-   "descKey": "packdesc_quick_chat_copilotchat",
+   "descKey": "packdesc_lazyvim_quick_chat_copilotchat",
    "desc": "Quick Chat (CopilotChat)",
    "extras": [
     "lazyvim.plugins.extras.ai.copilot-chat"
@@ -4721,7 +4721,7 @@
     }
    ],
    "category": "ai",
-   "descKey": "packdesc_clear_copilotchat",
+   "descKey": "packdesc_lazyvim_clear_copilotchat",
    "desc": "Clear (CopilotChat)",
    "extras": [
     "lazyvim.plugins.extras.ai.copilot-chat"
@@ -4745,7 +4745,7 @@
     }
    ],
    "category": "ai",
-   "descKey": "packdesc_send_visual_selection",
+   "descKey": "packdesc_lazyvim_send_visual_selection",
    "desc": "Send Visual Selection",
    "extras": [
     "lazyvim.plugins.extras.ai.sidekick"
@@ -4762,7 +4762,7 @@
     }
    ],
    "category": "ai",
-   "descKey": "packdesc_sidekick_focus",
+   "descKey": "packdesc_lazyvim_sidekick_focus",
    "desc": "Sidekick Focus",
    "extras": [
     "lazyvim.plugins.extras.ai.sidekick"
@@ -4787,7 +4787,7 @@
     }
    ],
    "category": "edit",
-   "descKey": "packdesc_add_surrounding",
+   "descKey": "packdesc_lazyvim_add_surrounding",
    "desc": "Add Surrounding",
    "extras": [
     "lazyvim.plugins.extras.coding.mini-surround"
@@ -4812,7 +4812,7 @@
     }
    ],
    "category": "edit",
-   "descKey": "packdesc_delete_surrounding",
+   "descKey": "packdesc_lazyvim_delete_surrounding",
    "desc": "Delete Surrounding",
    "extras": [
     "lazyvim.plugins.extras.coding.mini-surround"
@@ -4837,7 +4837,7 @@
     }
    ],
    "category": "edit",
-   "descKey": "packdesc_find_right_surrounding",
+   "descKey": "packdesc_lazyvim_find_right_surrounding",
    "desc": "Find Right Surrounding",
    "extras": [
     "lazyvim.plugins.extras.coding.mini-surround"
@@ -4862,7 +4862,7 @@
     }
    ],
    "category": "edit",
-   "descKey": "packdesc_find_left_surrounding",
+   "descKey": "packdesc_lazyvim_find_left_surrounding",
    "desc": "Find Left Surrounding",
    "extras": [
     "lazyvim.plugins.extras.coding.mini-surround"
@@ -4887,7 +4887,7 @@
     }
    ],
    "category": "edit",
-   "descKey": "packdesc_highlight_surrounding",
+   "descKey": "packdesc_lazyvim_highlight_surrounding",
    "desc": "Highlight Surrounding",
    "extras": [
     "lazyvim.plugins.extras.coding.mini-surround"
@@ -4912,7 +4912,7 @@
     }
    ],
    "category": "edit",
-   "descKey": "packdesc_update_minisurround_config_n_lines",
+   "descKey": "packdesc_lazyvim_update_minisurround_config_n_lines",
    "desc": "Update `MiniSurround.config.n_lines`",
    "extras": [
     "lazyvim.plugins.extras.coding.mini-surround"
@@ -4937,7 +4937,7 @@
     }
    ],
    "category": "edit",
-   "descKey": "packdesc_replace_surrounding",
+   "descKey": "packdesc_lazyvim_replace_surrounding",
    "desc": "Replace Surrounding",
    "extras": [
     "lazyvim.plugins.extras.coding.mini-surround"
@@ -4961,7 +4961,7 @@
     }
    ],
    "category": "code",
-   "descKey": "packdesc_generate_annotations_neogen",
+   "descKey": "packdesc_lazyvim_generate_annotations_neogen",
    "desc": "Generate Annotations (Neogen)",
    "extras": [
     "lazyvim.plugins.extras.coding.neogen"
@@ -4981,7 +4981,7 @@
     }
    ],
    "category": "search",
-   "descKey": "packdesc_open_yank_history",
+   "descKey": "packdesc_lazyvim_open_yank_history",
    "desc": "Open Yank History",
    "extras": [
     "lazyvim.plugins.extras.coding.yanky"
@@ -5002,7 +5002,7 @@
     }
    ],
    "category": "edit",
-   "descKey": "packdesc_put_after_applying_a_filter",
+   "descKey": "packdesc_lazyvim_put_after_applying_a_filter",
    "desc": "Put After Applying a Filter",
    "extras": [
     "lazyvim.plugins.extras.coding.yanky"
@@ -5023,7 +5023,7 @@
     }
    ],
    "category": "edit",
-   "descKey": "packdesc_put_before_applying_a_filter",
+   "descKey": "packdesc_lazyvim_put_before_applying_a_filter",
    "desc": "Put Before Applying a Filter",
    "extras": [
     "lazyvim.plugins.extras.coding.yanky"
@@ -5044,7 +5044,7 @@
     }
    ],
    "category": "edit",
-   "descKey": "packdesc_put_and_indent_right",
+   "descKey": "packdesc_lazyvim_put_and_indent_right",
    "desc": "Put and Indent Right",
    "extras": [
     "lazyvim.plugins.extras.coding.yanky"
@@ -5065,7 +5065,7 @@
     }
    ],
    "category": "edit",
-   "descKey": "packdesc_put_before_and_indent_right",
+   "descKey": "packdesc_lazyvim_put_before_and_indent_right",
    "desc": "Put Before and Indent Right",
    "extras": [
     "lazyvim.plugins.extras.coding.yanky"
@@ -5086,7 +5086,7 @@
     }
    ],
    "category": "navigation",
-   "descKey": "packdesc_put_indented_before_cursor_linewise",
+   "descKey": "packdesc_lazyvim_put_indented_before_cursor_linewise",
    "desc": "Put Indented Before Cursor (Linewise)",
    "extras": [
     "lazyvim.plugins.extras.coding.yanky"
@@ -5107,7 +5107,7 @@
     }
    ],
    "category": "navigation",
-   "descKey": "packdesc_put_indented_before_cursor_linewise",
+   "descKey": "packdesc_lazyvim_put_indented_before_cursor_linewise",
    "desc": "Put Indented Before Cursor (Linewise)",
    "extras": [
     "lazyvim.plugins.extras.coding.yanky"
@@ -5128,7 +5128,7 @@
     }
    ],
    "category": "navigation",
-   "descKey": "packdesc_cycle_forward_through_yank_history",
+   "descKey": "packdesc_lazyvim_cycle_forward_through_yank_history",
    "desc": "Cycle Forward Through Yank History",
    "extras": [
     "lazyvim.plugins.extras.coding.yanky"
@@ -5149,7 +5149,7 @@
     }
    ],
    "category": "navigation",
-   "descKey": "packdesc_put_indented_after_cursor_linewise",
+   "descKey": "packdesc_lazyvim_put_indented_after_cursor_linewise",
    "desc": "Put Indented After Cursor (Linewise)",
    "extras": [
     "lazyvim.plugins.extras.coding.yanky"
@@ -5170,7 +5170,7 @@
     }
    ],
    "category": "navigation",
-   "descKey": "packdesc_put_indented_after_cursor_linewise",
+   "descKey": "packdesc_lazyvim_put_indented_after_cursor_linewise",
    "desc": "Put Indented After Cursor (Linewise)",
    "extras": [
     "lazyvim.plugins.extras.coding.yanky"
@@ -5191,7 +5191,7 @@
     }
    ],
    "category": "navigation",
-   "descKey": "packdesc_cycle_backward_through_yank_history",
+   "descKey": "packdesc_lazyvim_cycle_backward_through_yank_history",
    "desc": "Cycle Backward Through Yank History",
    "extras": [
     "lazyvim.plugins.extras.coding.yanky"
@@ -5212,7 +5212,7 @@
     }
    ],
    "category": "edit",
-   "descKey": "packdesc_put_text_after_selection",
+   "descKey": "packdesc_lazyvim_put_text_after_selection",
    "desc": "Put Text After Selection",
    "extras": [
     "lazyvim.plugins.extras.coding.yanky"
@@ -5233,7 +5233,7 @@
     }
    ],
    "category": "edit",
-   "descKey": "packdesc_put_text_before_selection",
+   "descKey": "packdesc_lazyvim_put_text_before_selection",
    "desc": "Put Text Before Selection",
    "extras": [
     "lazyvim.plugins.extras.coding.yanky"
@@ -5257,7 +5257,7 @@
     }
    ],
    "category": "debug",
-   "descKey": "packdesc_run_with_args",
+   "descKey": "packdesc_lazyvim_run_with_args",
    "desc": "Run with Args",
    "extras": [
     "lazyvim.plugins.extras.dap.core"
@@ -5281,7 +5281,7 @@
     }
    ],
    "category": "debug",
-   "descKey": "packdesc_toggle_breakpoint",
+   "descKey": "packdesc_lazyvim_toggle_breakpoint",
    "desc": "Toggle Breakpoint",
    "extras": [
     "lazyvim.plugins.extras.dap.core"
@@ -5305,7 +5305,7 @@
     }
    ],
    "category": "debug",
-   "descKey": "packdesc_breakpoint_condition",
+   "descKey": "packdesc_lazyvim_breakpoint_condition",
    "desc": "Breakpoint Condition",
    "extras": [
     "lazyvim.plugins.extras.dap.core"
@@ -5329,7 +5329,7 @@
     }
    ],
    "category": "debug",
-   "descKey": "packdesc_run_continue",
+   "descKey": "packdesc_lazyvim_run_continue",
    "desc": "Run/Continue",
    "extras": [
     "lazyvim.plugins.extras.dap.core"
@@ -5353,7 +5353,7 @@
     }
    ],
    "category": "debug",
-   "descKey": "packdesc_run_to_cursor",
+   "descKey": "packdesc_lazyvim_run_to_cursor",
    "desc": "Run to Cursor",
    "extras": [
     "lazyvim.plugins.extras.dap.core"
@@ -5377,7 +5377,7 @@
     }
    ],
    "category": "debug",
-   "descKey": "packdesc_go_to_line_no_execute",
+   "descKey": "packdesc_lazyvim_go_to_line_no_execute",
    "desc": "Go to Line (No Execute)",
    "extras": [
     "lazyvim.plugins.extras.dap.core"
@@ -5401,7 +5401,7 @@
     }
    ],
    "category": "debug",
-   "descKey": "packdesc_step_into",
+   "descKey": "packdesc_lazyvim_step_into",
    "desc": "Step Into",
    "extras": [
     "lazyvim.plugins.extras.dap.core"
@@ -5425,7 +5425,7 @@
     }
    ],
    "category": "debug",
-   "descKey": "packdesc_down",
+   "descKey": "packdesc_lazyvim_down",
    "desc": "Down",
    "extras": [
     "lazyvim.plugins.extras.dap.core"
@@ -5449,7 +5449,7 @@
     }
    ],
    "category": "debug",
-   "descKey": "packdesc_up",
+   "descKey": "packdesc_lazyvim_up",
    "desc": "Up",
    "extras": [
     "lazyvim.plugins.extras.dap.core"
@@ -5473,7 +5473,7 @@
     }
    ],
    "category": "debug",
-   "descKey": "packdesc_run_last",
+   "descKey": "packdesc_lazyvim_run_last",
    "desc": "Run Last",
    "extras": [
     "lazyvim.plugins.extras.dap.core"
@@ -5497,7 +5497,7 @@
     }
    ],
    "category": "debug",
-   "descKey": "packdesc_step_out",
+   "descKey": "packdesc_lazyvim_step_out",
    "desc": "Step Out",
    "extras": [
     "lazyvim.plugins.extras.dap.core"
@@ -5521,7 +5521,7 @@
     }
    ],
    "category": "debug",
-   "descKey": "packdesc_step_over",
+   "descKey": "packdesc_lazyvim_step_over",
    "desc": "Step Over",
    "extras": [
     "lazyvim.plugins.extras.dap.core"
@@ -5545,7 +5545,7 @@
     }
    ],
    "category": "debug",
-   "descKey": "packdesc_pause",
+   "descKey": "packdesc_lazyvim_pause",
    "desc": "Pause",
    "extras": [
     "lazyvim.plugins.extras.dap.core"
@@ -5569,7 +5569,7 @@
     }
    ],
    "category": "debug",
-   "descKey": "packdesc_toggle_repl",
+   "descKey": "packdesc_lazyvim_toggle_repl",
    "desc": "Toggle REPL",
    "extras": [
     "lazyvim.plugins.extras.dap.core"
@@ -5593,7 +5593,7 @@
     }
    ],
    "category": "debug",
-   "descKey": "packdesc_session",
+   "descKey": "packdesc_lazyvim_session",
    "desc": "Session",
    "extras": [
     "lazyvim.plugins.extras.dap.core"
@@ -5617,7 +5617,7 @@
     }
    ],
    "category": "debug",
-   "descKey": "packdesc_terminate",
+   "descKey": "packdesc_lazyvim_terminate",
    "desc": "Terminate",
    "extras": [
     "lazyvim.plugins.extras.dap.core"
@@ -5641,7 +5641,7 @@
     }
    ],
    "category": "debug",
-   "descKey": "packdesc_widgets",
+   "descKey": "packdesc_lazyvim_widgets",
    "desc": "Widgets",
    "extras": [
     "lazyvim.plugins.extras.dap.core"
@@ -5665,7 +5665,7 @@
     }
    ],
    "category": "debug",
-   "descKey": "packdesc_eval",
+   "descKey": "packdesc_lazyvim_eval",
    "desc": "Eval",
    "extras": [
     "lazyvim.plugins.extras.dap.core"
@@ -5689,7 +5689,7 @@
     }
    ],
    "category": "debug",
-   "descKey": "packdesc_dap_ui",
+   "descKey": "packdesc_lazyvim_dap_ui",
    "desc": "Dap UI",
    "extras": [
     "lazyvim.plugins.extras.dap.core"
@@ -5706,7 +5706,7 @@
     }
    ],
    "category": "edit",
-   "descKey": "packdesc_increment",
+   "descKey": "packdesc_lazyvim_increment",
    "desc": "Increment",
    "extras": [
     "lazyvim.plugins.extras.editor.dial"
@@ -5723,7 +5723,7 @@
     }
    ],
    "category": "edit",
-   "descKey": "packdesc_decrement",
+   "descKey": "packdesc_lazyvim_decrement",
    "desc": "Decrement",
    "extras": [
     "lazyvim.plugins.extras.editor.dial"
@@ -5744,7 +5744,7 @@
     }
    ],
    "category": "edit",
-   "descKey": "packdesc_increment",
+   "descKey": "packdesc_lazyvim_increment",
    "desc": "Increment",
    "extras": [
     "lazyvim.plugins.extras.editor.dial"
@@ -5765,7 +5765,7 @@
     }
    ],
    "category": "edit",
-   "descKey": "packdesc_decrement",
+   "descKey": "packdesc_lazyvim_decrement",
    "desc": "Decrement",
    "extras": [
     "lazyvim.plugins.extras.editor.dial"
@@ -5785,7 +5785,7 @@
     }
    ],
    "category": "find",
-   "descKey": "packdesc_harpoon_to_file_1",
+   "descKey": "packdesc_lazyvim_harpoon_to_file_1",
    "desc": "Harpoon to File 1",
    "extras": [
     "lazyvim.plugins.extras.editor.harpoon2"
@@ -5805,7 +5805,7 @@
     }
    ],
    "category": "find",
-   "descKey": "packdesc_harpoon_to_file_2",
+   "descKey": "packdesc_lazyvim_harpoon_to_file_2",
    "desc": "Harpoon to File 2",
    "extras": [
     "lazyvim.plugins.extras.editor.harpoon2"
@@ -5825,7 +5825,7 @@
     }
    ],
    "category": "find",
-   "descKey": "packdesc_harpoon_to_file_3",
+   "descKey": "packdesc_lazyvim_harpoon_to_file_3",
    "desc": "Harpoon to File 3",
    "extras": [
     "lazyvim.plugins.extras.editor.harpoon2"
@@ -5845,7 +5845,7 @@
     }
    ],
    "category": "find",
-   "descKey": "packdesc_harpoon_to_file_4",
+   "descKey": "packdesc_lazyvim_harpoon_to_file_4",
    "desc": "Harpoon to File 4",
    "extras": [
     "lazyvim.plugins.extras.editor.harpoon2"
@@ -5865,7 +5865,7 @@
     }
    ],
    "category": "find",
-   "descKey": "packdesc_harpoon_to_file_5",
+   "descKey": "packdesc_lazyvim_harpoon_to_file_5",
    "desc": "Harpoon to File 5",
    "extras": [
     "lazyvim.plugins.extras.editor.harpoon2"
@@ -5885,7 +5885,7 @@
     }
    ],
    "category": "find",
-   "descKey": "packdesc_harpoon_to_file_6",
+   "descKey": "packdesc_lazyvim_harpoon_to_file_6",
    "desc": "Harpoon to File 6",
    "extras": [
     "lazyvim.plugins.extras.editor.harpoon2"
@@ -5905,7 +5905,7 @@
     }
    ],
    "category": "find",
-   "descKey": "packdesc_harpoon_to_file_7",
+   "descKey": "packdesc_lazyvim_harpoon_to_file_7",
    "desc": "Harpoon to File 7",
    "extras": [
     "lazyvim.plugins.extras.editor.harpoon2"
@@ -5925,7 +5925,7 @@
     }
    ],
    "category": "find",
-   "descKey": "packdesc_harpoon_to_file_8",
+   "descKey": "packdesc_lazyvim_harpoon_to_file_8",
    "desc": "Harpoon to File 8",
    "extras": [
     "lazyvim.plugins.extras.editor.harpoon2"
@@ -5945,7 +5945,7 @@
     }
    ],
    "category": "find",
-   "descKey": "packdesc_harpoon_to_file_9",
+   "descKey": "packdesc_lazyvim_harpoon_to_file_9",
    "desc": "Harpoon to File 9",
    "extras": [
     "lazyvim.plugins.extras.editor.harpoon2"
@@ -5965,7 +5965,7 @@
     }
    ],
    "category": "navigation",
-   "descKey": "packdesc_harpoon_quick_menu",
+   "descKey": "packdesc_lazyvim_harpoon_quick_menu",
    "desc": "Harpoon Quick Menu",
    "extras": [
     "lazyvim.plugins.extras.editor.harpoon2"
@@ -5985,7 +5985,7 @@
     }
    ],
    "category": "find",
-   "descKey": "packdesc_harpoon_file",
+   "descKey": "packdesc_lazyvim_harpoon_file",
    "desc": "Harpoon File",
    "extras": [
     "lazyvim.plugins.extras.editor.harpoon2"
@@ -6006,7 +6006,7 @@
     }
    ],
    "category": "edit",
-   "descKey": "packdesc_leap_from_windows",
+   "descKey": "packdesc_lazyvim_leap_from_windows",
    "desc": "Leap from Windows",
    "extras": [
     "lazyvim.plugins.extras.editor.leap"
@@ -6030,7 +6030,7 @@
     }
    ],
    "category": "git",
-   "descKey": "packdesc_toggle_mini_diff_overlay",
+   "descKey": "packdesc_lazyvim_toggle_mini_diff_overlay",
    "desc": "Toggle mini.diff overlay",
    "extras": [
     "lazyvim.plugins.extras.editor.mini-diff"
@@ -6054,7 +6054,7 @@
     }
    ],
    "category": "find",
-   "descKey": "packdesc_open_mini_files_directory_of_current_file",
+   "descKey": "packdesc_lazyvim_open_mini_files_directory_of_current_file",
    "desc": "Open mini.files (Directory of Current File)",
    "extras": [
     "lazyvim.plugins.extras.editor.mini-files"
@@ -6078,7 +6078,7 @@
     }
    ],
    "category": "find",
-   "descKey": "packdesc_open_mini_files_cwd",
+   "descKey": "packdesc_lazyvim_open_mini_files_cwd",
    "desc": "Open mini.files (cwd)",
    "extras": [
     "lazyvim.plugins.extras.editor.mini-files"
@@ -6102,7 +6102,7 @@
     }
    ],
    "category": "task",
-   "descKey": "packdesc_run_task",
+   "descKey": "packdesc_lazyvim_run_task",
    "desc": "Run task",
    "extras": [
     "lazyvim.plugins.extras.editor.overseer"
@@ -6126,7 +6126,7 @@
     }
    ],
    "category": "task",
-   "descKey": "packdesc_task_action",
+   "descKey": "packdesc_lazyvim_task_action",
    "desc": "Task action",
    "extras": [
     "lazyvim.plugins.extras.editor.overseer"
@@ -6150,7 +6150,7 @@
     }
    ],
    "category": "task",
-   "descKey": "packdesc_task_list",
+   "descKey": "packdesc_lazyvim_task_list",
    "desc": "Task list",
    "extras": [
     "lazyvim.plugins.extras.editor.overseer"
@@ -6174,7 +6174,7 @@
     }
    ],
    "category": "code",
-   "descKey": "packdesc_debug_cleanup",
+   "descKey": "packdesc_lazyvim_debug_cleanup",
    "desc": "Debug Cleanup",
    "extras": [
     "lazyvim.plugins.extras.editor.refactoring"
@@ -6198,7 +6198,7 @@
     }
    ],
    "category": "code",
-   "descKey": "packdesc_extract_function",
+   "descKey": "packdesc_lazyvim_extract_function",
    "desc": "Extract Function",
    "extras": [
     "lazyvim.plugins.extras.editor.refactoring"
@@ -6222,7 +6222,7 @@
     }
    ],
    "category": "code",
-   "descKey": "packdesc_extract_function_to_file",
+   "descKey": "packdesc_lazyvim_extract_function_to_file",
    "desc": "Extract Function To File",
    "extras": [
     "lazyvim.plugins.extras.editor.refactoring"
@@ -6246,7 +6246,7 @@
     }
    ],
    "category": "code",
-   "descKey": "packdesc_inline_variable",
+   "descKey": "packdesc_lazyvim_inline_variable",
    "desc": "Inline Variable",
    "extras": [
     "lazyvim.plugins.extras.editor.refactoring"
@@ -6270,7 +6270,7 @@
     }
    ],
    "category": "code",
-   "descKey": "packdesc_debug_print_variable",
+   "descKey": "packdesc_lazyvim_debug_print_variable",
    "desc": "Debug Print Variable",
    "extras": [
     "lazyvim.plugins.extras.editor.refactoring"
@@ -6294,7 +6294,7 @@
     }
    ],
    "category": "code",
-   "descKey": "packdesc_debug_print_location",
+   "descKey": "packdesc_lazyvim_debug_print_location",
    "desc": "Debug Print Location",
    "extras": [
     "lazyvim.plugins.extras.editor.refactoring"
@@ -6318,7 +6318,7 @@
     }
    ],
    "category": "code",
-   "descKey": "packdesc_select_refactor",
+   "descKey": "packdesc_lazyvim_select_refactor",
    "desc": "Select Refactor",
    "extras": [
     "lazyvim.plugins.extras.editor.refactoring"
@@ -6342,7 +6342,7 @@
     }
    ],
    "category": "code",
-   "descKey": "packdesc_extract_variable",
+   "descKey": "packdesc_lazyvim_extract_variable",
    "desc": "Extract Variable",
    "extras": [
     "lazyvim.plugins.extras.editor.refactoring"
@@ -6366,7 +6366,7 @@
     }
    ],
    "category": "test",
-   "descKey": "packdesc_ansible_run_playbook_role",
+   "descKey": "packdesc_lazyvim_ansible_run_playbook_role",
    "desc": "Ansible Run Playbook/Role",
    "extras": [
     "lazyvim.plugins.extras.lang.ansible",
@@ -6387,7 +6387,7 @@
     }
    ],
    "category": "code",
-   "descKey": "packdesc_evaluate_all",
+   "descKey": "packdesc_lazyvim_evaluate_all",
    "desc": "Evaluate All",
    "extras": [
     "lazyvim.plugins.extras.lang.haskell"
@@ -6407,7 +6407,7 @@
     }
    ],
    "category": "code",
-   "descKey": "packdesc_hoogle_signature",
+   "descKey": "packdesc_lazyvim_hoogle_signature",
    "desc": "Hoogle Signature",
    "extras": [
     "lazyvim.plugins.extras.lang.haskell"
@@ -6427,7 +6427,7 @@
     }
    ],
    "category": "code",
-   "descKey": "packdesc_repl_package",
+   "descKey": "packdesc_lazyvim_repl_package",
    "desc": "REPL (Package)",
    "extras": [
     "lazyvim.plugins.extras.lang.haskell"
@@ -6447,7 +6447,7 @@
     }
    ],
    "category": "code",
-   "descKey": "packdesc_repl_buffer",
+   "descKey": "packdesc_lazyvim_repl_buffer",
    "desc": "REPL (Buffer)",
    "extras": [
     "lazyvim.plugins.extras.lang.haskell"
@@ -6467,7 +6467,7 @@
     }
    ],
    "category": "code",
-   "descKey": "packdesc_hoogle",
+   "descKey": "packdesc_lazyvim_hoogle",
    "desc": "Hoogle",
    "extras": [
     "lazyvim.plugins.extras.lang.haskell"
@@ -6491,7 +6491,7 @@
     }
    ],
    "category": "code",
-   "descKey": "packdesc_markdown_preview",
+   "descKey": "packdesc_lazyvim_markdown_preview",
    "desc": "Markdown Preview",
    "extras": [
     "lazyvim.plugins.extras.lang.markdown",
@@ -6520,7 +6520,7 @@
     }
    ],
    "category": "debug",
-   "descKey": "packdesc_debug_class",
+   "descKey": "packdesc_lazyvim_debug_class",
    "desc": "Debug Class",
    "extras": [
     "lazyvim.plugins.extras.lang.python"
@@ -6548,7 +6548,7 @@
     }
    ],
    "category": "debug",
-   "descKey": "packdesc_debug_method",
+   "descKey": "packdesc_lazyvim_debug_method",
    "desc": "Debug Method",
    "extras": [
     "lazyvim.plugins.extras.lang.python"
@@ -6572,7 +6572,7 @@
     }
    ],
    "category": "code",
-   "descKey": "packdesc_select_virtualenv",
+   "descKey": "packdesc_lazyvim_select_virtualenv",
    "desc": "Select VirtualEnv",
    "extras": [
     "lazyvim.plugins.extras.lang.python"
@@ -6596,7 +6596,7 @@
     }
    ],
    "category": "code",
-   "descKey": "packdesc_metals_compile_cascade",
+   "descKey": "packdesc_lazyvim_metals_compile_cascade",
    "desc": "Metals compile cascade",
    "extras": [
     "lazyvim.plugins.extras.lang.scala"
@@ -6620,7 +6620,7 @@
     }
    ],
    "category": "code",
-   "descKey": "packdesc_metals_commands",
+   "descKey": "packdesc_lazyvim_metals_commands",
    "desc": "Metals commands",
    "extras": [
     "lazyvim.plugins.extras.lang.scala"
@@ -6644,7 +6644,7 @@
     }
    ],
    "category": "code",
-   "descKey": "packdesc_metals_hover_worksheet",
+   "descKey": "packdesc_lazyvim_metals_hover_worksheet",
    "desc": "Metals hover worksheet",
    "extras": [
     "lazyvim.plugins.extras.lang.scala"
@@ -6664,7 +6664,7 @@
     }
    ],
    "category": "ui",
-   "descKey": "packdesc_toggle_dbui",
+   "descKey": "packdesc_lazyvim_toggle_dbui",
    "desc": "Toggle DBUI",
    "extras": [
     "lazyvim.plugins.extras.lang.sql"
@@ -6688,7 +6688,7 @@
     }
    ],
    "category": "test",
-   "descKey": "packdesc_run_last_neotest",
+   "descKey": "packdesc_lazyvim_run_last_neotest",
    "desc": "Run Last (Neotest)",
    "extras": [
     "lazyvim.plugins.extras.test.core"
@@ -6712,7 +6712,7 @@
     }
    ],
    "category": "test",
-   "descKey": "packdesc_show_output_neotest",
+   "descKey": "packdesc_lazyvim_show_output_neotest",
    "desc": "Show Output (Neotest)",
    "extras": [
     "lazyvim.plugins.extras.test.core"
@@ -6736,7 +6736,7 @@
     }
    ],
    "category": "test",
-   "descKey": "packdesc_toggle_output_panel_neotest",
+   "descKey": "packdesc_lazyvim_toggle_output_panel_neotest",
    "desc": "Toggle Output Panel (Neotest)",
    "extras": [
     "lazyvim.plugins.extras.test.core"
@@ -6760,7 +6760,7 @@
     }
    ],
    "category": "test",
-   "descKey": "packdesc_run_nearest_neotest",
+   "descKey": "packdesc_lazyvim_run_nearest_neotest",
    "desc": "Run Nearest (Neotest)",
    "extras": [
     "lazyvim.plugins.extras.test.core"
@@ -6784,7 +6784,7 @@
     }
    ],
    "category": "test",
-   "descKey": "packdesc_toggle_summary_neotest",
+   "descKey": "packdesc_lazyvim_toggle_summary_neotest",
    "desc": "Toggle Summary (Neotest)",
    "extras": [
     "lazyvim.plugins.extras.test.core"
@@ -6808,7 +6808,7 @@
     }
    ],
    "category": "test",
-   "descKey": "packdesc_stop_neotest",
+   "descKey": "packdesc_lazyvim_stop_neotest",
    "desc": "Stop (Neotest)",
    "extras": [
     "lazyvim.plugins.extras.test.core"
@@ -6832,7 +6832,7 @@
     }
    ],
    "category": "test",
-   "descKey": "packdesc_run_file_neotest",
+   "descKey": "packdesc_lazyvim_run_file_neotest",
    "desc": "Run File (Neotest)",
    "extras": [
     "lazyvim.plugins.extras.test.core"
@@ -6856,7 +6856,7 @@
     }
    ],
    "category": "test",
-   "descKey": "packdesc_run_all_test_files_neotest",
+   "descKey": "packdesc_lazyvim_run_all_test_files_neotest",
    "desc": "Run All Test Files (Neotest)",
    "extras": [
     "lazyvim.plugins.extras.test.core"
@@ -6880,7 +6880,7 @@
     }
    ],
    "category": "test",
-   "descKey": "packdesc_toggle_watch_neotest",
+   "descKey": "packdesc_lazyvim_toggle_watch_neotest",
    "desc": "Toggle Watch (Neotest)",
    "extras": [
     "lazyvim.plugins.extras.test.core"
@@ -6904,7 +6904,7 @@
     }
    ],
    "category": "test",
-   "descKey": "packdesc_debug_nearest",
+   "descKey": "packdesc_lazyvim_debug_nearest",
    "desc": "Debug Nearest",
    "extras": [
     "lazyvim.plugins.extras.test.core"
@@ -6928,7 +6928,7 @@
     }
    ],
    "category": "ui",
-   "descKey": "packdesc_edgy_toggle",
+   "descKey": "packdesc_lazyvim_edgy_toggle",
    "desc": "Edgy Toggle",
    "extras": [
     "lazyvim.plugins.extras.ui.edgy"
@@ -6952,7 +6952,7 @@
     }
    ],
    "category": "ui",
-   "descKey": "packdesc_edgy_select_window",
+   "descKey": "packdesc_lazyvim_edgy_select_window",
    "desc": "Edgy Select Window",
    "extras": [
     "lazyvim.plugins.extras.ui.edgy"
@@ -6976,7 +6976,7 @@
     }
    ],
    "category": "search",
-   "descKey": "packdesc_chezmoi",
+   "descKey": "packdesc_lazyvim_chezmoi",
    "desc": "Chezmoi",
    "extras": [
     "lazyvim.plugins.extras.util.chezmoi"
@@ -7004,7 +7004,7 @@
     }
    ],
    "category": "git",
-   "descKey": "packdesc_close",
+   "descKey": "packdesc_lazyvim_close",
    "desc": "Close",
    "extras": [
     "lazyvim.plugins.extras.util.gh"
@@ -7032,7 +7032,7 @@
     }
    ],
    "category": "git",
-   "descKey": "packdesc_expand",
+   "descKey": "packdesc_lazyvim_expand",
    "desc": "Expand",
    "extras": [
     "lazyvim.plugins.extras.util.gh"
@@ -7060,7 +7060,7 @@
     }
    ],
    "category": "git",
-   "descKey": "packdesc_open_to",
+   "descKey": "packdesc_lazyvim_open_to",
    "desc": "Open To",
    "extras": [
     "lazyvim.plugins.extras.util.gh"
@@ -7088,7 +7088,7 @@
     }
    ],
    "category": "git",
-   "descKey": "packdesc_pop_out",
+   "descKey": "packdesc_lazyvim_pop_out",
    "desc": "Pop Out",
    "extras": [
     "lazyvim.plugins.extras.util.gh"
@@ -7116,7 +7116,7 @@
     }
    ],
    "category": "git",
-   "descKey": "packdesc_collapse",
+   "descKey": "packdesc_lazyvim_collapse",
    "desc": "Collapse",
    "extras": [
     "lazyvim.plugins.extras.util.gh"
@@ -7144,7 +7144,7 @@
     }
    ],
    "category": "git",
-   "descKey": "packdesc_open",
+   "descKey": "packdesc_lazyvim_open",
    "desc": "Open",
    "extras": [
     "lazyvim.plugins.extras.util.gh"
@@ -7172,7 +7172,7 @@
     }
    ],
    "category": "git",
-   "descKey": "packdesc_preview",
+   "descKey": "packdesc_lazyvim_preview",
    "desc": "Preview",
    "extras": [
     "lazyvim.plugins.extras.util.gh"
@@ -7200,7 +7200,7 @@
     }
    ],
    "category": "git",
-   "descKey": "packdesc_toggle_panel",
+   "descKey": "packdesc_lazyvim_toggle_panel",
    "desc": "Toggle Panel",
    "extras": [
     "lazyvim.plugins.extras.util.gh"
@@ -7228,7 +7228,7 @@
     }
    ],
    "category": "git",
-   "descKey": "packdesc_close",
+   "descKey": "packdesc_lazyvim_close",
    "desc": "Close",
    "extras": [
     "lazyvim.plugins.extras.util.gh"
@@ -7256,7 +7256,7 @@
     }
    ],
    "category": "git",
-   "descKey": "packdesc_details",
+   "descKey": "packdesc_lazyvim_details",
    "desc": "Details",
    "extras": [
     "lazyvim.plugins.extras.util.gh"
@@ -7284,7 +7284,7 @@
     }
    ],
    "category": "git",
-   "descKey": "packdesc_expand",
+   "descKey": "packdesc_lazyvim_expand",
    "desc": "Expand",
    "extras": [
     "lazyvim.plugins.extras.util.gh"
@@ -7312,7 +7312,7 @@
     }
    ],
    "category": "git",
-   "descKey": "packdesc_open",
+   "descKey": "packdesc_lazyvim_open",
    "desc": "Open",
    "extras": [
     "lazyvim.plugins.extras.util.gh"
@@ -7340,7 +7340,7 @@
     }
    ],
    "category": "git",
-   "descKey": "packdesc_popout",
+   "descKey": "packdesc_lazyvim_popout",
    "desc": "PopOut",
    "extras": [
     "lazyvim.plugins.extras.util.gh"
@@ -7368,7 +7368,7 @@
     }
    ],
    "category": "git",
-   "descKey": "packdesc_refresh",
+   "descKey": "packdesc_lazyvim_refresh",
    "desc": "Refresh",
    "extras": [
     "lazyvim.plugins.extras.util.gh"
@@ -7396,7 +7396,7 @@
     }
    ],
    "category": "git",
-   "descKey": "packdesc_open_to",
+   "descKey": "packdesc_lazyvim_open_to",
    "desc": "Open To",
    "extras": [
     "lazyvim.plugins.extras.util.gh"
@@ -7424,7 +7424,7 @@
     }
    ],
    "category": "git",
-   "descKey": "packdesc_collapse",
+   "descKey": "packdesc_lazyvim_collapse",
    "desc": "Collapse",
    "extras": [
     "lazyvim.plugins.extras.util.gh"
@@ -7452,7 +7452,7 @@
     }
    ],
    "category": "git",
-   "descKey": "packdesc_begin",
+   "descKey": "packdesc_lazyvim_begin",
    "desc": "Begin",
    "extras": [
     "lazyvim.plugins.extras.util.gh"
@@ -7480,7 +7480,7 @@
     }
    ],
    "category": "git",
-   "descKey": "packdesc_close",
+   "descKey": "packdesc_lazyvim_close",
    "desc": "Close",
    "extras": [
     "lazyvim.plugins.extras.util.gh"
@@ -7508,7 +7508,7 @@
     }
    ],
    "category": "git",
-   "descKey": "packdesc_delete",
+   "descKey": "packdesc_lazyvim_delete",
    "desc": "Delete",
    "extras": [
     "lazyvim.plugins.extras.util.gh"
@@ -7536,7 +7536,7 @@
     }
    ],
    "category": "git",
-   "descKey": "packdesc_expand",
+   "descKey": "packdesc_lazyvim_expand",
    "desc": "Expand",
    "extras": [
     "lazyvim.plugins.extras.util.gh"
@@ -7564,7 +7564,7 @@
     }
    ],
    "category": "git",
-   "descKey": "packdesc_submit",
+   "descKey": "packdesc_lazyvim_submit",
    "desc": "Submit",
    "extras": [
     "lazyvim.plugins.extras.util.gh"
@@ -7592,7 +7592,7 @@
     }
    ],
    "category": "git",
-   "descKey": "packdesc_collapse",
+   "descKey": "packdesc_lazyvim_collapse",
    "desc": "Collapse",
    "extras": [
     "lazyvim.plugins.extras.util.gh"
@@ -7620,7 +7620,7 @@
     }
    ],
    "category": "git",
-   "descKey": "packdesc_create",
+   "descKey": "packdesc_lazyvim_create",
    "desc": "Create",
    "extras": [
     "lazyvim.plugins.extras.util.gh"
@@ -7648,7 +7648,7 @@
     }
    ],
    "category": "git",
-   "descKey": "packdesc_next",
+   "descKey": "packdesc_lazyvim_next",
    "desc": "Next",
    "extras": [
     "lazyvim.plugins.extras.util.gh"
@@ -7676,7 +7676,7 @@
     }
    ],
    "category": "git",
-   "descKey": "packdesc_toggle",
+   "descKey": "packdesc_lazyvim_toggle",
    "desc": "Toggle",
    "extras": [
     "lazyvim.plugins.extras.util.gh"
@@ -7700,7 +7700,7 @@
     }
    ],
    "category": "git",
-   "descKey": "packdesc_gitui_root_dir",
+   "descKey": "packdesc_lazyvim_gitui_root_dir",
    "desc": "GitUi (Root Dir)",
    "extras": [
     "lazyvim.plugins.extras.util.gitui"
@@ -7724,7 +7724,7 @@
     }
    ],
    "category": "git",
-   "descKey": "packdesc_gitui_cwd",
+   "descKey": "packdesc_lazyvim_gitui_cwd",
    "desc": "GitUi (cwd)",
    "extras": [
     "lazyvim.plugins.extras.util.gitui"
@@ -7748,7 +7748,7 @@
     }
    ],
    "category": "git",
-   "descKey": "packdesc_list_repos_octo",
+   "descKey": "packdesc_lazyvim_list_repos_octo",
    "desc": "List Repos (Octo)",
    "extras": [
     "lazyvim.plugins.extras.util.octo"
@@ -7772,7 +7772,7 @@
     }
    ],
    "category": "http",
-   "descKey": "packdesc_open_scratchpad",
+   "descKey": "packdesc_lazyvim_open_scratchpad",
    "desc": "Open scratchpad",
    "extras": [
     "lazyvim.plugins.extras.util.rest"
@@ -7796,7 +7796,7 @@
     }
    ],
    "category": "http",
-   "descKey": "packdesc_copy_as_curl",
+   "descKey": "packdesc_lazyvim_copy_as_curl",
    "desc": "Copy as cURL",
    "extras": [
     "lazyvim.plugins.extras.util.rest"
@@ -7820,7 +7820,7 @@
     }
    ],
    "category": "http",
-   "descKey": "packdesc_paste_from_curl",
+   "descKey": "packdesc_lazyvim_paste_from_curl",
    "desc": "Paste from curl",
    "extras": [
     "lazyvim.plugins.extras.util.rest"
@@ -7844,7 +7844,7 @@
     }
    ],
    "category": "http",
-   "descKey": "packdesc_set_environment",
+   "descKey": "packdesc_lazyvim_set_environment",
    "desc": "Set environment",
    "extras": [
     "lazyvim.plugins.extras.util.rest"
@@ -7868,7 +7868,7 @@
     }
    ],
    "category": "http",
-   "descKey": "packdesc_download_graphql_schema",
+   "descKey": "packdesc_lazyvim_download_graphql_schema",
    "desc": "Download GraphQL schema",
    "extras": [
     "lazyvim.plugins.extras.util.rest"
@@ -7892,7 +7892,7 @@
     }
    ],
    "category": "http",
-   "descKey": "packdesc_inspect_current_request",
+   "descKey": "packdesc_lazyvim_inspect_current_request",
    "desc": "Inspect current request",
    "extras": [
     "lazyvim.plugins.extras.util.rest"
@@ -7916,7 +7916,7 @@
     }
    ],
    "category": "http",
-   "descKey": "packdesc_jump_to_next_request",
+   "descKey": "packdesc_lazyvim_jump_to_next_request",
    "desc": "Jump to next request",
    "extras": [
     "lazyvim.plugins.extras.util.rest"
@@ -7940,7 +7940,7 @@
     }
    ],
    "category": "http",
-   "descKey": "packdesc_jump_to_previous_request",
+   "descKey": "packdesc_lazyvim_jump_to_previous_request",
    "desc": "Jump to previous request",
    "extras": [
     "lazyvim.plugins.extras.util.rest"
@@ -7964,7 +7964,7 @@
     }
    ],
    "category": "http",
-   "descKey": "packdesc_close_window",
+   "descKey": "packdesc_lazyvim_close_window",
    "desc": "Close window",
    "extras": [
     "lazyvim.plugins.extras.util.rest"
@@ -7988,7 +7988,7 @@
     }
    ],
    "category": "http",
-   "descKey": "packdesc_replay_the_last_request",
+   "descKey": "packdesc_lazyvim_replay_the_last_request",
    "desc": "Replay the last request",
    "extras": [
     "lazyvim.plugins.extras.util.rest"
@@ -8012,7 +8012,7 @@
     }
    ],
    "category": "http",
-   "descKey": "packdesc_send_the_request",
+   "descKey": "packdesc_lazyvim_send_the_request",
    "desc": "Send the request",
    "extras": [
     "lazyvim.plugins.extras.util.rest"
@@ -8036,7 +8036,7 @@
     }
    ],
    "category": "http",
-   "descKey": "packdesc_show_stats",
+   "descKey": "packdesc_lazyvim_show_stats",
    "desc": "Show stats",
    "extras": [
     "lazyvim.plugins.extras.util.rest"
@@ -8060,7 +8060,7 @@
     }
    ],
    "category": "http",
-   "descKey": "packdesc_toggle_headers_body",
+   "descKey": "packdesc_lazyvim_toggle_headers_body",
    "desc": "Toggle headers/body",
    "extras": [
     "lazyvim.plugins.extras.util.rest"

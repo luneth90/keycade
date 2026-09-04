@@ -2005,27 +2005,16 @@ Item {
                 : i18n.t(root.resumeAvailable ? "resumeTitle" : "start")
           color: root.inkColor; font.family: "monospace"; font.bold: true; font.pixelSize: 28; wrapMode: Text.WordWrap
         }
+        // Only the line that tells you how to get out of a corner. The run's
+        // shape - 24 cards, saved state - was on the card for its own sake and
+        // the cabinet row needed the room more; the buttons below say how to
+        // start, which is the only thing that line was still doing.
         SafeText {
           width: parent.width; horizontalAlignment: Text.AlignHCenter
-          text: root.trainingLockedOut ? i18n.t("allExcludedHint")
-                                       : i18n.t(root.resumeAvailable ? "resumeHint" : "startHint")
-          color: root.trainingLockedOut ? root.coinColor : root.mutedColor
-          font.pixelSize: 15; wrapMode: Text.WordWrap
-        }
-        // The coin line is ritual, not instruction: the line above it still
-        // says plainly how to start, and this one never replaces it.
-        SafeText {
-          width: parent.width; horizontalAlignment: Text.AlignHCenter
-          visible: root.view === "home" && !root.trainingLockedOut
-          text: i18n.t("insertCoin")
+          visible: root.trainingLockedOut
+          text: i18n.t("allExcludedHint")
           color: root.coinColor
-          font.family: "monospace"; font.bold: true; font.pixelSize: 12; font.letterSpacing: 4
-          SequentialAnimation on opacity {
-            running: root.view === "home" && !root.reducedMotion
-            loops: Animation.Infinite
-            NumberAnimation { to: 0.3; duration: 720; easing.type: Easing.InOutQuad }
-            NumberAnimation { to: 1; duration: 720; easing.type: Easing.InOutQuad }
-          }
+          font.pixelSize: 15; wrapMode: Text.WordWrap
         }
         // Choosing a cabinet, which is what a training ground is. A ground is
         // picked here rather than from the top bar: the menus up there are

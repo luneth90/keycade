@@ -82,7 +82,7 @@ class PackTests(unittest.TestCase):
         # The tmux table was collected against tmux's own default of C-b, but
         # Omarchy's tmux.conf moves the prefix to C-Space. A baked-in prefix
         # taught the wrong first key on every Omarchy machine.
-        declared = {"lazyvim": {"leader", "localleader"}, "tmux": {"prefix"}}
+        declared = {"lazyvim": {"leader", "localleader"}, "tmux": {"prefix"}, "neovim": set()}
         for name, pack in self.packs.items():
             with self.subTest(pack=name):
                 used = {step["option"] for entry in pack["bindings"]
@@ -208,12 +208,23 @@ class PackTests(unittest.TestCase):
             for entry in pack["bindings"]:
                 with self.subTest(pack=name, entry=entry["localId"]):
                     key = entry["descKey"]
-                    self.assertEqual(key, build_packs.description_key(entry["desc"]))
+                    self.assertEqual(key, build_packs.description_key(name, entry["desc"]))
                     self.assertIn(key, english)
                     self.assertIn(key, chinese)
                     self.assertEqual(english[key], entry["desc"])
                     # A translation that is still the English text is not one.
                     self.assertNotEqual(chinese[key], entry["desc"])
+
+    def test_no_two_descriptions_share_a_key(self):
+        # The slug drops punctuation, so LazyVim's "Next" and Neovim's ":next"
+        # produced one key and one translation silently replaced the other.
+        # The ground is in the key now; this is what says it stayed there.
+        by_key: dict[str, str] = {}
+        for pack in self.packs.values():
+            for entry in pack["bindings"]:
+                previous = by_key.setdefault(entry["descKey"], entry["desc"])
+                self.assertEqual(previous, entry["desc"],
+                                 f"{entry['descKey']} is shared by two descriptions")
 
     def test_no_translation_outlives_the_description_it_was_written_for(self):
         # The key is derived from the English text, so rewritten wording gets a

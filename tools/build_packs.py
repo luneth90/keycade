@@ -112,11 +112,18 @@ class Rejected(Exception):
 # id is deliberate - when upstream rewrites a description the key changes with
 # it, and the card falls back to the new English rather than showing a
 # translation of the old wording.
-def description_key(desc: str) -> str:
+def description_key(profile: str, desc: str) -> str:
+    """The key a language pack answers, namespaced by ground.
+
+    Not global: the slug drops punctuation, so LazyVim's "Next" and Neovim's
+    ":next" collided and one silently overwrote the other's translation. They
+    are also different sentences - the same English word does not have to mean
+    the same thing in two applications - so the ground belongs in the key.
+    """
     slug = re.sub(r"_+", "_", re.sub(r"[^a-z0-9]+", "_", desc.lower())).strip("_")
     if not slug:
         raise Rejected(f"description has no key: {desc!r}")
-    return "packdesc_" + slug
+    return "packdesc_" + profile + "_" + slug
 
 
 def parse_step(token: str) -> dict:
@@ -450,7 +457,7 @@ def collect_lazyvim(site: Path, lazyvim: Path, leader: str, localleader: str,
             "notation": lhs,
             "steps": steps,
             "category": category,
-            "descKey": description_key(row["desc"]),
+            "descKey": description_key("lazyvim", row["desc"]),
             "desc": row["desc"],
             # Empty means the core provides it, so it is always dealt. Anything
             # here is an opt-in bundle, and the entry is dealt only on a machine
@@ -635,7 +642,7 @@ def collect_tmux(listing: Path) -> dict:
             "notation": "prefix " + ("prefix" if key == prefix else key),
             "steps": steps,
             "category": category,
-            "descKey": description_key(desc),
+            "descKey": description_key("tmux", desc),
             "desc": desc,
             # tmux ships no opt-in bundles; an empty list is what says every
             # entry is dealt unconditionally, in the shape every pack uses.
@@ -660,6 +667,147 @@ def collect_tmux(listing: Path) -> dict:
                 # are what say which listing this was.
                 "commit": "",
                 "tag": tmux_version(text),
+                "date": date.today().isoformat(),
+                "checksum": hashlib.sha256(listing.read_bytes()).hexdigest(),
+            },
+            "generatedAt": date.today().isoformat(),
+            "generator": f"tools/build_packs.py@{GENERATOR_VERSION}",
+        },
+        "dropped": dict(sorted(dropped.items())),
+        "bindings": bindings,
+    }
+
+
+# --- Neovim collection ------------------------------------------------------
+
+# Neovim's own built-in mappings - not vim's grammar, which is a language and
+# belongs in a ground of its own. These are fixed mappings the editor ships,
+# most of them recent enough that a long-time vim user has never met them:
+# grn / gra / grr for LSP, [d / ]d for diagnostics, [n / ]n / an / in for
+# syntax nodes.
+#
+# Collected with `nvim --clean`, which by definition loads no user
+# configuration - the same move as tmux's -f /dev/null and herdr's
+# --default-config. The version matters: the gr* mappings arrived in 0.11.
+
+NVIM_CATEGORIES = ["lsp", "diagnostics", "node", "navigation", "edit", "window", "misc"]
+
+NVIM_CATEGORY_WORDS = [
+    (r"vim\.lsp\.|signature|document_symbol|codelens", "lsp"),
+    (r"diagnostic", "diagnostics"),
+    (r"\bnode\b|sibling|parent \(outer\)|child \(inner\)", "node"),
+    (r"comment", "edit"),
+    (r"empty line|\bopens\b|filepath|uri", "edit"),
+    (r"window", "window"),
+]
+
+# Descriptions Neovim gives as a documentation pointer rather than a sentence.
+# The mappings are worth teaching but their prompts would have to be written
+# here, which is a different provenance from "the editor said so".
+NVIM_HELP_POINTER = re.compile(r"^:help\b")
+
+
+def nvim_category(desc: str) -> str:
+    lowered = desc.lower()
+    for pattern, name in NVIM_CATEGORY_WORDS:
+        if re.search(pattern, lowered):
+            return name
+    if lowered.startswith(":") or re.match(r"^[\[\]]", lowered):
+        return "navigation"
+    return "misc"
+
+
+NVIM_MODES = {"n": "normal", "x": "visual", "v": "visual", "o": "operator", "i": "insert"}
+
+
+def collect_neovim(listing: Path) -> dict:
+    """A saved `nvim --clean` keymap dump.
+
+    Read from a file rather than run from here, for the same reason the tmux
+    collector is: this tool starts no processes. Save it yourself:
+
+        nvim --clean --headless -c 'lua local o={}
+          for _,m in ipairs({"n","x","o","i","v"}) do
+            for _,k in ipairs(vim.api.nvim_get_keymap(m)) do
+              o[#o+1]={mode=m,lhs=k.lhs,desc=k.desc or ""} end end
+          io.write(vim.json.encode({version=vim.version().major.."."..
+            vim.version().minor.."."..vim.version().patch, maps=o}))' -c 'qa!' > nvim-keys.json
+    """
+    record = json.loads(listing.read_text(encoding="utf-8"))
+    version = str(record.get("version") or "")
+    bindings: list[dict] = []
+    dropped: dict[str, int] = {}
+    seen: set[str] = set()
+
+    def drop(reason: str) -> None:
+        dropped[reason] = dropped.get(reason, 0) + 1
+
+    for entry in record.get("maps", []):
+        lhs = str(entry.get("lhs") or "")
+        desc = str(entry.get("desc") or "").strip()
+        mode = str(entry.get("mode") or "")
+        if lhs.startswith("<Plug>"):
+            drop("plug-target")
+            continue
+        if not desc:
+            drop("missing-description")
+            continue
+        if NVIM_HELP_POINTER.match(desc):
+            # ":help Y-default" is where to read about it, not what it does.
+            drop("description-is-a-help-pointer")
+            continue
+        if mode not in NVIM_MODES:
+            drop("untrained-mode")
+            continue
+        if lhs in WELL_KNOWN:
+            drop("well-known")
+            continue
+        try:
+            steps = parse_notation(lhs)
+        except Rejected:
+            drop("unreadable-notation")
+            continue
+        if len(steps) > 8:
+            drop("too-many-steps")
+            continue
+        if any(step.get("named") == "ESC" for step in steps):
+            drop("escape-in-answer")
+            continue
+        if any(step.get("named") in DEVICE_SPECIAL for step in steps):
+            drop("device-special-key")
+            continue
+        # The same key is registered once per mode; one card is enough.
+        if lhs in seen:
+            drop("same-key-in-another-mode")
+            continue
+        seen.add(lhs)
+        context = NVIM_MODES[mode]
+        bindings.append({
+            "localId": context + "/" + lhs,
+            "context": context,
+            "notation": lhs,
+            "steps": steps,
+            "category": nvim_category(desc),
+            "descKey": description_key("neovim", desc),
+            "desc": desc,
+            "extras": [],
+        })
+
+    return {
+        "schemaVersion": 1,
+        "profile": "neovim",
+        "judgeMode": "text",
+        "contexts": sorted({entry["context"] for entry in bindings}),
+        "categories": [name for name in NVIM_CATEGORIES
+                       if any(entry["category"] == name for entry in bindings)],
+        "extras": [],
+        "provenance": {
+            "upstream": "Neovim",
+            "authority": "nvim --clean (the editor's own defaults, with no user configuration loaded)",
+            "source": {
+                "url": "https://github.com/neovim/neovim",
+                "commit": "",
+                "tag": version,
                 "date": date.today().isoformat(),
                 "checksum": hashlib.sha256(listing.read_bytes()).hexdigest(),
             },
@@ -708,7 +856,7 @@ def render() -> str:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--collect", choices=["lazyvim", "tmux"],
+    parser.add_argument("--collect", choices=["lazyvim", "tmux", "neovim"],
                         help="regenerate a pack from a local upstream source")
     parser.add_argument("--site", type=Path, help="path to a LazyVim.github.io checkout")
     parser.add_argument("--lazyvim", type=Path, help="path to a LazyVim checkout at a tag")
@@ -720,7 +868,11 @@ def main() -> None:
     parser.add_argument("--localleader", default="\\")
     args = parser.parse_args()
 
-    if args.collect == "tmux":
+    if args.collect == "neovim":
+        if not args.listing:
+            parser.error("--collect neovim needs --listing")
+        pack = collect_neovim(args.listing)
+    elif args.collect == "tmux":
         if not args.listing:
             parser.error("--collect tmux needs --listing")
         pack = collect_tmux(args.listing)

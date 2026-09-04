@@ -45,7 +45,7 @@
     }
    ],
    "category": "layout",
-   "descKey": "packdesc_select_next_layout",
+   "descKey": "packdesc_tmux_select_next_layout",
    "desc": "Select next layout",
    "extras": []
   },
@@ -63,7 +63,7 @@
     }
    ],
    "category": "pane",
-   "descKey": "packdesc_break_pane_to_a_new_window",
+   "descKey": "packdesc_tmux_break_pane_to_a_new_window",
    "desc": "Break pane to a new window",
    "extras": []
   },
@@ -81,7 +81,7 @@
     }
    ],
    "category": "window",
-   "descKey": "packdesc_split_window_vertically",
+   "descKey": "packdesc_tmux_split_window_vertically",
    "desc": "Split window vertically",
    "extras": []
   },
@@ -99,7 +99,7 @@
     }
    ],
    "category": "copy",
-   "descKey": "packdesc_list_all_paste_buffers",
+   "descKey": "packdesc_tmux_list_all_paste_buffers",
    "desc": "List all paste buffers",
    "extras": []
   },
@@ -117,7 +117,7 @@
     }
    ],
    "category": "session",
-   "descKey": "packdesc_rename_current_session",
+   "descKey": "packdesc_tmux_rename_current_session",
    "desc": "Rename current session",
    "extras": []
   },
@@ -135,7 +135,7 @@
     }
    ],
    "category": "window",
-   "descKey": "packdesc_split_window_horizontally",
+   "descKey": "packdesc_tmux_split_window_horizontally",
    "desc": "Split window horizontally",
    "extras": []
   },
@@ -153,7 +153,7 @@
     }
    ],
    "category": "window",
-   "descKey": "packdesc_kill_current_window",
+   "descKey": "packdesc_tmux_kill_current_window",
    "desc": "Kill current window",
    "extras": []
   },
@@ -171,7 +171,7 @@
     }
    ],
    "category": "window",
-   "descKey": "packdesc_prompt_for_window_index_to_select",
+   "descKey": "packdesc_tmux_prompt_for_window_index_to_select",
    "desc": "Prompt for window index to select",
    "extras": []
   },
@@ -189,7 +189,7 @@
     }
    ],
    "category": "session",
-   "descKey": "packdesc_switch_to_previous_client",
+   "descKey": "packdesc_tmux_switch_to_previous_client",
    "desc": "Switch to previous client",
    "extras": []
   },
@@ -207,7 +207,7 @@
     }
    ],
    "category": "session",
-   "descKey": "packdesc_switch_to_next_client",
+   "descKey": "packdesc_tmux_switch_to_next_client",
    "desc": "Switch to next client",
    "extras": []
   },
@@ -225,7 +225,7 @@
     }
    ],
    "category": "pane",
-   "descKey": "packdesc_new_floating_pane",
+   "descKey": "packdesc_tmux_new_floating_pane",
    "desc": "New floating pane",
    "extras": []
   },
@@ -243,7 +243,7 @@
     }
    ],
    "category": "window",
-   "descKey": "packdesc_rename_current_window",
+   "descKey": "packdesc_tmux_rename_current_window",
    "desc": "Rename current window",
    "extras": []
   },
@@ -261,7 +261,7 @@
     }
    ],
    "category": "copy",
-   "descKey": "packdesc_delete_the_most_recent_paste_buffer",
+   "descKey": "packdesc_tmux_delete_the_most_recent_paste_buffer",
    "desc": "Delete the most recent paste buffer",
    "extras": []
   },
@@ -279,7 +279,7 @@
     }
    ],
    "category": "window",
-   "descKey": "packdesc_move_the_current_window",
+   "descKey": "packdesc_tmux_move_the_current_window",
    "desc": "Move the current window",
    "extras": []
   },
@@ -297,7 +297,7 @@
     }
    ],
    "category": "misc",
-   "descKey": "packdesc_describe_key_binding",
+   "descKey": "packdesc_tmux_describe_key_binding",
    "desc": "Describe key binding",
    "extras": []
   },
@@ -315,7 +315,7 @@
     }
    ],
    "category": "window",
-   "descKey": "packdesc_select_window_0",
+   "descKey": "packdesc_tmux_select_window_0",
    "desc": "Select window 0",
    "extras": []
   },
@@ -333,7 +333,7 @@
     }
    ],
    "category": "window",
-   "descKey": "packdesc_select_window_1",
+   "descKey": "packdesc_tmux_select_window_1",
    "desc": "Select window 1",
    "extras": []
   },
@@ -351,7 +351,7 @@
     }
    ],
    "category": "window",
-   "descKey": "packdesc_select_window_2",
+   "descKey": "packdesc_tmux_select_window_2",
    "desc": "Select window 2",
    "extras": []
   },
@@ -369,7 +369,7 @@
     }
    ],
    "category": "window",
-   "descKey": "packdesc_select_window_3",
+   "descKey": "packdesc_tmux_select_window_3",
    "desc": "Select window 3",
    "extras": []
   },
@@ -387,7 +387,7 @@
     }
    ],
    "category": "window",
-   "descKey": "packdesc_select_window_4",
+   "descKey": "packdesc_tmux_select_window_4",
    "desc": "Select window 4",
    "extras": []
   },
@@ -405,7 +405,7 @@
     }
    ],
    "category": "window",
-   "descKey": "packdesc_select_window_5",
+   "descKey": "packdesc_tmux_select_window_5",
    "desc": "Select window 5",
    "extras": []
   },
@@ -423,7 +423,7 @@
     }
    ],
    "category": "window",
-   "descKey": "packdesc_select_window_6",
+   "descKey": "packdesc_tmux_select_window_6",
    "desc": "Select window 6",
    "extras": []
   },
@@ -441,7 +441,7 @@
     }
    ],
    "category": "window",
-   "descKey": "packdesc_select_window_7",
+   "descKey": "packdesc_tmux_select_window_7",
    "desc": "Select window 7",
    "extras": []
   },
@@ -459,7 +459,7 @@
     }
    ],
    "category": "window",
-   "descKey": "packdesc_select_window_8",
+   "descKey": "packdesc_tmux_select_window_8",
    "desc": "Select window 8",
    "extras": []
   },
@@ -477,7 +477,7 @@
     }
    ],
    "category": "window",
-   "descKey": "packdesc_select_window_9",
+   "descKey": "packdesc_tmux_select_window_9",
    "desc": "Select window 9",
    "extras": []
   },
@@ -495,7 +495,7 @@
     }
    ],
    "category": "misc",
-   "descKey": "packdesc_prompt_for_a_command",
+   "descKey": "packdesc_tmux_prompt_for_a_command",
    "desc": "Prompt for a command",
    "extras": []
   },
@@ -513,7 +513,7 @@
     }
    ],
    "category": "pane",
-   "descKey": "packdesc_move_to_the_previously_active_pane",
+   "descKey": "packdesc_tmux_move_to_the_previously_active_pane",
    "desc": "Move to the previously active pane",
    "extras": []
   },
@@ -531,7 +531,7 @@
     }
    ],
    "category": "window",
-   "descKey": "packdesc_display_window_menu",
+   "descKey": "packdesc_tmux_display_window_menu",
    "desc": "Display window menu",
    "extras": []
   },
@@ -549,7 +549,7 @@
     }
    ],
    "category": "copy",
-   "descKey": "packdesc_choose_a_paste_buffer_from_a_list",
+   "descKey": "packdesc_tmux_choose_a_paste_buffer_from_a_list",
    "desc": "Choose a paste buffer from a list",
    "extras": []
   },
@@ -567,7 +567,7 @@
     }
    ],
    "category": "pane",
-   "descKey": "packdesc_display_pane_menu",
+   "descKey": "packdesc_tmux_display_pane_menu",
    "desc": "Display pane menu",
    "extras": []
   },
@@ -585,7 +585,7 @@
     }
    ],
    "category": "misc",
-   "descKey": "packdesc_list_key_bindings",
+   "descKey": "packdesc_tmux_list_key_bindings",
    "desc": "List key bindings",
    "extras": []
   },
@@ -603,7 +603,7 @@
     }
    ],
    "category": "misc",
-   "descKey": "packdesc_customize_options",
+   "descKey": "packdesc_tmux_customize_options",
    "desc": "Customize options",
    "extras": []
   },
@@ -621,7 +621,7 @@
     }
    ],
    "category": "session",
-   "descKey": "packdesc_choose_and_detach_a_client_from_a_list",
+   "descKey": "packdesc_tmux_choose_and_detach_a_client_from_a_list",
    "desc": "Choose and detach a client from a list",
    "extras": []
   },
@@ -639,7 +639,7 @@
     }
    ],
    "category": "misc",
-   "descKey": "packdesc_spread_panes_out_evenly",
+   "descKey": "packdesc_tmux_spread_panes_out_evenly",
    "desc": "Spread panes out evenly",
    "extras": []
   },
@@ -657,7 +657,7 @@
     }
    ],
    "category": "session",
-   "descKey": "packdesc_switch_to_the_last_client",
+   "descKey": "packdesc_tmux_switch_to_the_last_client",
    "desc": "Switch to the last client",
    "extras": []
   },
@@ -675,7 +675,7 @@
     }
    ],
    "category": "pane",
-   "descKey": "packdesc_clear_the_marked_pane",
+   "descKey": "packdesc_tmux_clear_the_marked_pane",
    "desc": "Clear the marked pane",
    "extras": []
   },
@@ -693,7 +693,7 @@
     }
    ],
    "category": "copy",
-   "descKey": "packdesc_enter_copy_mode",
+   "descKey": "packdesc_tmux_enter_copy_mode",
    "desc": "Enter copy mode",
    "extras": []
   },
@@ -711,7 +711,7 @@
     }
    ],
    "category": "copy",
-   "descKey": "packdesc_paste_the_most_recent_paste_buffer",
+   "descKey": "packdesc_tmux_paste_the_most_recent_paste_buffer",
    "desc": "Paste the most recent paste buffer",
    "extras": []
   },
@@ -729,7 +729,7 @@
     }
    ],
    "category": "window",
-   "descKey": "packdesc_create_a_new_window",
+   "descKey": "packdesc_tmux_create_a_new_window",
    "desc": "Create a new window",
    "extras": []
   },
@@ -747,7 +747,7 @@
     }
    ],
    "category": "session",
-   "descKey": "packdesc_detach_the_current_client",
+   "descKey": "packdesc_tmux_detach_the_current_client",
    "desc": "Detach the current client",
    "extras": []
   },
@@ -765,7 +765,7 @@
     }
    ],
    "category": "pane",
-   "descKey": "packdesc_search_for_a_pane",
+   "descKey": "packdesc_tmux_search_for_a_pane",
    "desc": "Search for a pane",
    "extras": []
   },
@@ -783,7 +783,7 @@
     }
    ],
    "category": "window",
-   "descKey": "packdesc_display_window_information",
+   "descKey": "packdesc_tmux_display_window_information",
    "desc": "Display window information",
    "extras": []
   },
@@ -801,7 +801,7 @@
     }
    ],
    "category": "window",
-   "descKey": "packdesc_select_the_previously_current_window",
+   "descKey": "packdesc_tmux_select_the_previously_current_window",
    "desc": "Select the previously current window",
    "extras": []
   },
@@ -819,7 +819,7 @@
     }
    ],
    "category": "pane",
-   "descKey": "packdesc_toggle_the_marked_pane",
+   "descKey": "packdesc_tmux_toggle_the_marked_pane",
    "desc": "Toggle the marked pane",
    "extras": []
   },
@@ -837,7 +837,7 @@
     }
    ],
    "category": "window",
-   "descKey": "packdesc_select_the_next_window",
+   "descKey": "packdesc_tmux_select_the_next_window",
    "desc": "Select the next window",
    "extras": []
   },
@@ -855,7 +855,7 @@
     }
    ],
    "category": "pane",
-   "descKey": "packdesc_select_the_next_pane",
+   "descKey": "packdesc_tmux_select_the_next_pane",
    "desc": "Select the next pane",
    "extras": []
   },
@@ -873,7 +873,7 @@
     }
    ],
    "category": "window",
-   "descKey": "packdesc_select_the_previous_window",
+   "descKey": "packdesc_tmux_select_the_previous_window",
    "desc": "Select the previous window",
    "extras": []
   },
@@ -891,7 +891,7 @@
     }
    ],
    "category": "pane",
-   "descKey": "packdesc_display_pane_numbers",
+   "descKey": "packdesc_tmux_display_pane_numbers",
    "desc": "Display pane numbers",
    "extras": []
   },
@@ -909,7 +909,7 @@
     }
    ],
    "category": "session",
-   "descKey": "packdesc_redraw_the_current_client",
+   "descKey": "packdesc_tmux_redraw_the_current_client",
    "desc": "Redraw the current client",
    "extras": []
   },
@@ -927,7 +927,7 @@
     }
    ],
    "category": "session",
-   "descKey": "packdesc_choose_a_session_from_a_list",
+   "descKey": "packdesc_tmux_choose_a_session_from_a_list",
    "desc": "Choose a session from a list",
    "extras": []
   },
@@ -945,7 +945,7 @@
     }
    ],
    "category": "misc",
-   "descKey": "packdesc_show_a_clock",
+   "descKey": "packdesc_tmux_show_a_clock",
    "desc": "Show a clock",
    "extras": []
   },
@@ -963,7 +963,7 @@
     }
    ],
    "category": "window",
-   "descKey": "packdesc_choose_a_window_from_a_list",
+   "descKey": "packdesc_tmux_choose_a_window_from_a_list",
    "desc": "Choose a window from a list",
    "extras": []
   },
@@ -981,7 +981,7 @@
     }
    ],
    "category": "pane",
-   "descKey": "packdesc_kill_the_active_pane",
+   "descKey": "packdesc_tmux_kill_the_active_pane",
    "desc": "Kill the active pane",
    "extras": []
   },
@@ -999,7 +999,7 @@
     }
    ],
    "category": "pane",
-   "descKey": "packdesc_zoom_the_active_pane",
+   "descKey": "packdesc_tmux_zoom_the_active_pane",
    "desc": "Zoom the active pane",
    "extras": []
   },
@@ -1017,7 +1017,7 @@
     }
    ],
    "category": "pane",
-   "descKey": "packdesc_swap_the_active_pane_with_the_pane_above",
+   "descKey": "packdesc_tmux_swap_the_active_pane_with_the_pane_above",
    "desc": "Swap the active pane with the pane above",
    "extras": []
   },
@@ -1035,7 +1035,7 @@
     }
    ],
    "category": "pane",
-   "descKey": "packdesc_swap_the_active_pane_with_the_pane_below",
+   "descKey": "packdesc_tmux_swap_the_active_pane_with_the_pane_below",
    "desc": "Swap the active pane with the pane below",
    "extras": []
   },
@@ -1053,7 +1053,7 @@
     }
    ],
    "category": "misc",
-   "descKey": "packdesc_show_messages",
+   "descKey": "packdesc_tmux_show_messages",
    "desc": "Show messages",
    "extras": []
   },
@@ -1071,7 +1071,7 @@
     }
    ],
    "category": "pane",
-   "descKey": "packdesc_select_the_pane_above_the_active_pane",
+   "descKey": "packdesc_tmux_select_the_pane_above_the_active_pane",
    "desc": "Select the pane above the active pane",
    "extras": []
   },
@@ -1089,7 +1089,7 @@
     }
    ],
    "category": "pane",
-   "descKey": "packdesc_select_the_pane_below_the_active_pane",
+   "descKey": "packdesc_tmux_select_the_pane_below_the_active_pane",
    "desc": "Select the pane below the active pane",
    "extras": []
   },
@@ -1107,7 +1107,7 @@
     }
    ],
    "category": "pane",
-   "descKey": "packdesc_select_the_pane_to_the_left_of_the_active_pane",
+   "descKey": "packdesc_tmux_select_the_pane_to_the_left_of_the_active_pane",
    "desc": "Select the pane to the left of the active pane",
    "extras": []
   },
@@ -1125,7 +1125,7 @@
     }
    ],
    "category": "pane",
-   "descKey": "packdesc_select_the_pane_to_the_right_of_the_active_pane",
+   "descKey": "packdesc_tmux_select_the_pane_to_the_right_of_the_active_pane",
    "desc": "Select the pane to the right of the active pane",
    "extras": []
   },
@@ -1143,7 +1143,7 @@
     }
    ],
    "category": "layout",
-   "descKey": "packdesc_set_the_even_horizontal_layout",
+   "descKey": "packdesc_tmux_set_the_even_horizontal_layout",
    "desc": "Set the even-horizontal layout",
    "extras": []
   },
@@ -1161,7 +1161,7 @@
     }
    ],
    "category": "layout",
-   "descKey": "packdesc_set_the_even_vertical_layout",
+   "descKey": "packdesc_tmux_set_the_even_vertical_layout",
    "desc": "Set the even-vertical layout",
    "extras": []
   },
@@ -1179,7 +1179,7 @@
     }
    ],
    "category": "layout",
-   "descKey": "packdesc_set_the_main_horizontal_layout",
+   "descKey": "packdesc_tmux_set_the_main_horizontal_layout",
    "desc": "Set the main-horizontal layout",
    "extras": []
   },
@@ -1197,7 +1197,7 @@
     }
    ],
    "category": "layout",
-   "descKey": "packdesc_set_the_main_vertical_layout",
+   "descKey": "packdesc_tmux_set_the_main_vertical_layout",
    "desc": "Set the main-vertical layout",
    "extras": []
   },
@@ -1215,7 +1215,7 @@
     }
    ],
    "category": "layout",
-   "descKey": "packdesc_select_the_tiled_layout",
+   "descKey": "packdesc_tmux_select_the_tiled_layout",
    "desc": "Select the tiled layout",
    "extras": []
   },
@@ -1233,7 +1233,7 @@
     }
    ],
    "category": "layout",
-   "descKey": "packdesc_set_the_main_horizontal_mirrored_layout",
+   "descKey": "packdesc_tmux_set_the_main_horizontal_mirrored_layout",
    "desc": "Set the main-horizontal-mirrored layout",
    "extras": []
   },
@@ -1251,7 +1251,7 @@
     }
    ],
    "category": "layout",
-   "descKey": "packdesc_set_the_main_vertical_mirrored_layout",
+   "descKey": "packdesc_tmux_set_the_main_vertical_mirrored_layout",
    "desc": "Set the main-vertical-mirrored layout",
    "extras": []
   },
@@ -1269,7 +1269,7 @@
     }
    ],
    "category": "window",
-   "descKey": "packdesc_select_the_next_window_with_an_alert",
+   "descKey": "packdesc_tmux_select_the_next_window_with_an_alert",
    "desc": "Select the next window with an alert",
    "extras": []
   },
@@ -1287,7 +1287,7 @@
     }
    ],
    "category": "misc",
-   "descKey": "packdesc_rotate_through_the_panes_in_reverse",
+   "descKey": "packdesc_tmux_rotate_through_the_panes_in_reverse",
    "desc": "Rotate through the panes in reverse",
    "extras": []
   },
@@ -1305,7 +1305,7 @@
     }
    ],
    "category": "window",
-   "descKey": "packdesc_select_the_previous_window_with_an_alert",
+   "descKey": "packdesc_tmux_select_the_previous_window_with_an_alert",
    "desc": "Select the previous window with an alert",
    "extras": []
   },
@@ -1323,7 +1323,7 @@
     }
    ],
    "category": "pane",
-   "descKey": "packdesc_resize_the_pane_up_by_5",
+   "descKey": "packdesc_tmux_resize_the_pane_up_by_5",
    "desc": "Resize the pane up by 5",
    "extras": []
   },
@@ -1341,7 +1341,7 @@
     }
    ],
    "category": "pane",
-   "descKey": "packdesc_resize_the_pane_down_by_5",
+   "descKey": "packdesc_tmux_resize_the_pane_down_by_5",
    "desc": "Resize the pane down by 5",
    "extras": []
   },
@@ -1359,7 +1359,7 @@
     }
    ],
    "category": "pane",
-   "descKey": "packdesc_resize_the_pane_left_by_5",
+   "descKey": "packdesc_tmux_resize_the_pane_left_by_5",
    "desc": "Resize the pane left by 5",
    "extras": []
   },
@@ -1377,7 +1377,7 @@
     }
    ],
    "category": "pane",
-   "descKey": "packdesc_resize_the_pane_right_by_5",
+   "descKey": "packdesc_tmux_resize_the_pane_right_by_5",
    "desc": "Resize the pane right by 5",
    "extras": []
   },
@@ -1394,7 +1394,7 @@
     }
    ],
    "category": "misc",
-   "descKey": "packdesc_send_the_prefix_key",
+   "descKey": "packdesc_tmux_send_the_prefix_key",
    "desc": "Send the prefix key",
    "extras": []
   },
@@ -1412,7 +1412,7 @@
     }
    ],
    "category": "misc",
-   "descKey": "packdesc_rotate_through_the_panes",
+   "descKey": "packdesc_tmux_rotate_through_the_panes",
    "desc": "Rotate through the panes",
    "extras": []
   },
@@ -1430,7 +1430,7 @@
     }
    ],
    "category": "session",
-   "descKey": "packdesc_suspend_the_current_client",
+   "descKey": "packdesc_tmux_suspend_the_current_client",
    "desc": "Suspend the current client",
    "extras": []
   },
@@ -1448,7 +1448,7 @@
     }
    ],
    "category": "pane",
-   "descKey": "packdesc_resize_the_pane_up",
+   "descKey": "packdesc_tmux_resize_the_pane_up",
    "desc": "Resize the pane up",
    "extras": []
   },
@@ -1466,7 +1466,7 @@
     }
    ],
    "category": "pane",
-   "descKey": "packdesc_resize_the_pane_down",
+   "descKey": "packdesc_tmux_resize_the_pane_down",
    "desc": "Resize the pane down",
    "extras": []
   },
@@ -1484,7 +1484,7 @@
     }
    ],
    "category": "pane",
-   "descKey": "packdesc_resize_the_pane_left",
+   "descKey": "packdesc_tmux_resize_the_pane_left",
    "desc": "Resize the pane left",
    "extras": []
   },
@@ -1502,7 +1502,7 @@
     }
    ],
    "category": "pane",
-   "descKey": "packdesc_resize_the_pane_right",
+   "descKey": "packdesc_tmux_resize_the_pane_right",
    "desc": "Resize the pane right",
    "extras": []
   },
@@ -1520,7 +1520,7 @@
     }
    ],
    "category": "window",
-   "descKey": "packdesc_move_the_visible_part_of_the_window_up",
+   "descKey": "packdesc_tmux_move_the_visible_part_of_the_window_up",
    "desc": "Move the visible part of the window up",
    "extras": []
   },
@@ -1538,7 +1538,7 @@
     }
    ],
    "category": "window",
-   "descKey": "packdesc_move_the_visible_part_of_the_window_down",
+   "descKey": "packdesc_tmux_move_the_visible_part_of_the_window_down",
    "desc": "Move the visible part of the window down",
    "extras": []
   },
@@ -1556,7 +1556,7 @@
     }
    ],
    "category": "window",
-   "descKey": "packdesc_move_the_visible_part_of_the_window_left",
+   "descKey": "packdesc_tmux_move_the_visible_part_of_the_window_left",
    "desc": "Move the visible part of the window left",
    "extras": []
   },
@@ -1574,7 +1574,7 @@
     }
    ],
    "category": "window",
-   "descKey": "packdesc_move_the_visible_part_of_the_window_right",
+   "descKey": "packdesc_tmux_move_the_visible_part_of_the_window_right",
    "desc": "Move the visible part of the window right",
    "extras": []
   }

@@ -1597,7 +1597,9 @@ TestCase {
       if (testPack.bindings[index].localId === "normal/<C-h>") sample = testPack.bindings[index]
     }
     verify(sample !== null)
-    compare(sample.descKey, "packdesc_go_to_left_window")
+    // The ground is in the key: LazyVim's "Next" and Neovim's ":next" slug the
+    // same way, and a shared key meant one translation replaced the other.
+    compare(sample.descKey, "packdesc_lazyvim_go_to_left_window")
     compare(sample.actionName, "Go to Left Window")
 
     testI18n.locale = "en"

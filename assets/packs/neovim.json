@@ -1,0 +1,1049 @@
+{
+ "schemaVersion": 1,
+ "profile": "neovim",
+ "judgeMode": "text",
+ "contexts": [
+  "insert",
+  "normal",
+  "visual"
+ ],
+ "categories": [
+  "lsp",
+  "diagnostics",
+  "node",
+  "navigation",
+  "edit",
+  "misc"
+ ],
+ "extras": [],
+ "provenance": {
+  "upstream": "Neovim",
+  "authority": "nvim --clean (the editor's own defaults, with no user configuration loaded)",
+  "source": {
+   "url": "https://github.com/neovim/neovim",
+   "commit": "",
+   "tag": "0.12.5",
+   "date": "2026-09-04",
+   "checksum": "d0f6d5cf379cac83e9f727e8ed5f8c3210fd636a570ac9d67383b718e509005b"
+  },
+  "generatedAt": "2026-09-04",
+  "generator": "tools/build_packs.py@1"
+ },
+ "dropped": {
+  "description-is-a-help-pointer": 13,
+  "missing-description": 18,
+  "plug-target": 18,
+  "same-key-in-another-mode": 17,
+  "unreadable-notation": 2
+ },
+ "bindings": [
+  {
+   "localId": "normal/[ ",
+   "context": "normal",
+   "notation": "[ ",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "["
+    },
+    {
+     "mods": 0,
+     "named": "SPACE"
+    }
+   ],
+   "category": "edit",
+   "descKey": "packdesc_neovim_add_empty_line_above_cursor",
+   "desc": "Add empty line above cursor",
+   "extras": []
+  },
+  {
+   "localId": "normal/[B",
+   "context": "normal",
+   "notation": "[B",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "["
+    },
+    {
+     "mods": 0,
+     "text": "B"
+    }
+   ],
+   "category": "navigation",
+   "descKey": "packdesc_neovim_brewind",
+   "desc": ":brewind",
+   "extras": []
+  },
+  {
+   "localId": "normal/[b",
+   "context": "normal",
+   "notation": "[b",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "["
+    },
+    {
+     "mods": 0,
+     "text": "b"
+    }
+   ],
+   "category": "navigation",
+   "descKey": "packdesc_neovim_bprevious",
+   "desc": ":bprevious",
+   "extras": []
+  },
+  {
+   "localId": "normal/[<C-T>",
+   "context": "normal",
+   "notation": "[<C-T>",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "["
+    },
+    {
+     "mods": 4,
+     "text": "t"
+    }
+   ],
+   "category": "navigation",
+   "descKey": "packdesc_neovim_ptprevious",
+   "desc": ":ptprevious",
+   "extras": []
+  },
+  {
+   "localId": "normal/[T",
+   "context": "normal",
+   "notation": "[T",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "["
+    },
+    {
+     "mods": 0,
+     "text": "T"
+    }
+   ],
+   "category": "navigation",
+   "descKey": "packdesc_neovim_trewind",
+   "desc": ":trewind",
+   "extras": []
+  },
+  {
+   "localId": "normal/[t",
+   "context": "normal",
+   "notation": "[t",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "["
+    },
+    {
+     "mods": 0,
+     "text": "t"
+    }
+   ],
+   "category": "navigation",
+   "descKey": "packdesc_neovim_tprevious",
+   "desc": ":tprevious",
+   "extras": []
+  },
+  {
+   "localId": "normal/[A",
+   "context": "normal",
+   "notation": "[A",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "["
+    },
+    {
+     "mods": 0,
+     "text": "A"
+    }
+   ],
+   "category": "navigation",
+   "descKey": "packdesc_neovim_rewind",
+   "desc": ":rewind",
+   "extras": []
+  },
+  {
+   "localId": "normal/[a",
+   "context": "normal",
+   "notation": "[a",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "["
+    },
+    {
+     "mods": 0,
+     "text": "a"
+    }
+   ],
+   "category": "navigation",
+   "descKey": "packdesc_neovim_previous",
+   "desc": ":previous",
+   "extras": []
+  },
+  {
+   "localId": "normal/[<C-L>",
+   "context": "normal",
+   "notation": "[<C-L>",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "["
+    },
+    {
+     "mods": 4,
+     "text": "l"
+    }
+   ],
+   "category": "navigation",
+   "descKey": "packdesc_neovim_lpfile",
+   "desc": ":lpfile",
+   "extras": []
+  },
+  {
+   "localId": "normal/[L",
+   "context": "normal",
+   "notation": "[L",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "["
+    },
+    {
+     "mods": 0,
+     "text": "L"
+    }
+   ],
+   "category": "navigation",
+   "descKey": "packdesc_neovim_lrewind",
+   "desc": ":lrewind",
+   "extras": []
+  },
+  {
+   "localId": "normal/[l",
+   "context": "normal",
+   "notation": "[l",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "["
+    },
+    {
+     "mods": 0,
+     "text": "l"
+    }
+   ],
+   "category": "navigation",
+   "descKey": "packdesc_neovim_lprevious",
+   "desc": ":lprevious",
+   "extras": []
+  },
+  {
+   "localId": "normal/[<C-Q>",
+   "context": "normal",
+   "notation": "[<C-Q>",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "["
+    },
+    {
+     "mods": 4,
+     "text": "q"
+    }
+   ],
+   "category": "navigation",
+   "descKey": "packdesc_neovim_cpfile",
+   "desc": ":cpfile",
+   "extras": []
+  },
+  {
+   "localId": "normal/[Q",
+   "context": "normal",
+   "notation": "[Q",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "["
+    },
+    {
+     "mods": 0,
+     "text": "Q"
+    }
+   ],
+   "category": "navigation",
+   "descKey": "packdesc_neovim_crewind",
+   "desc": ":crewind",
+   "extras": []
+  },
+  {
+   "localId": "normal/[q",
+   "context": "normal",
+   "notation": "[q",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "["
+    },
+    {
+     "mods": 0,
+     "text": "q"
+    }
+   ],
+   "category": "navigation",
+   "descKey": "packdesc_neovim_cprevious",
+   "desc": ":cprevious",
+   "extras": []
+  },
+  {
+   "localId": "normal/[D",
+   "context": "normal",
+   "notation": "[D",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "["
+    },
+    {
+     "mods": 0,
+     "text": "D"
+    }
+   ],
+   "category": "diagnostics",
+   "descKey": "packdesc_neovim_jump_to_the_first_diagnostic_in_the_current_buffer",
+   "desc": "Jump to the first diagnostic in the current buffer",
+   "extras": []
+  },
+  {
+   "localId": "normal/[d",
+   "context": "normal",
+   "notation": "[d",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "["
+    },
+    {
+     "mods": 0,
+     "text": "d"
+    }
+   ],
+   "category": "diagnostics",
+   "descKey": "packdesc_neovim_jump_to_the_previous_diagnostic_in_the_current_buffer",
+   "desc": "Jump to the previous diagnostic in the current buffer",
+   "extras": []
+  },
+  {
+   "localId": "normal/] ",
+   "context": "normal",
+   "notation": "] ",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "]"
+    },
+    {
+     "mods": 0,
+     "named": "SPACE"
+    }
+   ],
+   "category": "edit",
+   "descKey": "packdesc_neovim_add_empty_line_below_cursor",
+   "desc": "Add empty line below cursor",
+   "extras": []
+  },
+  {
+   "localId": "normal/]B",
+   "context": "normal",
+   "notation": "]B",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "]"
+    },
+    {
+     "mods": 0,
+     "text": "B"
+    }
+   ],
+   "category": "navigation",
+   "descKey": "packdesc_neovim_blast",
+   "desc": ":blast",
+   "extras": []
+  },
+  {
+   "localId": "normal/]b",
+   "context": "normal",
+   "notation": "]b",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "]"
+    },
+    {
+     "mods": 0,
+     "text": "b"
+    }
+   ],
+   "category": "navigation",
+   "descKey": "packdesc_neovim_bnext",
+   "desc": ":bnext",
+   "extras": []
+  },
+  {
+   "localId": "normal/]<C-T>",
+   "context": "normal",
+   "notation": "]<C-T>",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "]"
+    },
+    {
+     "mods": 4,
+     "text": "t"
+    }
+   ],
+   "category": "navigation",
+   "descKey": "packdesc_neovim_ptnext",
+   "desc": ":ptnext",
+   "extras": []
+  },
+  {
+   "localId": "normal/]T",
+   "context": "normal",
+   "notation": "]T",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "]"
+    },
+    {
+     "mods": 0,
+     "text": "T"
+    }
+   ],
+   "category": "navigation",
+   "descKey": "packdesc_neovim_tlast",
+   "desc": ":tlast",
+   "extras": []
+  },
+  {
+   "localId": "normal/]t",
+   "context": "normal",
+   "notation": "]t",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "]"
+    },
+    {
+     "mods": 0,
+     "text": "t"
+    }
+   ],
+   "category": "navigation",
+   "descKey": "packdesc_neovim_tnext",
+   "desc": ":tnext",
+   "extras": []
+  },
+  {
+   "localId": "normal/]A",
+   "context": "normal",
+   "notation": "]A",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "]"
+    },
+    {
+     "mods": 0,
+     "text": "A"
+    }
+   ],
+   "category": "navigation",
+   "descKey": "packdesc_neovim_last",
+   "desc": ":last",
+   "extras": []
+  },
+  {
+   "localId": "normal/]a",
+   "context": "normal",
+   "notation": "]a",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "]"
+    },
+    {
+     "mods": 0,
+     "text": "a"
+    }
+   ],
+   "category": "navigation",
+   "descKey": "packdesc_neovim_next",
+   "desc": ":next",
+   "extras": []
+  },
+  {
+   "localId": "normal/]<C-L>",
+   "context": "normal",
+   "notation": "]<C-L>",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "]"
+    },
+    {
+     "mods": 4,
+     "text": "l"
+    }
+   ],
+   "category": "navigation",
+   "descKey": "packdesc_neovim_lnfile",
+   "desc": ":lnfile",
+   "extras": []
+  },
+  {
+   "localId": "normal/]L",
+   "context": "normal",
+   "notation": "]L",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "]"
+    },
+    {
+     "mods": 0,
+     "text": "L"
+    }
+   ],
+   "category": "navigation",
+   "descKey": "packdesc_neovim_llast",
+   "desc": ":llast",
+   "extras": []
+  },
+  {
+   "localId": "normal/]l",
+   "context": "normal",
+   "notation": "]l",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "]"
+    },
+    {
+     "mods": 0,
+     "text": "l"
+    }
+   ],
+   "category": "navigation",
+   "descKey": "packdesc_neovim_lnext",
+   "desc": ":lnext",
+   "extras": []
+  },
+  {
+   "localId": "normal/]<C-Q>",
+   "context": "normal",
+   "notation": "]<C-Q>",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "]"
+    },
+    {
+     "mods": 4,
+     "text": "q"
+    }
+   ],
+   "category": "navigation",
+   "descKey": "packdesc_neovim_cnfile",
+   "desc": ":cnfile",
+   "extras": []
+  },
+  {
+   "localId": "normal/]Q",
+   "context": "normal",
+   "notation": "]Q",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "]"
+    },
+    {
+     "mods": 0,
+     "text": "Q"
+    }
+   ],
+   "category": "navigation",
+   "descKey": "packdesc_neovim_clast",
+   "desc": ":clast",
+   "extras": []
+  },
+  {
+   "localId": "normal/]q",
+   "context": "normal",
+   "notation": "]q",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "]"
+    },
+    {
+     "mods": 0,
+     "text": "q"
+    }
+   ],
+   "category": "navigation",
+   "descKey": "packdesc_neovim_cnext",
+   "desc": ":cnext",
+   "extras": []
+  },
+  {
+   "localId": "normal/]D",
+   "context": "normal",
+   "notation": "]D",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "]"
+    },
+    {
+     "mods": 0,
+     "text": "D"
+    }
+   ],
+   "category": "diagnostics",
+   "descKey": "packdesc_neovim_jump_to_the_last_diagnostic_in_the_current_buffer",
+   "desc": "Jump to the last diagnostic in the current buffer",
+   "extras": []
+  },
+  {
+   "localId": "normal/]d",
+   "context": "normal",
+   "notation": "]d",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "]"
+    },
+    {
+     "mods": 0,
+     "text": "d"
+    }
+   ],
+   "category": "diagnostics",
+   "descKey": "packdesc_neovim_jump_to_the_next_diagnostic_in_the_current_buffer",
+   "desc": "Jump to the next diagnostic in the current buffer",
+   "extras": []
+  },
+  {
+   "localId": "normal/gO",
+   "context": "normal",
+   "notation": "gO",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "g"
+    },
+    {
+     "mods": 0,
+     "text": "O"
+    }
+   ],
+   "category": "lsp",
+   "descKey": "packdesc_neovim_vim_lsp_buf_document_symbol",
+   "desc": "vim.lsp.buf.document_symbol()",
+   "extras": []
+  },
+  {
+   "localId": "normal/grt",
+   "context": "normal",
+   "notation": "grt",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "g"
+    },
+    {
+     "mods": 0,
+     "text": "r"
+    },
+    {
+     "mods": 0,
+     "text": "t"
+    }
+   ],
+   "category": "lsp",
+   "descKey": "packdesc_neovim_vim_lsp_buf_type_definition",
+   "desc": "vim.lsp.buf.type_definition()",
+   "extras": []
+  },
+  {
+   "localId": "normal/gri",
+   "context": "normal",
+   "notation": "gri",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "g"
+    },
+    {
+     "mods": 0,
+     "text": "r"
+    },
+    {
+     "mods": 0,
+     "text": "i"
+    }
+   ],
+   "category": "lsp",
+   "descKey": "packdesc_neovim_vim_lsp_buf_implementation",
+   "desc": "vim.lsp.buf.implementation()",
+   "extras": []
+  },
+  {
+   "localId": "normal/grr",
+   "context": "normal",
+   "notation": "grr",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "g"
+    },
+    {
+     "mods": 0,
+     "text": "r"
+    },
+    {
+     "mods": 0,
+     "text": "r"
+    }
+   ],
+   "category": "lsp",
+   "descKey": "packdesc_neovim_vim_lsp_buf_references",
+   "desc": "vim.lsp.buf.references()",
+   "extras": []
+  },
+  {
+   "localId": "normal/grx",
+   "context": "normal",
+   "notation": "grx",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "g"
+    },
+    {
+     "mods": 0,
+     "text": "r"
+    },
+    {
+     "mods": 0,
+     "text": "x"
+    }
+   ],
+   "category": "lsp",
+   "descKey": "packdesc_neovim_vim_lsp_codelens_run",
+   "desc": "vim.lsp.codelens.run()",
+   "extras": []
+  },
+  {
+   "localId": "normal/gra",
+   "context": "normal",
+   "notation": "gra",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "g"
+    },
+    {
+     "mods": 0,
+     "text": "r"
+    },
+    {
+     "mods": 0,
+     "text": "a"
+    }
+   ],
+   "category": "lsp",
+   "descKey": "packdesc_neovim_vim_lsp_buf_code_action",
+   "desc": "vim.lsp.buf.code_action()",
+   "extras": []
+  },
+  {
+   "localId": "normal/grn",
+   "context": "normal",
+   "notation": "grn",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "g"
+    },
+    {
+     "mods": 0,
+     "text": "r"
+    },
+    {
+     "mods": 0,
+     "text": "n"
+    }
+   ],
+   "category": "lsp",
+   "descKey": "packdesc_neovim_vim_lsp_buf_rename",
+   "desc": "vim.lsp.buf.rename()",
+   "extras": []
+  },
+  {
+   "localId": "normal/gcc",
+   "context": "normal",
+   "notation": "gcc",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "g"
+    },
+    {
+     "mods": 0,
+     "text": "c"
+    },
+    {
+     "mods": 0,
+     "text": "c"
+    }
+   ],
+   "category": "edit",
+   "descKey": "packdesc_neovim_toggle_comment_line",
+   "desc": "Toggle comment line",
+   "extras": []
+  },
+  {
+   "localId": "normal/gc",
+   "context": "normal",
+   "notation": "gc",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "g"
+    },
+    {
+     "mods": 0,
+     "text": "c"
+    }
+   ],
+   "category": "edit",
+   "descKey": "packdesc_neovim_toggle_comment",
+   "desc": "Toggle comment",
+   "extras": []
+  },
+  {
+   "localId": "normal/gx",
+   "context": "normal",
+   "notation": "gx",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "g"
+    },
+    {
+     "mods": 0,
+     "text": "x"
+    }
+   ],
+   "category": "edit",
+   "descKey": "packdesc_neovim_opens_filepath_or_uri_under_cursor_with_the_system_handler_file_explorer_web_browser",
+   "desc": "Opens filepath or URI under cursor with the system handler (file explorer, web browser, …)",
+   "extras": []
+  },
+  {
+   "localId": "normal/<C-W><C-D>",
+   "context": "normal",
+   "notation": "<C-W><C-D>",
+   "steps": [
+    {
+     "mods": 4,
+     "text": "w"
+    },
+    {
+     "mods": 4,
+     "text": "d"
+    }
+   ],
+   "category": "diagnostics",
+   "descKey": "packdesc_neovim_show_diagnostics_under_the_cursor",
+   "desc": "Show diagnostics under the cursor",
+   "extras": []
+  },
+  {
+   "localId": "normal/<C-W>d",
+   "context": "normal",
+   "notation": "<C-W>d",
+   "steps": [
+    {
+     "mods": 4,
+     "text": "w"
+    },
+    {
+     "mods": 0,
+     "text": "d"
+    }
+   ],
+   "category": "diagnostics",
+   "descKey": "packdesc_neovim_show_diagnostics_under_the_cursor",
+   "desc": "Show diagnostics under the cursor",
+   "extras": []
+  },
+  {
+   "localId": "visual/[N",
+   "context": "visual",
+   "notation": "[N",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "["
+    },
+    {
+     "mods": 0,
+     "text": "N"
+    }
+   ],
+   "category": "node",
+   "descKey": "packdesc_neovim_select_previous_sibling_node",
+   "desc": "Select previous sibling node",
+   "extras": []
+  },
+  {
+   "localId": "visual/[n",
+   "context": "visual",
+   "notation": "[n",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "["
+    },
+    {
+     "mods": 0,
+     "text": "n"
+    }
+   ],
+   "category": "node",
+   "descKey": "packdesc_neovim_select_previous_node",
+   "desc": "Select previous node",
+   "extras": []
+  },
+  {
+   "localId": "visual/]N",
+   "context": "visual",
+   "notation": "]N",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "]"
+    },
+    {
+     "mods": 0,
+     "text": "N"
+    }
+   ],
+   "category": "node",
+   "descKey": "packdesc_neovim_select_next_sibling_node",
+   "desc": "Select next sibling node",
+   "extras": []
+  },
+  {
+   "localId": "visual/]n",
+   "context": "visual",
+   "notation": "]n",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "]"
+    },
+    {
+     "mods": 0,
+     "text": "n"
+    }
+   ],
+   "category": "node",
+   "descKey": "packdesc_neovim_select_next_node",
+   "desc": "Select next node",
+   "extras": []
+  },
+  {
+   "localId": "visual/an",
+   "context": "visual",
+   "notation": "an",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "a"
+    },
+    {
+     "mods": 0,
+     "text": "n"
+    }
+   ],
+   "category": "node",
+   "descKey": "packdesc_neovim_select_parent_outer_node",
+   "desc": "Select parent (outer) node",
+   "extras": []
+  },
+  {
+   "localId": "visual/in",
+   "context": "visual",
+   "notation": "in",
+   "steps": [
+    {
+     "mods": 0,
+     "text": "i"
+    },
+    {
+     "mods": 0,
+     "text": "n"
+    }
+   ],
+   "category": "node",
+   "descKey": "packdesc_neovim_select_child_inner_node",
+   "desc": "Select child (inner) node",
+   "extras": []
+  },
+  {
+   "localId": "insert/<C-S>",
+   "context": "insert",
+   "notation": "<C-S>",
+   "steps": [
+    {
+     "mods": 4,
+     "text": "s"
+    }
+   ],
+   "category": "lsp",
+   "descKey": "packdesc_neovim_vim_lsp_buf_signature_help",
+   "desc": "vim.lsp.buf.signature_help()",
+   "extras": []
+  },
+  {
+   "localId": "insert/<Tab>",
+   "context": "insert",
+   "notation": "<Tab>",
+   "steps": [
+    {
+     "mods": 0,
+     "named": "TAB"
+    }
+   ],
+   "category": "misc",
+   "descKey": "packdesc_neovim_vim_snippet_jump_if_active_otherwise_tab",
+   "desc": "vim.snippet.jump if active, otherwise <Tab>",
+   "extras": []
+  }
+ ]
+}
