@@ -1416,6 +1416,18 @@ Item {
                 border.width: 4
                 border.color: root.feedbackKind === "hit" ? root.successColor : root.feedbackKind === "miss" ? root.dangerColor : root.primaryColor
 
+                // The screen's own inner frame, in the same pixel language as
+                // the stamp. It follows the border colour, so a hit or a miss
+                // washes through the blocks as well as the edge.
+                PixelFrame {
+                  anchors.fill: parent
+                  anchors.margins: 7
+                  z: 4
+                  color: card.border.color
+                  running: !root.reducedMotion
+                  tickMs: 120
+                }
+
                 Rectangle {
                   id: excludeStamp
                   z: 5
@@ -1682,95 +1694,11 @@ Item {
           width: Math.min(parent.width, 340); height: 60
           color: "transparent"
           border.width: 4; border.color: root.coinColor
-          // A hairline inner rule read as a border from a word processor next
-          // to the chunky outer one. Blocks on a fixed grid read as pixels,
-          // which is the language the rest of this screen is speaking, and
-          // they chase the frame the way a cabinet marquee does.
-          Item {
-            id: stampDashes
+          PixelFrame {
             anchors.fill: parent
             anchors.margins: 8
-            readonly property int unit: 5
-            readonly property int step: stampDashes.unit * 2
-            property int phase: 0
-            readonly property int columns: Math.max(1, Math.floor(stampDashes.width / stampDashes.step))
-            readonly property int rows: Math.max(1, Math.floor(stampDashes.height / stampDashes.step))
-            readonly property int spanH: stampDashes.columns * stampDashes.step
-            readonly property int spanV: stampDashes.rows * stampDashes.step
-
-            function slide(index: int, span: int): int {
-              var value = (index * stampDashes.step + stampDashes.phase) % span
-              return value < 0 ? value + span : value
-            }
-
-            // Two pixels a tick rather than a smooth slide: everything else on
-            // this screen moves on a grid, so this does too.
-            Timer {
-              running: !root.reducedMotion && root.view === "mastery"
-              interval: 90
-              repeat: true
-              onTriggered: stampDashes.phase = (stampDashes.phase + 2) % stampDashes.step
-            }
-
-            Repeater {
-              model: stampDashes.columns
-              delegate: Rectangle {
-                required property int index
-                x: stampDashes.slide(index, stampDashes.spanH)
-                y: 0
-                width: stampDashes.unit; height: stampDashes.unit
-                color: root.coinColor
-              }
-            }
-            Repeater {
-              model: stampDashes.rows
-              delegate: Rectangle {
-                required property int index
-                x: stampDashes.width - stampDashes.unit
-                y: stampDashes.slide(index, stampDashes.spanV)
-                width: stampDashes.unit; height: stampDashes.unit
-                color: root.coinColor
-              }
-            }
-            Repeater {
-              model: stampDashes.columns
-              delegate: Rectangle {
-                required property int index
-                x: stampDashes.spanH - stampDashes.unit - stampDashes.slide(index, stampDashes.spanH)
-                y: stampDashes.height - stampDashes.unit
-                width: stampDashes.unit; height: stampDashes.unit
-                color: root.coinColor
-              }
-            }
-            Repeater {
-              model: stampDashes.rows
-              delegate: Rectangle {
-                required property int index
-                x: 0
-                y: stampDashes.spanV - stampDashes.unit - stampDashes.slide(index, stampDashes.spanV)
-                width: stampDashes.unit; height: stampDashes.unit
-                color: root.coinColor
-              }
-            }
-
-            // The edges are laid out on a whole number of steps, so the far
-            // corners fall short of the box by whatever the remainder is.
-            // These four pin the frame shut at any size.
-            Repeater {
-              model: [
-                { px: 0, py: 0 },
-                { px: 1, py: 0 },
-                { px: 0, py: 1 },
-                { px: 1, py: 1 }
-              ]
-              delegate: Rectangle {
-                required property var modelData
-                x: modelData.px ? stampDashes.width - stampDashes.unit : 0
-                y: modelData.py ? stampDashes.height - stampDashes.unit : 0
-                width: stampDashes.unit; height: stampDashes.unit
-                color: root.coinColor
-              }
-            }
+            color: root.coinColor
+            running: !root.reducedMotion && root.view === "mastery"
           }
           SafeText {
             anchors.centerIn: parent; width: parent.width - 24
