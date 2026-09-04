@@ -1809,6 +1809,46 @@ TestCase {
     compare(AnswerMatcher.stepCount(good.answer), 1)
   }
 
+  // Dynamic keys from a helper or a pack must not land on a normal {}.
+  function test_packMapsRejectPrototypeKeys() {
+    var originalConstructor = Object.prototype.constructor
+    testPack.profileId = "lazyvim"
+    testPack.options = ({ leader: " " })
+    testPack.enabledExtras = []
+    testPack.packOverride = {
+      schemaVersion: 1,
+      profile: "lazyvim",
+      judgeMode: "text",
+      categories: ["misc"],
+      bindings: [
+        { localId: "normal/g", context: "normal", category: "misc",
+          desc: "Safe", steps: [{ text: "g" }] },
+        { localId: "__proto__", context: "normal", category: "misc",
+          desc: "Evil", steps: [{ text: "x" }] },
+        { localId: "constructor", context: "normal", category: "misc",
+          desc: "Ctor", steps: [{ text: "c" }] }
+      ]
+    }
+    testPack.overrides = [
+      { op: "set", contexts: ["normal"], lhs: "g", desc: "Mine" },
+      { op: "set", contexts: ["normal"], lhs: "__proto__", desc: "Nope" }
+    ]
+    testPack.refresh()
+    compare(Object.prototype.constructor, originalConstructor)
+    compare(({}).pwned, undefined)
+    var foundSafe = false
+    var foundProto = false
+    for (var index = 0; index < testPack.bindings.length; index++) {
+      if (testPack.bindings[index].localId === "normal/g") foundSafe = true
+      if (testPack.bindings[index].localId === "__proto__") foundProto = true
+    }
+    compare(foundSafe, true)
+    compare(foundProto, false)
+    testPack.packOverride = null
+    testPack.overrides = []
+    testPack.refresh()
+  }
+
   // Setting an entry aside is one mechanism across every ground: an entry in
   // settings.json, namespaced by ground, naming the local id.
   function test_packEntriesAreSetAsideThroughTheSameExclusionList() {

@@ -69,6 +69,13 @@ Item {
     return text.replace(/[\u0000-\u001f\u007f-\u009f\u200e\u200f\u202a-\u202e\u2066-\u2069]/g, " ")
   }
 
+  function safeMap() { return Object.create(null) }
+
+  function usableKey(value) {
+    var key = String(value === undefined || value === null ? "" : value)
+    return key && ["__proto__", "constructor", "prototype"].indexOf(key) === -1 ? key : ""
+  }
+
   // What a named option resolves to, as a person would write it.
   function optionValue(name) {
     var defaults = Profiles.options(root.profileId)
@@ -113,7 +120,7 @@ Item {
 
   function acceptedBinding(record, categories) {
     if (!record || typeof record !== "object" || Array.isArray(record)) return null
-    var localId = root.safeText(record.localId, root.maxLocalIdChars)
+    var localId = root.usableKey(root.safeText(record.localId, root.maxLocalIdChars))
     var description = root.safeText(record.desc, root.maxDescriptionChars)
     var category = root.safeText(record.category, 32)
     var context = root.safeText(record.context, 32)
@@ -138,12 +145,12 @@ Item {
     // resolves to nothing and is simply not offered.
     var alternates = []
     var primaryKey = JSON.stringify(steps)
-    var alternateKeys = ({})
+    var alternateKeys = root.safeMap()
     if (Array.isArray(record.alternates)) {
       for (var other = 0; other < record.alternates.length && alternates.length < 4; other++) {
         var sequence = root.resolvedSteps(record.alternates[other])
-        var sequenceKey = sequence ? JSON.stringify(sequence) : ""
-        if (sequence && sequenceKey !== primaryKey && !alternateKeys[sequenceKey]) {
+        var sequenceKey = root.usableKey(sequence ? JSON.stringify(sequence) : "")
+        if (sequence && sequenceKey && sequenceKey !== primaryKey && !alternateKeys[sequenceKey]) {
           alternateKeys[sequenceKey] = true
           alternates.push(sequence)
         }
@@ -171,17 +178,18 @@ Item {
     var records = pack.bindings.slice()
     if (root.profileId !== "lazyvim" || !Array.isArray(root.overrides)
         || !root.overrides.length) return records
-    var byId = ({})
-    var defaults = ({})
+    var byId = root.safeMap()
+    var defaults = root.safeMap()
     // Indexed by the spelling Vim itself would consider the same, so a line
     // written <Leader>ff finds the packaged <leader>ff instead of landing
     // beside it as a second card.
     for (var index = 0; index < records.length; index++) {
-      var packedId = TextKey.canonicalNotation(records[index].localId)
+      var packedId = root.usableKey(TextKey.canonicalNotation(records[index].localId))
+      if (!packedId) continue
       byId[packedId] = index
       defaults[packedId] = true
     }
-    var deleted = ({})
+    var deleted = root.safeMap()
     for (var change = 0; change < root.overrides.length; change++) {
       var item = root.overrides[change]
       var parsed = TextKey.parseNotation(item.lhs)
@@ -192,7 +200,11 @@ Item {
       for (var mode = 0; mode < item.contexts.length; mode++) {
         var context = String(item.contexts[mode] || "")
         var written = context + "/" + String(item.lhs || "")
-        var localId = TextKey.canonicalNotation(written)
+        var localId = root.usableKey(TextKey.canonicalNotation(written))
+        if (!localId) {
+          root.customSkipped += 1
+          continue
+        }
         var position = byId[localId]
         if (item.op === "del") {
           if (position !== undefined && !deleted[localId]) {
@@ -220,7 +232,8 @@ Item {
       }
     }
     var merged = records.filter(function(record) {
-      return !deleted[TextKey.canonicalNotation(record.localId)]
+      var deletedId = root.usableKey(TextKey.canonicalNotation(record.localId))
+      return !deletedId || !deleted[deletedId]
     })
     for (var result = 0; result < merged.length; result++) {
       if (merged[result].customKind === "added") root.customAdded += 1
@@ -287,12 +300,12 @@ Item {
     var accepted = []
     var refused = 0
     var disabled = 0
-    var seen = ({})
+    var seen = root.safeMap()
     var records = root.mergedBindings(pack)
     for (var index = 0; index < records.length; index++) {
       var item = root.acceptedBinding(records[index], categories)
       if (item === "disabled") { disabled += 1; continue }
-      if (!item || !item.id || seen[item.id]) { refused += 1; continue }
+      if (!item || !root.usableKey(item.id) || seen[item.id]) { refused += 1; continue }
       if (accepted.length >= root.maxBindings) { refused += 1; continue }
       seen[item.id] = true
       accepted.push(item)

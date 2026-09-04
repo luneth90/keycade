@@ -21,12 +21,17 @@ would make every card wrong in a way nobody could see.
 from __future__ import annotations
 
 import argparse
+import ctypes
 import json
 import os
 import re
+import selectors
 import signal
+import stat
 import subprocess
 import sys
+import time
+import unicodedata
 from typing import Any
 
 SCHEMA_VERSION = 1
@@ -38,6 +43,14 @@ MAX_BINDINGS = 512
 MAX_DESC_CHARS = 512
 MAX_LOCAL_ID_CHARS = 128
 MAX_PAYLOAD_BYTES = 512 * 1024
+READ_SIZE = 64 * 1024
+PR_SET_PDEATHSIG = 1
+# Absolute so no library this keep-loaded path relies on is resolved by the
+# dynamic loader's ambient search, and checked before it is opened: an absolute
+# path says nothing about who may replace the file behind it.
+LIBC_PATH = "/usr/lib/libc.so.6"
+
+_ACTIVE_CHILD: subprocess.Popen[bytes] | None = None
 
 # Mirrors lib/TextKey.js, which judges what this produces.
 SHIFT = 1
@@ -72,8 +85,76 @@ class Rejected(Exception):
     """The line names something no card can ask for."""
 
 
+def has_controls(text: str) -> bool:
+    return any(unicodedata.category(char).startswith("C") for char in text)
+
+
+def sanitize_text(value: object, limit: int) -> str:
+    text = unicodedata.normalize("NFC", str(value or ""))
+    cleaned = "".join(" " if unicodedata.category(char).startswith("C") else char for char in text)
+    return cleaned[:limit]
+
+
+def trusted_command(path: str) -> str:
+    """Return ``path`` only when it is a root-owned, non-writable executable.
+
+    Commands are addressed by absolute path so nothing is resolved through the
+    ambient ``PATH`` of the long-lived shell process that hosts the plugin.
+    An absolute path alone still trusts whoever can write the file behind it.
+    """
+    try:
+        info = os.stat(path)
+    except OSError as error:
+        raise OSError(f"{path} is unavailable") from error
+    if not stat.S_ISREG(info.st_mode) or info.st_uid != 0:
+        raise OSError(f"{path} is not trusted")
+    if info.st_mode & (stat.S_IWGRP | stat.S_IWOTH) or not info.st_mode & stat.S_IXUSR:
+        raise OSError(f"{path} is replaceable or not executable")
+    return path
+
+
+def _prepare_child() -> None:
+    # Own session so this helper can signal the listing's whole group, plus a
+    # kernel death signal so an immediately killed helper cannot leave the
+    # listing (and herdr | awk under it) running.
+    os.setsid()
+    parent = os.getppid()
+    try:
+        libc = ctypes.CDLL(trusted_command(LIBC_PATH), use_errno=True)
+        libc.prctl(PR_SET_PDEATHSIG, signal.SIGKILL)
+    except OSError:
+        return
+    if os.getppid() != parent:
+        os._exit(1)
+
+
+def _kill_process_group(process: subprocess.Popen[bytes]) -> None:
+    try:
+        os.killpg(process.pid, signal.SIGKILL)
+    except (ProcessLookupError, PermissionError):
+        pass
+    try:
+        process.wait(timeout=1)
+    except subprocess.TimeoutExpired:
+        process.kill()
+        process.wait()
+
+
+def _terminate(_signum: int, _frame: Any) -> None:
+    if _ACTIVE_CHILD is not None:
+        _kill_process_group(_ACTIVE_CHILD)
+    os._exit(143)
+
+
+def install_signal_handlers() -> None:
+    signal.signal(signal.SIGTERM, _terminate)
+    signal.signal(signal.SIGHUP, _terminate)
+
+
 def parse_chord(text: str) -> dict:
     """"CTRL + ALT + LEFT" as one step."""
+    if has_controls(text):
+        raise Rejected("contains control characters")
     mods = 0
     shifted = False
     parts = [part.strip() for part in text.split("+") if part.strip()]
@@ -125,29 +206,66 @@ def category_for(desc: str) -> str:
 
 
 def description_key(desc: str) -> str:
-    slug = re.sub(r"_+", "_", re.sub(r"[^a-z0-9]+", "_", desc.lower())).strip("_")
+    cleaned = sanitize_text(desc, MAX_DESC_CHARS)
+    slug = re.sub(r"_+", "_", re.sub(r"[^a-z0-9]+", "_", cleaned.lower())).strip("_")
     return "herdrdesc_" + slug if slug else ""
 
 
 def run_listing() -> str:
-    """The vendor's own listing, by absolute path with a rebuilt environment."""
-    with subprocess.Popen(
-        [LISTING_COMMAND, "--print"],
-        stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL,
-        env={"PATH": "/usr/bin", "HOME": os.environ.get("HOME", "")},
-        start_new_session=True,
-    ) as process:
-        try:
-            raw = process.stdout.read(MAX_STDOUT_BYTES + 1)
-            process.wait(timeout=COMMAND_TIMEOUT_SECONDS)
-        except Exception:
-            os.killpg(process.pid, signal.SIGKILL)
-            raise
-    if len(raw) > MAX_STDOUT_BYTES:
-        raise RuntimeError("listing exceeded its limit")
-    if process.returncode != 0:
-        raise RuntimeError(f"listing exited with {process.returncode}")
-    return raw.decode("utf-8", "replace")
+    """The vendor's own listing, by a trusted absolute path.
+
+    HOME is on the rebuilt environment because the listing tool locates
+    ``~/.config/herdr/config.toml`` from it. Nothing else is inherited.
+    """
+    command = [trusted_command(LISTING_COMMAND), "--print"]
+    try:
+        process = subprocess.Popen(
+            command,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            stdin=subprocess.DEVNULL,
+            env={"PATH": "/usr/bin", "HOME": os.environ.get("HOME", "")},
+            preexec_fn=_prepare_child,
+            close_fds=True,
+        )
+    except OSError as error:
+        raise RuntimeError(f"listing could not start: {error}") from error
+
+    global _ACTIVE_CHILD
+    _ACTIVE_CHILD = process
+    streams = selectors.DefaultSelector()
+    assert process.stdout is not None
+    streams.register(process.stdout, selectors.EVENT_READ)
+    deadline = time.monotonic() + COMMAND_TIMEOUT_SECONDS
+    chunks = bytearray()
+    try:
+        while streams.get_map():
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise RuntimeError("listing exceeded its deadline")
+            events = streams.select(min(remaining, 0.1))
+            if not events and process.poll() is not None:
+                events = [(key, 0) for key in list(streams.get_map().values())]
+            for key, _mask in events:
+                chunk = os.read(key.fd, READ_SIZE)
+                if not chunk:
+                    streams.unregister(key.fileobj)
+                    continue
+                chunks.extend(chunk)
+                if len(chunks) > MAX_STDOUT_BYTES:
+                    raise RuntimeError("listing exceeded its limit")
+        return_code = process.wait(timeout=max(0.01, deadline - time.monotonic()))
+    except Exception:
+        _kill_process_group(process)
+        raise
+    finally:
+        _ACTIVE_CHILD = None
+        streams.close()
+        process.stdout.close()
+
+    if return_code != 0:
+        raise RuntimeError(f"listing exited with {return_code}")
+    return chunks.decode("utf-8", "replace")
 
 
 def snapshot(text: str) -> dict[str, Any]:
@@ -162,19 +280,27 @@ def snapshot(text: str) -> dict[str, Any]:
     for line in text.splitlines()[:MAX_LINES]:
         if "→" not in line:
             continue
-        combo, _, desc = line.partition("→")
-        combo, desc = combo.strip(), desc.strip()[:MAX_DESC_CHARS]
+        combo, _, raw_desc = line.partition("→")
+        combo, raw_desc = combo.strip(), raw_desc.strip()
+        if len(raw_desc) > MAX_DESC_CHARS:
+            drop("limit")
+            continue
+        desc = sanitize_text(raw_desc, MAX_DESC_CHARS).strip()
 
         # The first line declares what the prefix resolved to on this machine.
         if combo == "PREFIX":
             try:
-                prefix = parse_chord(desc)
+                prefix = parse_chord(raw_desc)
             except Rejected:
                 drop("unreadable-prefix")
             continue
 
         if not desc:
             drop("missing-description")
+            continue
+
+        if has_controls(combo):
+            drop("unreadable-notation")
             continue
 
         context = "default"
@@ -242,9 +368,9 @@ def snapshot(text: str) -> dict[str, Any]:
                 continue
             alternates.append(other)
 
-        local_id = (context + "/" + chosen)[:MAX_LOCAL_ID_CHARS]
-        if local_id in seen or len(bindings) >= MAX_BINDINGS:
-            drop("duplicate")
+        local_id = context + "/" + chosen
+        if len(local_id) > MAX_LOCAL_ID_CHARS or len(bindings) >= MAX_BINDINGS:
+            drop("limit")
             continue
         seen.add(local_id)
         key = description_key(desc)
@@ -294,7 +420,7 @@ def main() -> None:
             raise RuntimeError("listing named no trainable binding")
     except Exception as error:  # noqa: BLE001 - one line out, never a traceback
         payload = {"schemaVersion": SCHEMA_VERSION, "type": "error",
-                   "error": type(error).__name__}
+                   "error": sanitize_text(type(error).__name__, 128)}
 
     line = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
     if len(line.encode("utf-8")) > MAX_PAYLOAD_BYTES:
@@ -304,4 +430,5 @@ def main() -> None:
 
 
 if __name__ == "__main__":
+    install_signal_handlers()
     main()

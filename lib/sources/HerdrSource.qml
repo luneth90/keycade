@@ -136,10 +136,14 @@ Item {
     var categories = Array.isArray(record.categories) ? record.categories : []
     var accepted = []
     var refused = 0
-    var seen = ({})
+    var seen = Object.create(null)
+    var forbidden = ["__proto__", "constructor", "prototype"]
     for (var index = 0; index < record.bindings.length; index++) {
       var item = root.acceptedBinding(record.bindings[index], contexts, categories)
-      if (!item || !item.id || seen[item.id]) { refused += 1; continue }
+      if (!item || !item.id || forbidden.indexOf(item.id) !== -1 || seen[item.id]) {
+        refused += 1
+        continue
+      }
       seen[item.id] = true
       accepted.push(item)
     }

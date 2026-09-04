@@ -32,6 +32,7 @@ import re
 import shlex
 import stat
 import sys
+import unicodedata
 from pathlib import Path
 from typing import Any
 
@@ -105,6 +106,16 @@ FILES: dict[str, dict[str, list[str]]] = {
 
 class Skipped(Exception):
     """The value is there but not in a shape this may read."""
+
+
+def has_controls(text: str) -> bool:
+    return any(unicodedata.category(char).startswith("C") for char in text)
+
+
+def sanitize_text(value: object, limit: int) -> str:
+    text = unicodedata.normalize("NFC", str(value or ""))
+    cleaned = "".join(" " if unicodedata.category(char).startswith("C") else char for char in text)
+    return cleaned[:limit]
 
 
 def read_text(home: Path, relative: str) -> str | None:
@@ -532,9 +543,13 @@ def literal_options(options: str) -> tuple[str | None, bool] | None:
             if found is None or (description is not None and found != description):
                 return None
             description = found
-    if description is not None and (not description or len(description) > MAX_DESC_CHARS
-                                    or re.search(r"[\x00-\x1f\x7f]", description)):
-        description = None
+    if description is not None:
+        if not description or len(description) > MAX_DESC_CHARS:
+            description = None
+        else:
+            description = sanitize_text(description, MAX_DESC_CHARS)
+            if not description.strip():
+                description = None
     return description, buffer_local
 
 
@@ -644,7 +659,7 @@ def read_keymaps(home: Path, files: list[str]) -> tuple[list[dict[str, Any]], di
             if not modes:
                 drop("untrained-mode")
                 continue
-            if not lhs or len(lhs) > MAX_LHS_CHARS or re.search(r"[\x00-\x1f\x7f]", lhs):
+            if not lhs or len(lhs) > MAX_LHS_CHARS or has_controls(lhs):
                 drop("non-literal-lhs")
                 continue
             record: dict[str, Any] = {"op": op, "contexts": modes, "lhs": lhs}
@@ -678,7 +693,7 @@ def read_keymaps(home: Path, files: list[str]) -> tuple[list[dict[str, Any]], di
 
 def option_value(value: str) -> str:
     value = NOTATION.get(value.lower(), value)
-    if not value or len(value) > MAX_OPTION_CHARS or re.search(r"[\x00-\x1f\x7f]", value):
+    if not value or len(value) > MAX_OPTION_CHARS or has_controls(value):
         raise Skipped("value is not a key")
     return value
 
@@ -972,7 +987,7 @@ def snapshot(profile: str, home: Path) -> dict[str, Any]:
         try:
             return reader(*args)
         except Skipped as error:
-            return None, {"file": str(error)}
+            return None, {"file": sanitize_text(str(error), 128)}
 
     if profile == "lazyvim":
         found, reasons = attempt(read_leader, home, files["leader"])
@@ -1010,7 +1025,7 @@ def resolved_home(value: str | None) -> Path:
     """The home to read under, as one token, checked before it is used."""
     home = value if value is not None else os.environ.get("HOME", "")
     if not home or not home.startswith("/") or len(home) > 4096 \
-            or re.search(r"[\x00-\x1f\x7f]", home):
+            or has_controls(home):
         raise SystemExit(json.dumps({"schemaVersion": SCHEMA_VERSION, "type": "error",
                                      "error": "no usable home directory"}))
     return Path(home)
@@ -1027,7 +1042,7 @@ def main() -> None:
         payload = snapshot(arguments.profile, resolved_home(arguments.home))
     except Exception as error:  # noqa: BLE001 - one line out, never a traceback
         payload = {"schemaVersion": SCHEMA_VERSION, "type": "error",
-                   "error": type(error).__name__}
+                   "error": sanitize_text(type(error).__name__, 128)}
 
     text = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
     if len(text.encode("utf-8")) > MAX_PAYLOAD_BYTES:

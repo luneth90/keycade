@@ -43,7 +43,7 @@ Item {
   // Why a value is missing, by name: "never assigned" means the upstream
   // default applies and nothing needs attention, anything else means the
   // reader should look.
-  property var skipped: ({})
+  property var skipped: Object.create(null)
   property bool loading: false
   property bool settled: false
   // A second ground picked while the first is still being read must not be
@@ -57,7 +57,7 @@ Item {
     root.extras = []
     root.bindings = []
     root.bindingSkipped = 0
-    root.skipped = ({})
+    root.skipped = Object.create(null)
     root.settled = false
   }
 
@@ -82,6 +82,12 @@ Item {
     root.loading = true
     readTimeout.restart()
     reader.running = true
+  }
+
+  function safeText(value, limit) {
+    var text = String(value === undefined || value === null ? "" : value)
+    if (!text.length || text.length > limit) return ""
+    return text.replace(/[\u0000-\u001f\u007f-\u009f\u200e\u200f\u202a-\u202e\u2066-\u2069]/g, " ")
   }
 
   function safeOption(value) {
@@ -111,12 +117,13 @@ Item {
       }
     }
 
-    var skipped = ({})
+    var skipped = Object.create(null)
     var reasons = record.skipped && typeof record.skipped === "object"
         && !Array.isArray(record.skipped) ? record.skipped : ({})
+    var forbidden = ["__proto__", "constructor", "prototype"]
     Object.keys(reasons).slice(0, 16).forEach(function(name) {
-      if (/^[A-Za-z0-9_\-]{1,32}$/.test(name))
-        skipped[name] = String(reasons[name] || "").slice(0, 128)
+      if (/^[A-Za-z0-9_\-]{1,32}$/.test(name) && forbidden.indexOf(name) === -1)
+        skipped[name] = root.safeText(reasons[name], 128)
     })
 
     root.options = options
@@ -133,12 +140,13 @@ Item {
         }
         var op = String(item.op || "")
         var lhs = String(item.lhs || "")
-        var desc = String(item.desc || "")
-        if ((op !== "set" && op !== "del") || !lhs.length || lhs.length > 128) {
+        if ((op !== "set" && op !== "del") || !lhs.length || lhs.length > 128
+            || /[\u0000-\u001f\u007f-\u009f\u200e\u200f\u202a-\u202e\u2066-\u2069]/.test(lhs)) {
           rejectedBindings += 1
           continue
         }
-        if (op === "set" && (!desc.length || desc.length > 512)) {
+        var desc = op === "set" ? root.safeText(item.desc, 512).trim() : ""
+        if (op === "set" && !desc.length) {
           rejectedBindings += 1
           continue
         }
@@ -162,6 +170,7 @@ Item {
     var bindingReasons = record.bindingSkipped && typeof record.bindingSkipped === "object"
         && !Array.isArray(record.bindingSkipped) ? record.bindingSkipped : ({})
     Object.keys(bindingReasons).slice(0, 16).forEach(function(reason) {
+      if (forbidden.indexOf(reason) !== -1) return
       var count = Number(bindingReasons[reason] || 0)
       if (isFinite(count)) bindingSkipped += Math.max(0, Math.min(100000, Math.floor(count)))
     })

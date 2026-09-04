@@ -93,6 +93,7 @@ class LeaderTests(unittest.TestCase):
             ('vim.g.mapleader = vim.env.LEADER or " "', "assigned in a shape this cannot read"),
             ('vim.g["mapleader" .. suffix] = ","', "assigned in a shape this cannot read"),
             ('vim.g.mapleader = ","\nvim.g.mapleader = ";"', "assigned more than one value"),
+            ('vim.g.mapleader = "\\x00"', "assigned in a shape this cannot read"),
             ("", "never assigned"),
         ):
             with self.subTest(body=body):
@@ -197,6 +198,20 @@ class KeymapTests(unittest.TestCase):
             "indented": 1, "non-literal-lhs": 1,
             "missing-description": 1, "untrained-mode": 1,
         })
+
+    def test_control_characters_in_keymap_description_are_sanitized(self):
+        found = self.keymaps(
+            'vim.keymap.set("n", "<leader>xx", run_it, { desc = "Do a\\x00thing\\x1b[31m now" })\n'
+        )
+        self.assertEqual(len(found["bindings"]), 1)
+        self.assertEqual(found["bindings"][0]["desc"], "Do a thing [31m now")
+
+    def test_control_characters_in_keymap_lhs_are_refused(self):
+        found = self.keymaps(
+            'vim.keymap.set("n", "<leader>\\x00xx", run_it, { desc = "Action" })\n'
+        )
+        self.assertEqual(found["bindings"], [])
+        self.assertEqual(found["bindingSkipped"], {"non-literal-lhs": 1})
 
     def test_ignores_comments_and_unrelated_lua(self):
         found = self.keymaps(
@@ -429,10 +444,25 @@ class BoundsTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("home", result.stdout + result.stderr)
 
+    def test_control_characters_in_home_are_refused(self):
+        import subprocess
+        result = subprocess.run(
+            [sys.executable, str(ROOT / "bin" / "app-config-json"),
+             "--profile", "tmux", "--home", "/tmp/bad\x01home"],
+            capture_output=True, text=True)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("home", result.stdout + result.stderr)
+
     def test_it_starts_nothing_and_reaches_nowhere(self):
         source = (ROOT / "bin" / "app-config-json").read_text(encoding="utf-8")
         for forbidden in ("subprocess", "socket", "urllib", "http", "os.system", "popen"):
             self.assertNotIn(forbidden, source.split('"""')[2])
+
+    def test_qml_skipped_map_rejects_prototype_keys(self):
+        source = (ROOT / "lib/sources/AppConfigSource.qml").read_text(encoding="utf-8")
+        self.assertIn("var skipped = Object.create(null)", source)
+        self.assertIn('var forbidden = ["__proto__", "constructor", "prototype"]', source)
+        self.assertIn("forbidden.indexOf(name) === -1", source)
 
 
 if __name__ == "__main__":

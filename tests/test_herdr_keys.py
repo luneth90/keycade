@@ -1,10 +1,15 @@
 import importlib.machinery
 import importlib.util
 import json
+import os
+import signal
 import subprocess
 import sys
+import tempfile
+import time
 import unittest
 from pathlib import Path
+from unittest import mock
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -113,6 +118,148 @@ class ListingTests(unittest.TestCase):
             capture_output=True, text=True, check=True)
         self.assertEqual(len(result.stdout.strip().splitlines()), 1)
         self.assertEqual(json.loads(result.stdout)["profile"], "herdr")
+
+    def test_control_characters_in_description_are_sanitized(self):
+        listing = "PREFIX → CTRL + A\nPREFIX + C → Create a\x00new\x1b[31m pane\n"
+        snap = helper.snapshot(listing)
+        self.assertEqual(len(snap["bindings"]), 1)
+        self.assertEqual(snap["bindings"][0]["desc"], "Create a new [31m pane")
+
+    def test_control_characters_in_combo_are_rejected(self):
+        listing = "PREFIX → CTRL + A\nPREFIX + C\x00 → Action\n"
+        snap = helper.snapshot(listing)
+        self.assertEqual(snap["bindings"], [])
+        self.assertEqual(snap["dropped"]["unreadable-notation"], 1)
+        with self.assertRaises(helper.Rejected):
+            helper.parse_chord("CTRL + \x00")
+
+    def test_control_characters_in_prefix_are_rejected(self):
+        listing = "PREFIX → CTRL + \x00\nPREFIX + C → Action\n"
+        snap = helper.snapshot(listing)
+        self.assertEqual(snap["bindings"], [])
+        self.assertEqual(snap["dropped"]["unreadable-prefix"], 1)
+
+
+class ListingProcessTests(unittest.TestCase):
+    """R7/R8: the listing binary is trusted, bounded, and dies with the helper."""
+
+    def test_the_listing_command_is_absolute_and_trusted(self):
+        source = (ROOT / "bin" / "herdr-keys-json").read_text(encoding="utf-8")
+        self.assertTrue(source.startswith("#!/usr/bin/python3"))
+        self.assertNotIn("/usr/bin/env", source)
+        self.assertNotIn("start_new_session", source)
+        self.assertIn("trusted_command(LISTING_COMMAND)", source)
+        self.assertIn('LISTING_COMMAND = "/usr/share/omarchy/bin/omarchy-menu-herdr-keybindings"', source)
+        self.assertIn("ctypes.CDLL(trusted_command(LIBC_PATH)", source)
+        self.assertIn("PR_SET_PDEATHSIG", source)
+
+    def test_trusted_command_rejects_untrusted_paths(self):
+        with tempfile.TemporaryDirectory() as directory:
+            planted = Path(directory) / "omarchy-menu-herdr-keybindings"
+            planted.write_text("#!/bin/sh\necho pwned\n", encoding="utf-8")
+            planted.chmod(0o777)
+            with self.assertRaises(OSError):
+                helper.trusted_command(str(planted))
+            with self.assertRaises(OSError):
+                helper.trusted_command(str(Path(directory) / "missing"))
+
+    def test_listing_stdout_limit_is_enforced(self):
+        with tempfile.TemporaryDirectory() as directory:
+            script = Path(directory) / "listing"
+            script.write_text(
+                f"#!{sys.executable}\n"
+                "import sys\n"
+                "sys.stdout.write('x' * (512 * 1024))\n",
+                encoding="utf-8",
+            )
+            script.chmod(0o755)
+            with mock.patch.object(helper, "LISTING_COMMAND", str(script)), \
+                    mock.patch.object(helper, "trusted_command", side_effect=lambda path: path), \
+                    mock.patch.object(helper, "MAX_STDOUT_BYTES", 128):
+                with self.assertRaisesRegex(RuntimeError, "limit"):
+                    helper.run_listing()
+
+    def test_listing_deadline_is_enforced(self):
+        with tempfile.TemporaryDirectory() as directory:
+            script = Path(directory) / "listing"
+            script.write_text(
+                f"#!{sys.executable}\n"
+                "import time\n"
+                "time.sleep(5)\n",
+                encoding="utf-8",
+            )
+            script.chmod(0o755)
+            with mock.patch.object(helper, "LISTING_COMMAND", str(script)), \
+                    mock.patch.object(helper, "trusted_command", side_effect=lambda path: path), \
+                    mock.patch.object(helper, "COMMAND_TIMEOUT_SECONDS", 0.2):
+                with self.assertRaisesRegex(RuntimeError, "deadline"):
+                    helper.run_listing()
+
+    def test_listing_deadline_kills_descendants(self):
+        with tempfile.TemporaryDirectory() as directory:
+            pid_file = Path(directory) / "child.pid"
+            child_code = (
+                "import os, pathlib, time; "
+                f"pathlib.Path({str(pid_file)!r}).write_text(str(os.getpid())); "
+                "time.sleep(30)"
+            )
+            script = Path(directory) / "listing"
+            script.write_text(
+                f"#!{sys.executable}\n"
+                "import subprocess, sys, time\n"
+                f"subprocess.Popen([sys.executable, '-c', {child_code!r}])\n"
+                "time.sleep(30)\n",
+                encoding="utf-8",
+            )
+            script.chmod(0o755)
+            with mock.patch.object(helper, "LISTING_COMMAND", str(script)), \
+                    mock.patch.object(helper, "trusted_command", side_effect=lambda path: path), \
+                    mock.patch.object(helper, "COMMAND_TIMEOUT_SECONDS", 0.4):
+                with self.assertRaisesRegex(RuntimeError, "deadline"):
+                    helper.run_listing()
+            child_pid = int(pid_file.read_text())
+            for _ in range(20):
+                try:
+                    os.kill(child_pid, 0)
+                except ProcessLookupError:
+                    break
+                time.sleep(0.05)
+            else:
+                os.kill(child_pid, signal.SIGKILL)
+                self.fail("listing descendant survived the deadline")
+
+    def test_child_dies_with_the_helper(self):
+        script = (
+            "import subprocess, sys, time, importlib.machinery, importlib.util\n"
+            f"loader = importlib.machinery.SourceFileLoader('hk', {str(ROOT / 'bin' / 'herdr-keys-json')!r})\n"
+            "hk = importlib.util.module_from_spec(importlib.util.spec_from_loader('hk', loader))\n"
+            "loader.exec_module(hk)\n"
+            "child = subprocess.Popen(['/usr/bin/sleep', '30'], preexec_fn=hk._prepare_child)\n"
+            "print(child.pid, flush=True)\n"
+            "time.sleep(30)\n"
+        )
+        parent = subprocess.Popen(
+            [sys.executable, "-c", script], stdout=subprocess.PIPE, text=True
+        )
+        try:
+            child_pid = int(parent.stdout.readline().strip())
+            parent.stdout.close()
+            parent.kill()
+            parent.wait(timeout=5)
+            deadline = time.monotonic() + 5
+            while time.monotonic() < deadline:
+                try:
+                    os.kill(child_pid, 0)
+                except ProcessLookupError:
+                    break
+                time.sleep(0.05)
+            else:
+                os.kill(child_pid, signal.SIGKILL)
+                self.fail("child survived the helper")
+        finally:
+            if parent.poll() is None:
+                parent.kill()
+                parent.wait()
 
 
 if __name__ == "__main__":
