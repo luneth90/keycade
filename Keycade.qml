@@ -1280,7 +1280,9 @@ Item {
           enabled: false
           source: Qt.resolvedUrl("assets/scanline.png")
           fillMode: Image.Tile
-          opacity: 0.05
+          // Tuned on hardware: 0.05 was invisible on this panel. Half the
+          // tile is opaque, so this is the darkening of every second line.
+          opacity: 0.14
           smooth: false
         }
 
