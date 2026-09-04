@@ -28,6 +28,18 @@ and the row shows where every one of them stands:
 Hyprland is what you get on a fresh install and after an upgrade; the other
 grounds are there when you want them.
 
+Every cabinet shows where it stands, so the row reads as one picture of your
+progress. Tokyo Night:
+
+![Every cabinet's progress on the home screen](docs/screenshots/keycade-grounds-en.png)
+
+Four of the six answer in sequences, drawn step by step. LazyVim on Everforest,
+and Vim's own grammar on Ristretto:
+
+![A LazyVim leader sequence](docs/screenshots/keycade-lazyvim-en.png)
+
+![A Vim composition](docs/screenshots/keycade-vim-en.png)
+
 ## Core features
 
 - Reads three of its six cabinets off this machine rather than dealing a

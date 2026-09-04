@@ -25,6 +25,17 @@ Keycade 是一个原生 Omarchy 覆盖层，把快捷键编成简短的自适应
 
 新装和升级后都停在 Hyprland；其他训练场想练的时候再选。
 
+每个机台都显示自己的进度，一排看下来就是一张完整的进度图。Tokyo Night 配色：
+
+![首页上每个机台各自的进度](docs/screenshots/keycade-grounds-zh-CN.png)
+
+六个机台里有四个要连打，卡片按步显示。Everforest 配色下的 LazyVim，
+以及 Ristretto 配色下的 Vim 原生语法：
+
+![LazyVim 的 leader 连打](docs/screenshots/keycade-lazyvim-zh-CN.png)
+
+![Vim 的组合语法](docs/screenshots/keycade-vim-zh-CN.png)
+
 ## 核心功能
 
 - 六个机台里有三个直接读这台机器，而不是发一套通用题库：Hyprland 读运行中的合成器，

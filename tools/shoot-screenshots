@@ -1,0 +1,89 @@
+#!/usr/bin/env bash
+# Reshoot every image the READMEs and the plugin listing use.
+#
+# The overlay is driven rather than played: a card is built by hand and the
+# input guard is never activated, so the capture cannot take the keyboard from
+# whoever is running this. It reads the maintainer's own statistics so the
+# numbers on screen are real ones, under a temporary XDG_STATE_HOME so nothing
+# it does touches the real save file.
+#
+# Needs a running Wayland session with grim, and a monitor at least 1040x720
+# logical - the cabinet is a fixed frame and the crop is exactly that frame.
+
+set -euo pipefail
+
+repo=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)
+work=$(mktemp -d)
+trap '[[ $work == /tmp/* ]] && rm -rf -- "$work"' EXIT
+
+if [[ -z ${WAYLAND_DISPLAY:-} ]]; then
+  printf 'no Wayland display\n' >&2
+  exit 1
+fi
+
+# theme locale ground view binding outfile
+shoot() {
+  local theme=$1 locale=$2 ground=$3 view=$4 binding=$5 out=$6
+  local root="$work/run"
+  rm -rf -- "$root"
+  mkdir -p -- "$root/config" "$root/state/omarchy/keycade"
+  cp -r -- "$repo" "$root/config/keycade"
+  rm -rf -- "$root/config/keycade/.git"
+  cp -- "$repo/tools/screenshot-shell.qml" "$root/config/shell.qml"
+  [[ -f ~/.local/state/omarchy/keycade/stats.json ]] \
+    && cp -- ~/.local/state/omarchy/keycade/stats.json "$root/state/omarchy/keycade/stats.json"
+  # Parked on another ground, so selectProfile always has work to do - which is
+  # also how the script knows the store has finished loading.
+  python3 - "$root/state/omarchy/keycade/settings.json" "$ground" <<'PY'
+import json, sys
+other = "neovim" if sys.argv[2] != "neovim" else "vim"
+open(sys.argv[1], "w").write(json.dumps({
+    "schemaVersion": 3, "locale": "en", "theme": "catppuccin",
+    "activeProfile": other, "excludedBindings": [],
+    "feedbackSound": True, "countdownSound": True, "soundVolume": 0.4}) + "\n")
+PY
+
+  local log="$root/log"
+  SHOT_THEME=$theme SHOT_LOCALE=$locale SHOT_GROUND=$ground SHOT_VIEW=$view \
+  SHOT_BINDING=$binding XDG_STATE_HOME="$root/state" \
+    quickshell --no-color --path "$root/config/shell.qml" > "$log" 2>&1 &
+  local pid=$!
+  local step
+  for step in $(seq 1 200); do
+    grep -q SHOT_READY "$log" 2>/dev/null && break
+    if grep -q SHOT_FAILED "$log" 2>/dev/null; then cat "$log" >&2; kill $pid 2>/dev/null; return 1; fi
+    kill -0 $pid 2>/dev/null || { cat "$log" >&2; return 1; }
+    sleep 0.2
+  done
+  grep -q SHOT_READY "$log" || { cat "$log" >&2; kill $pid 2>/dev/null; return 1; }
+  sleep 0.4
+  # The cabinet is 1040x720 logical and centred, on any screen big enough for
+  # it. grim takes logical coordinates and writes at the output's scale.
+  local x y width height
+  read -r width height < <(python3 - <<'PY'
+import json, subprocess
+monitor = json.loads(subprocess.run(["hyprctl", "monitors", "-j"],
+                                    capture_output=True, text=True).stdout)[0]
+print(int(monitor["width"] / monitor["scale"]), int(monitor["height"] / monitor["scale"]))
+PY
+)
+  x=$(( (width - 1040) / 2 ))
+  y=$(( (height - 720) / 2 ))
+  grim -g "$x,$y 1040x720" "$out"
+  kill $pid 2>/dev/null || true
+  wait $pid 2>/dev/null || true
+  printf '%s  %s\n' "$(basename -- "$out")" "$(grep -o 'SHOT_CARD.*' "$log" || true)"
+}
+
+terminal='64|RETURN|__lua|284'
+shots="$repo/docs/screenshots"
+
+shoot gruvbox    en    hyprland playing "$terminal"         "$repo/preview.png"
+shoot catppuccin en    hyprland playing "$terminal"         "$shots/keycade-en.png"
+shoot catppuccin zh-CN hyprland playing "$terminal"         "$shots/keycade-zh-CN.png"
+shoot tokyo      en    hyprland home    ""                  "$shots/keycade-grounds-en.png"
+shoot tokyo      zh-CN hyprland home    ""                  "$shots/keycade-grounds-zh-CN.png"
+shoot everforest en    lazyvim  playing 'normal/<leader>ff' "$shots/keycade-lazyvim-en.png"
+shoot everforest zh-CN lazyvim  playing 'normal/<leader>ff' "$shots/keycade-lazyvim-zh-CN.png"
+shoot ristretto  en    vim      playing 'normal/diw'        "$shots/keycade-vim-en.png"
+shoot ristretto  zh-CN vim      playing 'normal/diw'        "$shots/keycade-vim-zh-CN.png"
