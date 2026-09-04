@@ -641,6 +641,10 @@ def collect_tmux(listing: Path) -> dict:
             "context": "prefix",
             "notation": "prefix " + ("prefix" if key == prefix else key),
             "steps": steps,
+            # Omarchy's tmux.conf keeps C-b as prefix2 beside C-Space, and both
+            # fire. An entry whose machine has no prefix2 resolves this to
+            # nothing and is simply not offered it.
+            "alternates": [[{"option": "prefix2"}] + steps[1:]],
             "category": category,
             "descKey": description_key("tmux", desc),
             "desc": desc,

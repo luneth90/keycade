@@ -88,6 +88,20 @@ Item {
     return false
   }
 
+  function resolvedSteps(value) {
+    if (!Array.isArray(value) || !value.length || value.length > root.maxSteps) return null
+    var steps = []
+    for (var index = 0; index < value.length; index++) {
+      var step = root.resolvedStep(value[index])
+      // An answer with one unreadable step is not a partially good answer.
+      if (!step) return null
+      // Esc saves the run and leaves; no ground answers with it.
+      if (step.named === "ESC") return null
+      steps.push(step)
+    }
+    return steps
+  }
+
   function acceptedBinding(record, categories) {
     if (!record || typeof record !== "object" || Array.isArray(record)) return null
     var localId = root.safeText(record.localId, root.maxLocalIdChars)
@@ -109,14 +123,16 @@ Item {
       }
     }
     if (providers.length && !root.anyEnabled(providers)) return "disabled"
-    var steps = []
-    for (var index = 0; index < record.steps.length; index++) {
-      var step = root.resolvedStep(record.steps[index])
-      // An answer with one unreadable step is not a partially good answer.
-      if (!step) return null
-      // Esc saves the run and leaves; no ground answers with it.
-      if (step.named === "ESC") return null
-      steps.push(step)
+    var steps = root.resolvedSteps(record.steps)
+    if (!steps) return null
+    // The other ways in - tmux's prefix2, say. One whose option is unset
+    // resolves to nothing and is simply not offered.
+    var alternates = []
+    if (Array.isArray(record.alternates)) {
+      for (var other = 0; other < record.alternates.length && alternates.length < 4; other++) {
+        var sequence = root.resolvedSteps(record.alternates[other])
+        if (sequence) alternates.push(sequence)
+      }
     }
     return {
       localId: localId,
@@ -131,7 +147,7 @@ Item {
       // English, which is what a rewritten description upstream produces.
       descKey: root.safeText(record.descKey, 128),
       notation: root.safeText(record.notation, root.maxLocalIdChars),
-      answer: { judgeMode: "text", context: context, steps: steps }
+      answer: { judgeMode: "text", context: context, steps: steps, alternates: alternates }
     }
   }
 

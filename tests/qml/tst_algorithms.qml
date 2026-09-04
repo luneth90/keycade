@@ -1197,11 +1197,11 @@ TestCase {
     var answer = textAnswer(steps)
     var state = AnswerMatcher.begin()
     compare(AnswerMatcher.advance(state, answer, textEvent(steps[0]), {}), "progress")
-    compare(state.cursor, 1)
+    compare(AnswerMatcher.typedSteps(state), 1)
     compare(AnswerMatcher.advance(state, answer, textEvent(steps[1]), {}), "progress")
-    compare(state.cursor, 2)
+    compare(AnswerMatcher.typedSteps(state), 2)
     compare(AnswerMatcher.advance(state, answer, textEvent(steps[2]), {}), "hit")
-    compare(state.cursor, 0)
+    compare(AnswerMatcher.typedSteps(state), 0)
   }
 
   // A wrong key fails the card whole, not the step: correcting a sequence
@@ -1211,7 +1211,7 @@ TestCase {
     var state = AnswerMatcher.begin()
     compare(AnswerMatcher.advance(state, answer, textEvent({ mods: 0, text: "g" }), {}), "progress")
     compare(AnswerMatcher.advance(state, answer, textEvent({ mods: 0, text: "x" }), {}), "miss")
-    compare(state.cursor, 0)
+    compare(AnswerMatcher.typedSteps(state), 0)
     // And the retype starts over rather than resuming mid-sequence.
     compare(AnswerMatcher.advance(state, answer, textEvent({ mods: 0, text: "c" }), {}), "miss")
     compare(AnswerMatcher.advance(state, answer, textEvent({ mods: 0, text: "g" }), {}), "progress")
@@ -1272,6 +1272,39 @@ TestCase {
     var state = AnswerMatcher.begin()
     compare(AnswerMatcher.advance(state, sequence, textEvent({ mods: 0, text: "[" }), {}), "progress")
     compare(AnswerMatcher.advance(state, sequence, textEvent({ mods: 0, text: "w" }), {}), "hit")
+  }
+
+  // One action, several ways to reach it. herdr's own listing says
+  // "PREFIX + H / ALT + ENTER"; Omarchy gives tmux a prefix2 beside its
+  // prefix; vim has D for d$. Marking a spelling the application accepts as
+  // wrong would be teaching something untrue, so a card takes any of them.
+  function test_aCardAcceptsEveryWayIntoTheSameAction() {
+    var answer = {
+      judgeMode: "text", context: "normal",
+      steps: [{ mods: 0, text: "d" }, { mods: 0, text: "$" }],
+      alternates: [[{ mods: 0, text: "D" }]]
+    }
+    compare(AnswerMatcher.stepCount(answer), 2)
+    compare(AnswerMatcher.alternateLabels(answer).join(","), "D")
+
+    // The shown answer.
+    var state = AnswerMatcher.begin()
+    compare(AnswerMatcher.advance(state, answer, textEvent({ mods: 0, text: "d" }), {}), "progress")
+    compare(AnswerMatcher.advance(state, answer, textEvent({ mods: 0, text: "$" }), {}), "hit")
+
+    // The other one, from the first key press.
+    state = AnswerMatcher.begin()
+    compare(AnswerMatcher.advance(state, answer, textEvent({ mods: 0, text: "D" }), {}), "hit")
+
+    // And something neither accepts is still wrong.
+    state = AnswerMatcher.begin()
+    compare(AnswerMatcher.advance(state, answer, textEvent({ mods: 0, text: "x" }), {}), "miss")
+
+    // A candidate that diverges partway drops out without taking the other
+    // with it: "d" starts the shown answer, "w" is in neither.
+    state = AnswerMatcher.begin()
+    compare(AnswerMatcher.advance(state, answer, textEvent({ mods: 0, text: "d" }), {}), "progress")
+    compare(AnswerMatcher.advance(state, answer, textEvent({ mods: 0, text: "w" }), {}), "miss")
   }
 
   function test_answersAreBoundedInSteps() {

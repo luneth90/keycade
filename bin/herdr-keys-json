@@ -183,13 +183,13 @@ def snapshot(text: str) -> dict[str, Any]:
             # with the mode named on the card rather than as a sequence.
             context, combo = "navigate", combo[len("NAVIGATE + "):]
 
-        # "A / B" is one action with two bindings. Only the first is dealt; the
-        # answer model has no room for alternatives yet.
-        alternates = [part.strip() for part in combo.split(" / ") if part.strip()]
-        if not alternates:
+        # "A / B" is one action reached two ways. Both are accepted: refusing a
+        # spelling herdr itself accepts would be teaching something untrue.
+        spellings = [part.strip() for part in combo.split(" / ") if part.strip()]
+        if not spellings:
             drop("no-binding")
             continue
-        chosen = alternates[0]
+        chosen = spellings[0]
 
         # "1..9" abbreviates nine bindings; it is not a key anyone presses.
         if ".." in chosen:
@@ -219,6 +219,29 @@ def snapshot(text: str) -> dict[str, Any]:
             drop("device-special-key")
             continue
 
+        # The other spellings, each read the same way and each dropped on its
+        # own if it cannot be: one unreadable alternate must not cost the card.
+        alternates = []
+        for spelling in spellings[1:]:
+            if ".." in spelling:
+                continue
+            try:
+                if spelling == "PREFIX" or spelling.startswith("PREFIX + "):
+                    if prefix is None:
+                        continue
+                    rest = spelling[len("PREFIX + "):] if spelling != "PREFIX" else ""
+                    other = [dict(prefix)] + ([parse_chord(rest)] if rest else [])
+                else:
+                    other = [parse_chord(spelling)]
+            except Rejected:
+                drop("unreadable-alternate")
+                continue
+            if any(step.get("named") == "ESC" for step in other):
+                continue
+            if any(step.get("named") in DEVICE_SPECIAL for step in other):
+                continue
+            alternates.append(other)
+
         local_id = (context + "/" + chosen)[:MAX_LOCAL_ID_CHARS]
         if local_id in seen or len(bindings) >= MAX_BINDINGS:
             drop("duplicate")
@@ -233,6 +256,7 @@ def snapshot(text: str) -> dict[str, Any]:
             "context": context,
             "notation": chosen,
             "steps": steps,
+            "alternates": alternates,
             "category": category_for(desc),
             "descKey": key,
             "desc": desc,

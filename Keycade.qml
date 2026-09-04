@@ -64,6 +64,8 @@ Item {
   // How much of the current answer has been typed. A chord is the length-1
   // case, so this is 0 or 1 on the Hyprland ground and never seen.
   property int answerStep: 0
+  // One cursor per accepted answer; see AnswerMatcher.begin().
+  property var answerState: AnswerMatcher.begin()
   // A sequence can overrun its own answer: the card asked for `gc` and the
   // fingers typed `gcc`. The tail must not reach the next card, so a card that
   // could overrun arms a short silence over the one that follows it.
@@ -559,7 +561,7 @@ Item {
     if (read.length) parts.push(i18n.t("packOptionRead", { options: read.join(" ") }))
     if (appConfig.extras.length)
       parts.push(i18n.t("packExtrasOn", { count: appConfig.extras.length }))
-    return parts.length ? parts.join("  ·  ") : i18n.t("packNotice")
+    return parts.join("  ·  ")
   }
 
   function applyDetectedConfig() {
@@ -627,6 +629,11 @@ Item {
   // the way the card does, with the same mark: spaces alone made "[w" read as
   // "[  w", which in a small monospace column looks like no key at all rather
   // than like two keys typed one after the other.
+  // The other sequences this card takes, as one line.
+  function answerAlternates() {
+    return AnswerMatcher.alternateLabels(root.currentAnswer)
+  }
+
   function answerDisplay(binding) {
     var groups = AnswerMatcher.stepLabels(binding ? binding.answer : null)
     return groups.map(function(keys) { return keys.join(" + ") }).join(" › ")
@@ -818,6 +825,7 @@ Item {
     root.correctionRequired = false
     root.cardErrorSoundPlayed = false
     root.answerStep = 0
+    root.answerState = AnswerMatcher.begin()
     root.inputSilentUntil = root.overrunGuardArmed ? Date.now() + root.overrunGuardMs : 0
     root.overrunGuardArmed = false
     root.feedbackKind = "idle"
@@ -851,9 +859,10 @@ Item {
     if (root.inputSilentUntil > 0 && Date.now() < root.inputSilentUntil) return
     var input = Normalizer.normalizeEvent(event)
     if (input.autoRepeat || Normalizer.isModifier(input.logicalKey)) return
-    var state = { cursor: root.answerStep }
+    var state = root.answerState
     var verdict = AnswerMatcher.advance(state, root.currentAnswer, event, root.matchOptions())
-    root.answerStep = state.cursor
+    root.answerState = state
+    root.answerStep = AnswerMatcher.typedSteps(state)
     // A step landed and more remain: the card's own deadline keeps running,
     // and the step lights up. There is no per-step deadline on purpose.
     if (verdict === "progress") return
@@ -872,6 +881,7 @@ Item {
   function beginCorrection() {
     if (!root.correctionRequired || root.view !== "playing") return
     root.answerStep = 0
+    root.answerState = AnswerMatcher.begin()
     root.cardLocked = false
     root.revealChord = true
     root.feedbackKind = "idle"
@@ -907,6 +917,7 @@ Item {
 
   function retryGuided() {
     root.answerStep = 0
+    root.answerState = AnswerMatcher.begin()
     root.cardLocked = false
     root.feedbackKind = "idle"
     root.feedbackText = i18n.t("copyChord")
@@ -2026,12 +2037,19 @@ Item {
           color: root.mutedColor; font.family: "monospace"; font.pixelSize: 10
           font.bold: true; font.letterSpacing: 3
         }
-        Row {
+        Column {
           anchors.horizontalCenter: parent.horizontalCenter
-          spacing: 10
+          spacing: 8
           visible: root.view === "home"
           Repeater {
-            model: Profiles.ids()
+            model: Profiles.rows()
+            delegate: Row {
+              id: groundRow
+              required property var modelData
+              anchors.horizontalCenter: parent.horizontalCenter
+              spacing: 10
+          Repeater {
+            model: groundRow.modelData
             delegate: Rectangle {
               id: groundDatum
               required property var modelData
@@ -2063,26 +2081,23 @@ Item {
               }
             }
           }
+            }
+          }
         }
         // A pack ground says where its table came from, so nothing here can
         // be read as "these are the keymaps on your machine". Two short lines
         // rather than one wrapping paragraph: the card has a fixed height.
-        Column {
-          width: parent.width
-          spacing: 2
-          visible: root.view === "home" && root.packGround
-          SafeText {
-            width: parent.width; horizontalAlignment: Text.AlignHCenter
-            text: packs.sourceLabel
-            color: root.coinColor; font.family: "monospace"; font.pixelSize: 10; font.bold: true
-            elide: Text.ElideRight; maximumLineCount: 1
-          }
-          SafeText {
-            width: parent.width; horizontalAlignment: Text.AlignHCenter
-            text: root.groundConfigNotice()
-            color: root.mutedColor; font.family: "monospace"; font.pixelSize: 10
-            elide: Text.ElideRight; maximumLineCount: 1
-          }
+        // Only what was read off this machine. The upstream name, its version
+        // and the line saying the table is the official default were true but
+        // nobody acted on them, and the card needed the room for a second row
+        // of cabinets. The READMEs still say where each ground's table comes
+        // from, and a ground that reads nothing now says nothing.
+        SafeText {
+          width: parent.width; horizontalAlignment: Text.AlignHCenter
+          visible: root.view === "home" && root.groundConfigNotice().length > 0
+          text: root.groundConfigNotice()
+          color: root.successColor; font.family: "monospace"; font.pixelSize: 10
+          elide: Text.ElideRight; maximumLineCount: 1
         }
         // Continuing and starting over sit beside each other rather than
         // stacked. Two rows of buttons cost 51 pixels the card does not have
@@ -2237,6 +2252,16 @@ Item {
               }
             }
           }
+        }
+        // The other ways in, when the application accepts more than one. Shown
+        // under the answer rather than beside it: there is one answer to
+        // learn, and these are what will also be taken.
+        SafeText {
+          width: parent.width; horizontalAlignment: Text.AlignHCenter
+          visible: root.revealChord && root.answerAlternates().length > 0
+          text: i18n.t("alsoAccepts", { keys: root.answerAlternates().join("   ") })
+          color: root.mutedColor; font.family: "monospace"; font.pixelSize: 11
+          elide: Text.ElideRight; maximumLineCount: 1
         }
         Row {
           width: parent.width; height: 14; spacing: 3

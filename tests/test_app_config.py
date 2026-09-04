@@ -161,14 +161,17 @@ class TmuxTests(unittest.TestCase):
         # The shipped table was built against tmux's own C-b, and every Omarchy
         # machine moves it. This is the read that fixes that on its own.
         found = self.prefix("set -g prefix C-Space\nset -g prefix2 C-b\n")
-        self.assertEqual(found["options"], {"prefix": "C-Space"})
+        self.assertEqual(found["options"], {"prefix": "C-Space", "prefix2": "C-b"})
         self.assertEqual(found["skipped"], {})
 
-    def test_prefix2_is_never_chosen(self):
-        # It is the spare. A card teaches the key the status line calls the
-        # prefix, not the one kept for muscle memory.
+    def test_the_spare_prefix_is_read_but_is_not_the_one_shown(self):
+        # tmux fires on either, so a card shows the prefix and accepts prefix2
+        # as well - refusing a key tmux itself accepts would teach something
+        # untrue. A machine with no prefix2 is the normal case, not a failure.
         found = self.prefix("set -g prefix2 C-b\n")
         self.assertNotIn("prefix", found["options"])
+        self.assertEqual(found["options"]["prefix2"], "C-b")
+        self.assertNotIn("prefix2", self.prefix("set -g prefix C-a")["skipped"])
 
     def test_accepts_the_spellings_tmux_configs_use(self):
         for body in ("set -g prefix C-a", "set-option -g prefix C-a", "  set -g prefix C-a  "):

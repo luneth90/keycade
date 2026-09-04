@@ -168,9 +168,12 @@ def read_leader(home: Path, files: list[str]) -> tuple[dict[str, str], dict[str,
 
 
 def read_tmux_prefix(home: Path, files: list[str]) -> tuple[dict[str, str], dict[str, str]]:
-    """`set -g prefix C-Space`. prefix2 is read but never chosen: it is the
-    spare, and a card teaches the key the status line calls the prefix."""
-    found: set[str] = set()
+    """`set -g prefix C-Space`, and the spare beside it.
+
+    The prefix is what a card shows; prefix2 is what it also accepts, because
+    tmux fires on either and marking one wrong would teach something untrue.
+    """
+    found: dict[str, set[str]] = {"prefix": set(), "prefix2": set()}
     mentioned = False
     for relative in files:
         text = read_text(home, relative)
@@ -178,15 +181,23 @@ def read_tmux_prefix(home: Path, files: list[str]) -> tuple[dict[str, str], dict
             continue
         for line in text.splitlines():
             match = TMUX_PREFIX.match(line.strip())
-            if match and match.group(1) == "prefix":
-                found.add(option_value(match.group(2)))
+            if match:
+                found[match.group(1)].add(option_value(match.group(2)))
             elif not is_comment(line) and TMUX_PREFIX_MENTION.search(line):
                 mentioned = True
-    if len(found) == 1:
-        return {"prefix": next(iter(found))}, {}
-    if len(found) > 1:
-        return {}, {"prefix": "set more than once"}
-    return {}, {"prefix": "set in a shape this cannot read" if mentioned else "never set"}
+
+    options: dict[str, str] = {}
+    skipped: dict[str, str] = {}
+    for name in ("prefix", "prefix2"):
+        values = found[name]
+        if len(values) == 1:
+            options[name] = next(iter(values))
+        elif values:
+            skipped[name] = "set more than once"
+        elif name == "prefix":
+            skipped[name] = "set in a shape this cannot read" if mentioned else "never set"
+        # A machine with no prefix2 is the normal case, not a failure to read.
+    return options, skipped
 
 
 def read_json(home: Path, relative: str) -> Any:

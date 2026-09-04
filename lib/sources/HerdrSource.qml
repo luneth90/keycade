@@ -64,6 +64,21 @@ Item {
     return text.replace(/[\u0000-\u001f\u007f-\u009f\u200e\u200f\u202a-\u202e\u2066-\u2069]/g, " ")
   }
 
+  // One sequence, or null when any step of it cannot be judged: an answer
+  // with one unreadable step is not a partially good answer.
+  function resolvedSteps(value) {
+    if (!Array.isArray(value) || !value.length || value.length > root.maxSteps) return null
+    var steps = []
+    for (var index = 0; index < value.length; index++) {
+      var step = TextKey.normalizedStep(value[index])
+      if (!step) return null
+      // Esc saves the run and leaves; no ground answers with it.
+      if (step.named === "ESC") return null
+      steps.push(step)
+    }
+    return steps
+  }
+
   function acceptedBinding(record, contexts, categories) {
     if (!record || typeof record !== "object" || Array.isArray(record)) return null
     var localId = root.safeText(record.localId, root.maxLocalIdChars)
@@ -74,13 +89,16 @@ Item {
     if (contexts.indexOf(context) === -1 || categories.indexOf(category) === -1) return null
     if (!Array.isArray(record.steps) || !record.steps.length
         || record.steps.length > root.maxSteps) return null
-    var steps = []
-    for (var index = 0; index < record.steps.length; index++) {
-      var step = TextKey.normalizedStep(record.steps[index])
-      if (!step) return null
-      // Esc saves the run and leaves; no ground answers with it.
-      if (step.named === "ESC") return null
-      steps.push(step)
+    var steps = root.resolvedSteps(record.steps)
+    if (!steps) return null
+    // The other ways in. One that cannot be read is left out on its own
+    // rather than costing the card the answer it does have.
+    var alternates = []
+    if (Array.isArray(record.alternates)) {
+      for (var other = 0; other < record.alternates.length && alternates.length < 4; other++) {
+        var sequence = root.resolvedSteps(record.alternates[other])
+        if (sequence) alternates.push(sequence)
+      }
     }
     return {
       localId: localId,
@@ -90,7 +108,7 @@ Item {
       descKey: root.safeText(record.descKey, 128),
       extras: [],
       notation: root.safeText(record.notation, root.maxLocalIdChars),
-      answer: { judgeMode: "text", context: context, steps: steps }
+      answer: { judgeMode: "text", context: context, steps: steps, alternates: alternates }
     }
   }
 
