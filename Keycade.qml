@@ -58,7 +58,7 @@ Item {
   property string feedbackKind: "idle"
   property string feedbackText: ""
   property bool revealChord: false
-  property string themeName: "tokyo"
+  property string themeName: Palettes.defaultName()
   property bool resumeAvailable: false
   property bool languageMenuOpen: false
   property bool soundMenuOpen: false
@@ -107,7 +107,8 @@ Item {
     root.activeSegmentStartedAt = 0
     root.languageMenuOpen = false
     root.soundMenuOpen = false
-    root.themeName = String(store.settings.theme || payload.theme || "tokyo")
+    root.themeName = Palettes.supported(store.settings.theme) ? String(store.settings.theme)
+        : Palettes.supported(payload.theme) ? String(payload.theme) : Palettes.defaultName()
     var savedLocale = String(store.settings.locale || "en")
     i18n.locale = root.requestedLocale
         || (i18n.supported.indexOf(savedLocale) !== -1 ? savedLocale : "en")

@@ -56,7 +56,7 @@ Item {
     return {
       schemaVersion: 3,
       locale: "en",
-      theme: "tokyo",
+      theme: Palettes.defaultName(),
       reducedMotion: false,
       feedbackSound: true,
       countdownSound: true,
@@ -75,7 +75,7 @@ Item {
     var result = root.defaultSettings()
     result.locale = ["en", "zh-CN"].indexOf(String(source.locale || "")) !== -1
         ? String(source.locale) : "en"
-    result.theme = Palettes.supported(source.theme) ? String(source.theme) : "tokyo"
+    result.theme = Palettes.supported(source.theme) ? String(source.theme) : Palettes.defaultName()
     result.reducedMotion = source.reducedMotion === true
     result.feedbackSound = source.feedbackSound === undefined
         ? (source.soundEnabled === undefined ? true : source.soundEnabled === true)

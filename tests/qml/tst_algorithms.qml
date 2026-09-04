@@ -309,8 +309,9 @@ TestCase {
     verify(!Palettes.supported("no-such-theme"))
     verify(!Palettes.supported(""))
     verify(!Palettes.supported(undefined))
-    compare(Palettes.palette("no-such-theme"), Palettes.palette("tokyo"))
-    compare(Palettes.palette("__proto__"), Palettes.palette("tokyo"))
+    verify(Palettes.supported(Palettes.defaultName()))
+    compare(Palettes.palette("no-such-theme"), Palettes.palette(Palettes.defaultName()))
+    compare(Palettes.palette("__proto__"), Palettes.palette(Palettes.defaultName()))
   }
 
   function test_tabAndBacktabNormalization() {
