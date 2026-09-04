@@ -68,7 +68,10 @@ Item {
   readonly property var currentBinding: currentCard ? currentCard.binding : null
   readonly property int runCardLimit: 24
   readonly property string profileId: "hyprland"
-  readonly property int excludeStampMs: 300
+  // Long enough to read the stamp, not long enough to feel like a penalty.
+  // 300 ms measured worse than it sounds: the 110 ms fade eats a third of it,
+  // so the words were legible for under two tenths of a second.
+  readonly property int excludeStampMs: 900
   readonly property bool reducedMotion: Boolean(store.settings.reducedMotion)
   readonly property int activeRunId: Number(store.stats.runs || 0) + 1
 
