@@ -6,7 +6,7 @@ Item {
 
   property bool feedbackEnabled: true
   property bool countdownEnabled: true
-  property real volume: 0.6
+  property real volume: 0.4
   property double lastFeedbackAt: 0
   property int feedbackCooldownMs: 180
 

@@ -360,7 +360,7 @@ Item {
   }
 
   function adjustSoundVolume(delta) {
-    var value = Math.round(Number(store.settings.soundVolume || 0.6) * 10) / 10
+    var value = Math.round(Number(store.settings.soundVolume || 0.4) * 10) / 10
     store.settings.soundVolume = Math.max(0.1, Math.min(1.0, value + Number(delta || 0)))
     store.settings = Object.assign({}, store.settings)
     store.saveSettings()
@@ -793,7 +793,7 @@ Item {
     id: sounds
     feedbackEnabled: Boolean(store.settings.feedbackSound)
     countdownEnabled: Boolean(store.settings.countdownSound)
-    volume: Number(store.settings.soundVolume || 0.6)
+    volume: Number(store.settings.soundVolume || 0.4)
   }
   StateStore {
     id: store
@@ -1080,7 +1080,7 @@ Item {
             SafeText {
               anchors.centerIn: parent
               text: store.settings.feedbackSound || store.settings.countdownSound
-                    ? i18n.t("soundVolume", { volume: Math.round(Number(store.settings.soundVolume || 0.6) * 100) })
+                    ? i18n.t("soundVolume", { volume: Math.round(Number(store.settings.soundVolume || 0.4) * 100) })
                     : i18n.t("soundOff")
               color: store.settings.feedbackSound || store.settings.countdownSound ? root.successColor : root.mutedColor
               font.family: "monospace"; font.bold: true; font.pixelSize: 10
@@ -1135,7 +1135,7 @@ Item {
             }
             SafeText {
               width: 130; height: 30; verticalAlignment: Text.AlignVCenter; horizontalAlignment: Text.AlignHCenter
-              text: i18n.t("volumePercent", { volume: Math.round(Number(store.settings.soundVolume || 0.6) * 100) })
+              text: i18n.t("volumePercent", { volume: Math.round(Number(store.settings.soundVolume || 0.4) * 100) })
               color: root.inkColor; font.family: "monospace"; font.pixelSize: 11; font.bold: true
             }
             Rectangle {
