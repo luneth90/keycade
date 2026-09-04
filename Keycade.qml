@@ -472,9 +472,14 @@ Item {
     return String(binding.actionName || "")
   }
 
+  // One line for an answer, wherever a list has no room to draw its steps.
+  // A chord renders exactly as it always did. A sequence separates its steps
+  // the way the card does, with the same mark: spaces alone made "[w" read as
+  // "[  w", which in a small monospace column looks like no key at all rather
+  // than like two keys typed one after the other.
   function answerDisplay(binding) {
     var groups = AnswerMatcher.stepLabels(binding ? binding.answer : null)
-    return groups.map(function(keys) { return keys.join(" + ") }).join("  ")
+    return groups.map(function(keys) { return keys.join(" + ") }).join(" › ")
   }
 
   function refreshProgressCounts() {
@@ -1368,12 +1373,12 @@ Item {
                     anchors.verticalCenter: parent.verticalCenter
                     spacing: 10
                     SafeText {
-                      width: 170; elide: Text.ElideRight; maximumLineCount: 1
+                      width: 196; elide: Text.ElideRight; maximumLineCount: 1
                       text: root.answerDisplay(excludedRow.modelData)
                       color: root.inkColor; font.family: "monospace"; font.pixelSize: 11; font.bold: true
                     }
                     SafeText {
-                      width: 230; elide: Text.ElideRight; maximumLineCount: 1
+                      width: 204; elide: Text.ElideRight; maximumLineCount: 1
                       text: root.actionName(excludedRow.modelData)
                       color: root.mutedColor; font.pixelSize: 11
                     }

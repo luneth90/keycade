@@ -1249,6 +1249,31 @@ TestCase {
     verify(!Normalizer.matches(item, Normalizer.normalizeEvent(wrong), {}))
   }
 
+  // What a delegate is actually handed. A model value reaches one through
+  // QML's variant conversion, which leaves an array-like object rather than an
+  // Array - and insisting on Array.isArray silently dropped every step, so
+  // each row in the set-aside drawer showed a description beside an empty
+  // column where its keys belong.
+  function test_answersSurviveTheTripThroughAModel() {
+    var step = { modMask: 65, key: "P", keycode: 0, matchMode: "logical" }
+    var converted = { judgeMode: "keysym", context: "", steps: { length: 1, 0: step } }
+    compare(AnswerMatcher.stepCount(converted), 1)
+    compare(AnswerMatcher.stepLabels(converted)[0].join(" + "), "SUPER + SHIFT + P")
+
+    var sequence = {
+      judgeMode: "text", context: "normal",
+      steps: { length: 2, 0: { mods: 0, text: "[" }, 1: { mods: 0, text: "w" } }
+    }
+    compare(AnswerMatcher.stepCount(sequence), 2)
+    compare(AnswerMatcher.stepLabels(sequence).map(function(keys) {
+      return keys.join(" + ")
+    }).join(" › "), "[ › w")
+    // And it is still judged, not just drawn.
+    var state = AnswerMatcher.begin()
+    compare(AnswerMatcher.advance(state, sequence, textEvent({ mods: 0, text: "[" }), {}), "progress")
+    compare(AnswerMatcher.advance(state, sequence, textEvent({ mods: 0, text: "w" }), {}), "hit")
+  }
+
   function test_answersAreBoundedInSteps() {
     var steps = []
     for (var index = 0; index < 20; index++) steps.push({ mods: 0, text: "a" })
@@ -1478,6 +1503,43 @@ TestCase {
     testI18n.locale = "en"
   }
 
+  // The drawer lists what you set aside, and a row is useless without the
+  // keys: "Switch to workspace 2" is not something you can look up.
+  function test_setAsideRowsStillCarryTheirKeysOnEveryGround() {
+    var kept = binding({ key: "1", arg: "1", description: "Switch to workspace 1" })
+    var dropped = binding({ key: "2", arg: "2", description: "Switch to workspace 2" })
+    var result = Eligibility.filter([kept, dropped], {
+      excludedBindings: ["hyprland:" + Normalizer.bindingId(dropped)]
+    })
+    compare(result.excluded.length, 1)
+    var row = result.excluded[0].binding
+    verify(row.answer !== undefined, "a set-aside Hyprland bind carries no answer")
+    compare(AnswerMatcher.stepLabels(row.answer)[0].join(" + "), "SUPER + 2")
+
+    testPack.leader = " "
+    testPack.refresh()
+    var packResult = PackEligibility.filter(testPack.bindings, {
+      profile: "lazyvim",
+      excludedBindings: ["lazyvim:normal/<C-h>"]
+    })
+    compare(packResult.excluded.length, 1)
+    var packRow = packResult.excluded[0].binding
+    verify(packRow.answer !== undefined, "a set-aside pack entry carries no answer")
+    compare(AnswerMatcher.stepLabels(packRow.answer)[0].join(" + "), "CTRL + h")
+
+    // A sequence has to read as a sequence in a list too. Joining its steps
+    // with spaces made "[w" look like one unreadable token rather than two
+    // keys typed one after the other.
+    var sequence = null
+    for (var index = 0; index < testPack.bindings.length; index++) {
+      if (testPack.bindings[index].localId === "normal/[w") sequence = testPack.bindings[index]
+    }
+    verify(sequence !== null)
+    var steps = AnswerMatcher.stepLabels(sequence.answer)
+    compare(steps.length, 2)
+    compare(steps.map(function(keys) { return keys.join(" + ") }).join(" › "), "[ › w")
+  }
+
   function test_aRunOnAPackGroundGoesThroughTheSameMachinery() {
     testPack.leader = " "
     testPack.refresh()
@@ -1507,6 +1569,43 @@ TestCase {
     verify(Stats.counters(stats, "lazyvim").coverageCursor !== 0)
     compare(Stats.counters(stats, "hyprland").coverageCursor, 0)
     compare(Object.keys(stats.bindings)[0].slice(0, 8), "lazyvim/")
+  }
+
+  // Every palette has to stay readable on the surfaces it is actually drawn
+  // on. The drawer lists set-aside shortcuts as ink on the cabinet with their
+  // descriptions in the muted tone, and two palettes had that tone sitting
+  // just under the line.
+  // The palette holds hex strings, which is what the QML colour properties are
+  // assigned from; parse them here rather than relying on a colour type.
+  function relativeLuminance(hex) {
+    var text = String(hex).replace("#", "")
+    var parts = []
+    for (var index = 0; index < 3; index++) {
+      var value = parseInt(text.substr(index * 2, 2), 16) / 255
+      parts.push(value <= 0.03928 ? value / 12.92 : Math.pow((value + 0.055) / 1.055, 2.4))
+    }
+    return 0.2126 * parts[0] + 0.7152 * parts[1] + 0.0722 * parts[2]
+  }
+
+  function contrastRatio(left, right) {
+    var a = relativeLuminance(left)
+    var b = relativeLuminance(right)
+    return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05)
+  }
+
+  function test_everyPaletteKeepsItsTextReadableOnTheCabinet() {
+    var names = Palettes.names()
+    verify(names.length >= 5)
+    for (var index = 0; index < names.length; index++) {
+      var palette = Palettes.palette(names[index])
+      var ink = contrastRatio(palette.inkColor, palette.cabinetColor)
+      var muted = contrastRatio(palette.mutedColor, palette.cabinetColor)
+      verify(ink >= 4.5, names[index] + " ink on cabinet is " + ink.toFixed(2))
+      verify(muted >= 4.5, names[index] + " muted on cabinet is " + muted.toFixed(2))
+      // The screen is the other surface text lands on.
+      verify(contrastRatio(palette.inkColor, palette.screenColor) >= 4.5, names[index])
+      verify(contrastRatio(palette.mutedColor, palette.screenColor) >= 4.5, names[index])
+    }
   }
 
   function test_builtinActionsHaveLocaleKeysAndCustomTextStaysRaw() {
