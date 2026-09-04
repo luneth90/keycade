@@ -12,6 +12,8 @@ ShellRoot {
       if (!ready || root.writeRequested) return
       root.writeRequested = true
       store.settings.locale = "zh-CN"
+      // The palette this one replaced must carry over, not reset to default.
+      store.settings.theme = "gruvbox"
       // Junk alongside one good entry: the sanitizer must keep exactly one.
       store.settings.excludedBindings = [
         "hyprland:64|LEFT|movefocus|l",

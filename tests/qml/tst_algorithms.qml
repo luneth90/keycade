@@ -296,7 +296,7 @@ TestCase {
     var names = Palettes.names()
     compare(names.length, 5)
     verify(names.indexOf("tokyo") !== -1)
-    verify(names.indexOf("gruvbox") !== -1)
+    verify(names.indexOf("cyberpunk") !== -1)
     for (var i = 0; i < names.length; i++) {
       var palette = Palettes.palette(names[i])
       for (var j = 0; j < Palettes.roles.length; j++) {

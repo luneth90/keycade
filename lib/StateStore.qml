@@ -75,7 +75,10 @@ Item {
     var result = root.defaultSettings()
     result.locale = ["en", "zh-CN"].indexOf(String(source.locale || "")) !== -1
         ? String(source.locale) : "en"
-    result.theme = Palettes.supported(source.theme) ? String(source.theme) : "tokyo"
+    // "gruvbox" named the warm palette that "cyberpunk" replaced, so a settings
+    // file still asking for it keeps a warm-led theme instead of being reset.
+    var storedTheme = String(source.theme || "") === "gruvbox" ? "cyberpunk" : String(source.theme || "")
+    result.theme = Palettes.supported(storedTheme) ? storedTheme : "tokyo"
     result.reducedMotion = source.reducedMotion === true
     result.feedbackSound = source.feedbackSound === undefined
         ? (source.soundEnabled === undefined ? true : source.soundEnabled === true)
