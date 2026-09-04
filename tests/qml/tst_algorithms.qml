@@ -8,6 +8,7 @@ import "../../lib/Stats.js" as Stats
 import "../../lib/Categorizer.js" as Categorizer
 import "../../lib/ActionLocalizer.js" as Actions
 import "../../lib/Session.js" as Session
+import "../../lib/DotFont.js" as DotFont
 import "../fixtures/canonical-keys.js" as CanonicalKeys
 
 TestCase {
@@ -261,6 +262,30 @@ TestCase {
     compare(Session.withoutExclusion(list, "hyprland", "64|K|workspace|1").length, 0)
     compare(Session.withoutExclusion(list, "hyprland", "64|K|missing|1").length, 1)
     compare(Session.withoutExclusion(list, "lazyvim", "64|K|workspace|1").length, 1)
+  }
+
+  // The HUD draws these cells itself, so a row wider than five bits or a
+  // glyph with the wrong number of rows would silently deform the digit.
+  function test_dotFontGlyphsAreFiveBySeven() {
+    var supported = DotFont.supported()
+    compare(supported.length, 12)
+    for (var i = 0; i < supported.length; i++) {
+      var rows = DotFont.glyph(supported[i])
+      compare(rows.length, 7, supported[i])
+      for (var j = 0; j < rows.length; j++) {
+        verify(rows[j] >= 0)
+        verify(rows[j] <= 0x1f)
+      }
+    }
+    for (var digit = 0; digit <= 9; digit++)
+      verify(supported.indexOf(String(digit)) !== -1)
+
+    // Unknown input renders blank instead of throwing: this feeds a decoration.
+    var blank = DotFont.glyph("W")
+    compare(blank.length, 7)
+    for (var k = 0; k < blank.length; k++) compare(blank[k], 0)
+    compare(DotFont.glyph(undefined).length, 7)
+    compare(DotFont.glyph("__proto__")[0], 0)
   }
 
   function test_tabAndBacktabNormalization() {

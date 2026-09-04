@@ -47,6 +47,7 @@ Item {
   property double deadline: 0
   property real energy: 1
   property int lastCountdownBeat: 0
+  property int countdownSeconds: 0
   property bool cardLocked: false
   property bool correctionRequired: false
   property bool cardErrorSoundPlayed: false
@@ -562,6 +563,7 @@ Item {
     root.feedbackText = i18n.t(root.currentCard.tier === "guided" ? "copyChord" : "waiting")
     root.cardStartedAt = Date.now()
     root.lastCountdownBeat = 0
+    root.countdownSeconds = 0
     if (root.currentCard.queue === "unseen") {
       Scheduler.markCovered(root.eligibleBindings, store.stats, root.currentBinding.id)
       store.saveStats()
@@ -826,6 +828,7 @@ Item {
       var duration = root.deadline - root.cardStartedAt
       root.energy = Math.max(0, remaining / duration)
       var beat = Math.ceil(remaining / 1000)
+      root.countdownSeconds = Math.max(0, Math.min(99, beat))
       if (beat > 0 && beat <= 3 && beat !== root.lastCountdownBeat) {
         root.lastCountdownBeat = beat
         sounds.playCountdown(beat === 1)
@@ -1538,6 +1541,17 @@ Item {
                 SafeText { visible: keyDatum.index < (root.currentBinding ? Normalizer.display(root.currentBinding).split(" + ").length - 1 : 0); text: "+"; color: root.mutedColor; font.family: "monospace"; font.pixelSize: 20; font.bold: true; anchors.verticalCenter: parent.verticalCenter }
               }
             }
+          }
+        }
+        Item {
+          width: parent.width; height: 30
+          visible: root.deadline > 0
+          DotNumber {
+            anchors.centerIn: parent
+            value: String(root.countdownSeconds)
+            cell: 3
+            gap: 1
+            color: root.energy < 0.25 ? root.dangerColor : root.primaryColor
           }
         }
         Row {
