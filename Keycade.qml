@@ -27,7 +27,6 @@ Item {
   property string errorMessage: ""
   property bool guardReady: false
   property bool escapeDown: false
-  property bool startRequested: false
   property string requestedLocale: ""
 
   property var eligibleBindings: []
@@ -124,7 +123,6 @@ Item {
     root.view = "loading"
     root.errorMessage = ""
     root.guardReady = false
-    root.startRequested = false
     root.requestedLocale = payload.locale && i18n.supported.indexOf(payload.locale) !== -1
         ? String(payload.locale) : ""
     root.activeSegmentStartedAt = 0
@@ -232,10 +230,6 @@ Item {
     }
     root.view = "home"
     root.feedbackText = i18n.t("ready")
-    if (root.startRequested) {
-      root.startRequested = false
-      Qt.callLater(function() { root.startPrimary() })
-    }
   }
 
   // The one place eligibility is computed. Excluding and restoring both go
@@ -1095,9 +1089,13 @@ Item {
           event.accepted = true
           return
         }
+        // Swallowed, not queued. Home is where the training ground is picked,
+        // so no path may skip it: queuing a start here rendered home for a
+        // single frame and began a run on whichever ground happened to be
+        // active, which put the one control that chooses the deck out of
+        // reach of anyone who launches and presses Enter in one motion.
         if (root.view === "loading"
             && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter)) {
-          root.startRequested = true
           event.accepted = true
           return
         }
