@@ -10,73 +10,62 @@
 
 ![LazyVim 的 leader 连打](docs/screenshots/keycade-lazyvim-zh-CN.png)
 
-Keycade 是一个原生 Omarchy 覆盖层，把快捷键编成简短的自适应回忆练习。
-正确输入只在本地识别，不会派发或执行原快捷键动作。
+Keycade 是 Omarchy 的原生覆盖层，把快捷键编成一局局简短的记忆练习。
+按键只在本地判定，不会触发它原本的动作。
 
-它带六个**训练场**，在首页像街机选机台一样切换，一排机台上能同时看到各自的进度。
-每个训练场各有自己的牌组、自己的进度、自己的掌握度：
+六个训练场，在首页像街机选机台一样切换。每个各有自己的牌组、进度和掌握度，
+一排看下来就是全部：
 
 | 训练场 | 快捷键从哪来 |
 | --- | --- |
-| **Hyprland** | 你这台机器上真正生效的快捷键，从运行中的合成器读取 |
-| **herdr** | 通过 Omarchy 的只读清单读取本机真正生效的键位 |
-| **tmux** | server 运行时读取真实 prefix 与带说明键位表；未运行时读取本地字面量 prefix，并配合内置键位表 |
-| **VIM** | 依据 Neovim runtime help 校验的操作符、移动、文本对象及组合语法 |
-| **NEOVIM** | 从干净 Neovim 实例采集的内置映射 |
-| **LazyVim** | 官方发布的键位，并按 leader、extras 和顶格字面量改键校准 |
+| **Hyprland** | 这台机器上真正生效的快捷键，从运行中的合成器读取 |
+| **herdr** | 这台机器上真正生效的键位，来自 Omarchy 的只读清单 |
+| **tmux** | server 在跑就读它真正生效的前缀和键位表，否则读本地配置里的前缀，配内置表 |
+| **VIM** | 操作符、移动、文本对象和它们的组合，每条都对着 Neovim 的 help 核过 |
+| **NEOVIM** | 从干净 Neovim 实例采集的内置键位 |
+| **LazyVim** | 官方发布的键位，按你的 leader、extras 和顶格改键校准 |
 
-新装和升级后都停在 Hyprland；其他训练场想练的时候再选。
+新装和升级后都停在 Hyprland，其他随时可以切过去。
 
 ## 核心功能
 
-- 六个机台里有三个直接读这台机器，而不是发一套通用题库：Hyprland 读运行中的合成器，
-  herdr 读 Omarchy 自带的只读清单，tmux 读已经在跑的 server。
-- 另外三个用上游自己发布的表：Vim 的语法和 Neovim 的内置映射到哪台机器上都一样，
-  LazyVim 的键位则按你自己的 leader、extras 和顶格改键校准。
-- 和弦与连打都判——`<leader>ff`、`gcc`、`C-b %`——卡片按步显示，打对一步亮一步。
-- 使用 Exclusive 焦点与 Wayland Shortcuts Inhibitor 保护全屏练习输入，避免
-  触发桌面动作。
-- 将未学、到期、薄弱和已掌握快捷键组成一局连续的 24 张卡，不设置人为波次。
-- 持续游玩可以覆盖全部未排除快捷键，并按间隔复习计划重新出现。
-- 最近 2 次首次作答连续正确且正确记录跨至少 2 个不同对局后，快捷键进入掌握。
-- 答错后持续显示正确答案，必须正确跟按，并在本局稍后再次复测。
-- 本地保存学习进度、恢复中断对局、显示总掌握进度，并在首次达到 100% 时展示
-  一次性恭喜结算。
-- 可以排除键盘按不出、或者不想练的快捷键，随时一键恢复，进度不丢。
-- 可配置的键——LazyVim 的 leader、tmux 的 prefix——直接从本机真实配置解析，
-  不需要用户再维护一份手工选择；解析结果直接用在牌上，不在顶栏另占一块。
-- 内置英语和简体中文、本地反馈/倒计时音效，以及五套配色：Catppuccin、
-  Tokyo Night、Gruvbox、Everforest、Ristretto。
-- 街机质感：点阵倒计时与计数、屏幕扫描线、跑马灯边框，以及只作展示、
-  不参与调度的连击计数。开启「减少动效」后动效停止，但所有读数照常显示。
+- 前三个训练场直接读这台机器，不是发一套通用题库；后三个用上游发布的表。
+- 连打和组合键一样判——`<leader>ff`、`gcc`、`C-b %`——卡片按步显示，打对一步亮一步。
+- 练习时按键只有 Keycade 收得到，不会触发桌面上的任何动作。
+- 一局 24 张，把没学过的、到期的、生疏的和已掌握的混在一起。持续练能覆盖全部，
+  并按间隔复习重新出现。
+- 连续两次一遍打对、且跨了两局，才算掌握。
+- 答错后答案留在屏幕上，要跟着按一遍，本局稍后还会再考。
+- 进度存在本地，中断的对局能续上；全部掌握时有一次庆祝。
+- 按不出或不想练的快捷键可以排除，随时放回，进度不丢。
+- leader 和 prefix 从你自己的配置里读出来，不用再手工设一遍。
+- 中英双语、本地音效，五套配色：Catppuccin、Tokyo Night、Gruvbox、Everforest、Ristretto。
+- 街机质感：点阵数字、扫描线、跑马灯边框。开「减少动效」只停动画，读数照旧。
 
-F 功能键、XF86 媒体/设备键、Print/Pause/SysRq、独立的 Home/End/Insert/Page/Delete、
-有歧义、危险或无法可靠识别的绑定会被排除——紧凑配列键盘不保证有这些键。
+紧凑配列键盘不保证有的键会被排除：F 功能键、媒体键、Print/Pause/SysRq、
+独立的 Home/End/Insert/Page/Delete，以及有歧义或认不准的绑定。
+答案是单独一个 Esc 的也排除——松开 Esc 就存盘退出，这张卡永远清不掉。
+带修饰键的 Esc 是另一回事，照常出题。
 
 ## 系统要求
 
 - Omarchy 4.x
-- Quickshell 0.3.1，并包含
-  `Quickshell.Wayland._ShortcutsInhibitor.ShortcutInhibitor`
+- Quickshell 0.3.1，含 `Quickshell.Wayland._ShortcutsInhibitor.ShortcutInhibitor`
 - Hyprland，且 `binds:disable_keybind_grabbing = false`
 - Python 3
 
-如果无法确认输入保护已经激活，Keycade 会拒绝开始练习，不会退化为不安全的
-仅焦点保护模式。
+确认不了输入保护已经生效时，Keycade 拒绝开始，不会退到只靠焦点的不安全模式。
 
 ## 键盘布局
 
-Keycade 按**按下的物理键**判定，与 Hyprland 决定快捷键是否触发的方式一致：
-一条绑定指的是「不按修饰键时产生该 keysym 的那个键」，与按住 Shift 后它打出
-什么字符无关。这在非 US 布局上很关键——德语下 `SUPER + SHIFT + comma` 指的
-是键帽上写着 `,` 的那个键，尽管按住 Shift 时它打出的是 `;`。
+Keycade 按**按下的物理键**判定，和 Hyprland 决定绑定是否触发的方式一致：
+一条绑定指的是「不按修饰键时产生那个 keysym 的键」，跟按住 Shift 后它打出什么无关。
+这在非 US 布局上很关键——德语下 `SUPER + SHIFT + comma` 指的是键帽上写着 `,` 的那个键，
+虽然按住 Shift 它打出的是 `;`。
 
-布局取自 Hyprland 自己的 `input:kb_*` 配置。如果一条绑定的按键在当前布局上
-没有对应的物理键，它本来就按不出来，Keycade 不会拿它出题。
-
-有两种配置会退回按字符比较，也就是旧版本一直以来的方式：通过
-`input:kb_file` 指定的键盘映射文件，以及 `~/.xkb` 或 `~/.config/xkb` 下的自定义
-布局。Keycade 不读取 Hyprland 输出以外的文件，因此选择退让而不是猜测。
+布局取自 Hyprland 自己的 `input:kb_*`。当前布局上根本按不出来的绑定不会出题。
+两种情况会退回按字符比较：`input:kb_file` 指定的键盘映射，以及 `~/.xkb`、
+`~/.config/xkb` 下的自定义布局——Hyprland 输出以外的文件 Keycade 不读，宁可退让也不猜。
 
 ## 安装
 
@@ -84,8 +73,7 @@ Keycade 按**按下的物理键**判定，与 Hyprland 决定快捷键是否触�
 omarchy plugin add https://github.com/luneth90/keycade.git --enable
 ```
 
-这是 Omarchy 的标准插件安装路径。然后向 `~/.config/hypr/bindings.lua`
-添加快捷键，例如：
+然后往 `~/.config/hypr/bindings.lua` 加一个快捷键，例如：
 
 ```bash
 echo 'o.bind("SUPER + SHIFT + K", "Keycade", "omarchy-shell shell summon luneth90.keycade '\''{}'\''")' >> ~/.config/hypr/bindings.lua
@@ -98,67 +86,48 @@ omarchy plugin update luneth90.keycade
 omarchy restart shell
 ```
 
-重启这一步必须做——只更新不重启，Keycade 不一定会刷新。
+重启这一步必须做：只更新不重启，Keycade 不一定会刷新。
 
 ## 使用
 
 - 按 `Super + Shift + K` 启动，或执行
   `omarchy-shell shell summon luneth90.keycade '{}'`。
-- 按 Enter 开始或继续对局。
-- 释放 Esc 保存当前对局并安全退出。这个操作只在单独按 Esc（不带任何修饰键）时触发；
-  带修饰键的 Esc 组合（例如 `Super + Esc`）会被当作普通快捷键处理，
-  不会跟系统里同样用到 Esc 的绑定（比如 Super + Esc 打开系统菜单）冲突，
-  练习到这个组合时也能正常答题。
-- 在首页选训练场——Hyprland、herdr、tmux、VIM、NEOVIM 或 LazyVim——再按回车。
-  每个机台都显示自己的进度，不只当前这个，一眼就能看完；从没开过的机台显示「—」而不是 0。
-- 一副牌属于它是从哪个训练场发的，读数也是。想换个机台练，按「← 返回」：
-  本局会像退出覆盖层一样存好，再点回这个机台就从断点继续。
-- 使用顶部菜单切换语言、声音、音量和配色。内置五套配色，选择会被记住。
-- 遇到键盘按不出、或者干脆不想练的快捷键，点顶栏的 `✕ 排除此键`：它会永久离开
-  训练题库，也不再计入掌握进度——键盘上没有的键不会再卡住一整局，也不会再挡住
-  100% 通关。
-- 点顶栏的「已排除」查看放到一边的快捷键，可随时放回。恢复后历史进度原样保留，
-  排除不会让你已经学会的东西作废。列表有数量上限，并且最后一条快捷键不允许排除。
+- 在首页选机台，按回车开始或继续。每个机台都显示自己的进度，从没开过的显示「—」。
+- 想换个机台，按「← 返回」：本局照常存好，切回来从断点继续。
+- 顶栏切换语言、声音、音量和配色，选择会记住。
+- 按不出或不想练的快捷键，点顶栏 `✕ 排除此键`，它就不再出题也不计入掌握。
+  点「已排除」可以随时放回，历史进度原样保留。列表有上限，最后一条不允许排除。
+- 松开 Esc 存盘退出。只有单独按 Esc 才触发；`Super + Esc` 这类组合按普通快捷键处理，
+  所以练到它的时候也能正常作答。
 
-学习进度保存在 `${XDG_STATE_HOME:-$HOME/.local/state}/omarchy/keycade/`，更新插件不会丢失。
+进度存在 `${XDG_STATE_HOME:-$HOME/.local/state}/omarchy/keycade/`，更新插件不会丢。
 
 ## 卸载
-
-卸载插件并保留学习进度：
 
 ```bash
 omarchy plugin remove luneth90.keycade
 ```
 
-学习进度仍保存在 `${XDG_STATE_HOME:-$HOME/.local/state}/omarchy/keycade/`。Keycade
-有意不提供在卸载时删除用户状态或修改 Hyprland 配置的脚本。
+进度仍在 `${XDG_STATE_HOME:-$HOME/.local/state}/omarchy/keycade/`。Keycade 有意不提供
+在卸载时删除用户数据或修改 Hyprland 配置的脚本。
 
 ## 开发与测试
 
-### 应用级训练场会从本机读什么
+### 从本机读什么
 
-键位表是上游默认。Keycade 不再让用户为可配置的 leader / prefix 另维护一份人工选择，
-而是从本机配置中形状固定、可静态证明的部分直接解析；只有无法确定时才回退到上游默认值。
-这些键直接用在牌上。
+键位表用上游默认，本机配置只用来校准 leader 和 prefix：读固定路径下形状固定、
+能静态确认的写法，读不准就跳过并计数，回退到上游默认。不跑 Lua，不起编辑器，
+不跟 `require` 链。
 
-LazyVim 读取器兼容常见的等价字面量写法：`vim.g` 的点号或下标赋值、写死参数的
-`nvim_set_var` / `vim.cmd("let …")`，以及字面量 `vim.keycode` 包装。
-`lua/config/keymaps.lua` 支持直接 `vim.keymap.set/del`、旧式全局 API、括号配平的多行调用、
-字面量模式数组和 options table，以及允许列表内可静态确认的局部别名。动态值、块内调用、
-未知 wrapper 与 `require` 链全部跳过并计数；不跑 Lua，也不起编辑器。
+tmux 是唯一的实时查询：`has-session` 确认 server 已经在跑之后，用 `show-options`
+读实际生效的 `prefix` / `prefix2`，再用 `list-keys` 读键位。没有 server 就只静态解析
+`~/.config/tmux/tmux.conf` 和 `~/.tmux.conf` 里的全局 `set`，键位仍用内置表。
+两个前缀都会触发，所以都判对；其中如果有官方默认 `C-b`，卡面显示它。
 
-tmux 是唯一的实时查询：`has-session` 确认 server 已经存在后，先用 `show-options` 读取实际
-生效的 `prefix` / `prefix2`，再用 `list-keys` 读取带说明键位。没有 server 时只静态解析
-固定的 XDG 与 `~/.tmux.conf` 路径里的全局字面量 `set` / `set-option`，绑定仍用内置表。
-tmux 两个前缀都会触发，所以两个都判对：实际启用的前缀里如果有官方默认 `C-b`，
-卡面就显示 `C-b`，另一个作为备选答案；只设了别的前缀就完全按配置来。
-静态证明不了的 prefix 回退到官方默认 `C-b`。
+### 词条包
 
-### 应用级词条包
-
-LazyVim、tmux、VIM 与 NEOVIM 的回退词条包是**在维护者机器上采集、以可 review 的
-JSON 提交进仓库**的静态数据。用户机器上不会运行词条包生成流程，运行时也不联网；
-上一节所述的有界本机校准与这条构建流水线彼此独立。
+LazyVim、tmux、VIM、NEOVIM 的内置表是在维护者机器上采集、以可 review 的 JSON
+提交进仓库的静态数据。用户机器上不跑采集，运行时也不联网。
 
 上游发新版时重新采集，然后看 JSON 的 git diff 对账：
 
@@ -177,7 +146,9 @@ python3 tools/build_packs.py --collect vim --runtime /usr/share/nvim/runtime \
 ```
 
 `-f /dev/null` 不能省：不加它 tmux 会拉起 server 并 source 你自己的 `tmux.conf`，
-采到的就是你的键位，而不是人人都有的默认键位。
+采到的就成了你的键位，而不是人人都有的默认键位。
+
+### 测试与截图
 
 ```bash
 python3 -m unittest discover -s tests -p 'test_*.py' -v
@@ -188,6 +159,7 @@ QT_QPA_PLATFORM=offscreen QT_QPA_PLATFORMTHEME= QT_STYLE_OVERRIDE=Fusion \
 ./tests/test_ground_switching_qml.sh
 ./tests/test_run_counters_qml.sh
 /usr/lib/qt6/bin/qmllint -I /usr/lib/qt6/qml Keycade.qml lib/*.qml lib/sources/*.qml dev/InputProbe.qml
+./tools/shoot-screenshots
 ```
 
 ## 许可证
