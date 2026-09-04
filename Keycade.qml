@@ -11,6 +11,7 @@ import "lib/Stats.js" as Stats
 import "lib/Categorizer.js" as Categorizer
 import "lib/ActionLocalizer.js" as Actions
 import "lib/Session.js" as Session
+import "lib/Palettes.js" as Palettes
 
 Item {
   id: root
@@ -62,6 +63,7 @@ Item {
   property bool languageMenuOpen: false
   property bool soundMenuOpen: false
   property bool excludedMenuOpen: false
+  property bool themeMenuOpen: false
   property var excludedRows: []
   property int staleExcludedCount: 0
   property bool excludeStampVisible: false
@@ -79,16 +81,17 @@ Item {
   readonly property bool reducedMotion: Boolean(store.settings.reducedMotion)
   readonly property int activeRunId: Number(store.stats.runs || 0) + 1
 
-  readonly property color voidColor: themeName === "gruvbox" ? "#141412" : "#080b14"
-  readonly property color cabinetColor: themeName === "gruvbox" ? "#3c3836" : "#242a46"
-  readonly property color screenColor: themeName === "gruvbox" ? "#1b1b18" : "#0d1224"
-  readonly property color inkColor: themeName === "gruvbox" ? "#fbf1c7" : "#f1f4ff"
-  readonly property color mutedColor: themeName === "gruvbox" ? "#bdae93" : "#9aa5d1"
-  readonly property color primaryColor: themeName === "gruvbox" ? "#fabd2f" : "#7aa2f7"
-  readonly property color secondaryColor: themeName === "gruvbox" ? "#d3869b" : "#bb9af7"
-  readonly property color successColor: themeName === "gruvbox" ? "#b8bb26" : "#9ece6a"
-  readonly property color dangerColor: themeName === "gruvbox" ? "#fb4934" : "#f7768e"
-  readonly property color coinColor: themeName === "gruvbox" ? "#fe8019" : "#e0af68"
+  readonly property var themePalette: Palettes.palette(root.themeName)
+  readonly property color voidColor: root.themePalette.voidColor
+  readonly property color cabinetColor: root.themePalette.cabinetColor
+  readonly property color screenColor: root.themePalette.screenColor
+  readonly property color inkColor: root.themePalette.inkColor
+  readonly property color mutedColor: root.themePalette.mutedColor
+  readonly property color primaryColor: root.themePalette.primaryColor
+  readonly property color secondaryColor: root.themePalette.secondaryColor
+  readonly property color successColor: root.themePalette.successColor
+  readonly property color dangerColor: root.themePalette.dangerColor
+  readonly property color coinColor: root.themePalette.coinColor
 
   function open(payloadJson) {
     if (root.opened) return
@@ -157,7 +160,7 @@ Item {
     // on a cold shell the overlay can be summoned before settings arrive and
     // keep the default palette for that whole session. This runs once the
     // store is ready, which is the point the saved theme is actually known.
-    root.themeName = ["tokyo", "gruvbox"].indexOf(String(store.settings.theme || "")) !== -1
+    root.themeName = Palettes.supported(store.settings.theme)
         ? String(store.settings.theme) : root.themeName
     root.applyEligibility()
     if (!root.eligibleBindings.length && !root.trainingLockedOut) {
@@ -351,12 +354,13 @@ Item {
     root.languageMenuOpen = false
   }
 
-  function cycleTheme() {
-    var themes = ["tokyo", "gruvbox"]
-    root.themeName = themes[(themes.indexOf(root.themeName) + 1) % themes.length]
+  function selectTheme(name) {
+    if (!Palettes.supported(name)) return
+    root.themeName = String(name)
     store.settings.theme = root.themeName
     store.settings = Object.assign({}, store.settings)
     store.saveSettings()
+    root.themeMenuOpen = false
   }
 
   function toggleSound() {
@@ -1077,6 +1081,7 @@ Item {
                 root.excludedMenuOpen = !root.excludedMenuOpen
                 root.soundMenuOpen = false
                 root.languageMenuOpen = false
+                root.themeMenuOpen = false
               }
             }
           }
@@ -1097,6 +1102,7 @@ Item {
                 root.soundMenuOpen = !root.soundMenuOpen
                 root.languageMenuOpen = false
                 root.excludedMenuOpen = false
+                root.themeMenuOpen = false
               }
             }
           }
@@ -1110,13 +1116,28 @@ Item {
                 root.languageMenuOpen = !root.languageMenuOpen
                 root.soundMenuOpen = false
                 root.excludedMenuOpen = false
+                root.themeMenuOpen = false
               }
             }
           }
           Rectangle {
-            width: 112; height: 36; color: root.screenColor; border.width: 3; border.color: root.voidColor
-            SafeText { anchors.centerIn: parent; text: root.themeName.toUpperCase(); color: root.inkColor; font.family: "monospace"; font.bold: true; font.pixelSize: 11 }
-            MouseArea { anchors.fill: parent; onClicked: root.cycleTheme() }
+            id: themeButton
+            width: 148; height: 36; color: root.screenColor; border.width: 3; border.color: root.voidColor
+            SafeText {
+              anchors.centerIn: parent; width: parent.width - 12
+              horizontalAlignment: Text.AlignHCenter; elide: Text.ElideRight; maximumLineCount: 1
+              text: root.themeName.toUpperCase() + " ▾"
+              color: root.inkColor; font.family: "monospace"; font.bold: true; font.pixelSize: 11
+            }
+            MouseArea {
+              anchors.fill: parent
+              onClicked: {
+                root.themeMenuOpen = !root.themeMenuOpen
+                root.soundMenuOpen = false
+                root.languageMenuOpen = false
+                root.excludedMenuOpen = false
+              }
+            }
           }
         }
       }
@@ -1244,6 +1265,36 @@ Item {
               color: root.screenColor; border.width: 2; border.color: root.mutedColor
               SafeText { anchors.centerIn: parent; text: i18n.t("excludedClearStale"); color: root.inkColor; font.family: "monospace"; font.pixelSize: 9; font.bold: true }
               MouseArea { anchors.fill: parent; onClicked: root.clearStaleExclusions() }
+            }
+          }
+        }
+      }
+
+      Rectangle {
+        id: themeMenu
+        x: topbar.x + topControls.x + themeButton.x + (themeButton.width - width) / 2
+        y: topbar.y + topbar.height + 8
+        width: 176; height: Palettes.names().length * 36 + 8
+        visible: root.themeMenuOpen
+        z: 100
+        color: root.cabinetColor; border.width: 3; border.color: root.primaryColor
+        Column {
+          anchors.fill: parent; anchors.margins: 4
+          Repeater {
+            model: Palettes.names()
+            delegate: Rectangle {
+              id: themeOption
+              required property var modelData
+              width: parent.width; height: 36
+              color: themeOption.modelData === root.themeName ? root.primaryColor : root.screenColor
+              SafeText {
+                anchors.centerIn: parent; width: parent.width - 12
+                horizontalAlignment: Text.AlignHCenter; elide: Text.ElideRight; maximumLineCount: 1
+                text: String(themeOption.modelData).toUpperCase()
+                color: themeOption.modelData === root.themeName ? root.voidColor : root.inkColor
+                font.family: "monospace"; font.pixelSize: 11; font.bold: true
+              }
+              MouseArea { anchors.fill: parent; onClicked: root.selectTheme(themeOption.modelData) }
             }
           }
         }

@@ -9,6 +9,7 @@ import "../../lib/Categorizer.js" as Categorizer
 import "../../lib/ActionLocalizer.js" as Actions
 import "../../lib/Session.js" as Session
 import "../../lib/DotFont.js" as DotFont
+import "../../lib/Palettes.js" as Palettes
 import "../fixtures/canonical-keys.js" as CanonicalKeys
 
 TestCase {
@@ -286,6 +287,30 @@ TestCase {
     for (var k = 0; k < blank.length; k++) compare(blank[k], 0)
     compare(DotFont.glyph(undefined).length, 7)
     compare(DotFont.glyph("__proto__")[0], 0)
+  }
+
+  // Every palette has to answer for every role: a missing one would render as
+  // a transparent colour rather than failing, and an unknown theme name from a
+  // newer settings file must land somewhere legible instead of nowhere.
+  function test_everyPaletteDefinesEveryRole() {
+    var names = Palettes.names()
+    compare(names.length, 5)
+    verify(names.indexOf("tokyo") !== -1)
+    verify(names.indexOf("gruvbox") !== -1)
+    for (var i = 0; i < names.length; i++) {
+      var palette = Palettes.palette(names[i])
+      for (var j = 0; j < Palettes.roles.length; j++) {
+        var value = palette[Palettes.roles[j]]
+        verify(typeof value === "string", names[i] + "." + Palettes.roles[j])
+        verify(/^#[0-9a-f]{6}$/.test(value), names[i] + "." + Palettes.roles[j] + " = " + value)
+      }
+      verify(Palettes.supported(names[i]))
+    }
+    verify(!Palettes.supported("no-such-theme"))
+    verify(!Palettes.supported(""))
+    verify(!Palettes.supported(undefined))
+    compare(Palettes.palette("no-such-theme"), Palettes.palette("tokyo"))
+    compare(Palettes.palette("__proto__"), Palettes.palette("tokyo"))
   }
 
   function test_tabAndBacktabNormalization() {
