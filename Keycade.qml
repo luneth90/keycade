@@ -83,7 +83,6 @@ Item {
   property bool soundMenuOpen: false
   property bool excludedMenuOpen: false
   property bool themeMenuOpen: false
-  property bool optionsMenuOpen: false
   property var excludedRows: []
   property int staleExcludedCount: 0
   property bool excludeStampVisible: false
@@ -456,7 +455,6 @@ Item {
     store.settings = Object.assign({}, store.settings)
     store.saveSettings()
     root.themeMenuOpen = false
-    root.optionsMenuOpen = false
   }
 
   function toggleSound() {
@@ -495,74 +493,10 @@ Item {
   // before that would keep pointing at a detached copy of the defaults.
   function profileCounters() { return Stats.counters(store.stats, root.profileId) }
 
-  // The active ground's configurable keys, resolved from its real config.
-  // "leader ␣" / "prefix C-b" - what this ground's configurable keys are set
-  // to right now, short enough for a button.
-  function optionSummary() {
-    var names = Profiles.optionNames(root.profileId)
-    var parts = []
-    for (var index = 0; index < names.length; index++)
-      parts.push(names[index] + " " + root.optionLabel(root.optionValue(names[index])))
-    return parts.join("  ")
-  }
-
-  // A space has to be visible to be a readable detected value, and one that
-  // resolves to nothing - tmux's spare prefix on a machine that sets only
-  // one - has to read as an absence rather than as a blank cell.
-  function optionLabel(value) {
-    var text = String(value === undefined || value === null ? "" : value)
-    if (!text.length) return "—"
-    return text === " " ? "␣" : text
-  }
-
-  // One read-only row per configurable key: value and provenance.
-  function optionRows() {
-    var names = Profiles.optionNames(root.profileId)
-    var rows = []
-    for (var index = 0; index < names.length; index++) {
-      var name = names[index]
-      rows.push({
-        name: name,
-        value: root.optionValue(name),
-        origin: root.optionOrigin(name),
-        unreadable: root.optionUnreadable(name)
-      })
-    }
-    return rows
-  }
-
   function detectedOptions() {
     if (root.profileId === "tmux" && tmuxLive.pack && tmuxLive.options)
       return tmuxLive.options
     return appConfig.options || ({})
-  }
-
-  // Where a value came from, which is what the menu shows and what decides
-  // whether anything needs the reader's attention.
-  //   "machine"  read from this ground's own configuration
-  //   "default"  the upstream default, because nothing on this machine changed
-  //              it - or because whatever did could not be read
-  function optionOrigin(name) {
-    var detected = root.detectedOptions()
-    if (detected[name] !== undefined && Profiles.optionUsable(detected[name]))
-      return "machine"
-    return "default"
-  }
-
-  // "never set" means the upstream default applies and nothing needs looking
-  // at. Any other reason means the machine changed this and the change could
-  // not be read, which is the one case worth telling the reader about.
-  function optionUnreadable(name) {
-    if (root.profileId === "tmux" && tmuxLive.pack) return false
-    var detected = root.detectedOptions()
-    if (detected[name] !== undefined && !Profiles.optionUsable(detected[name])) return true
-    var reason = String(appConfig.skipped[name] || "")
-    return Boolean(reason) && reason !== "never assigned" && reason !== "never set"
-  }
-
-  function optionValue(name) {
-    var resolved = root.profileOptions()
-    return resolved[name] === undefined ? "" : String(resolved[name])
   }
 
   // What the source is handed: every declared option, resolved automatically.
@@ -602,17 +536,6 @@ Item {
     packs.overrides = root.profileId === "lazyvim" ? appConfig.bindings : []
     packs.packOverride = overridePack || null
     packs.refresh()
-  }
-
-  function mappingConfigNotice() {
-    if (root.profileId !== "lazyvim") return ""
-    return i18n.t("mappingConfigNotice", {
-      read: Math.max(0, appConfig.bindings.length - packs.customSkipped),
-      skipped: appConfig.bindingSkipped + packs.customSkipped,
-      added: packs.customAdded,
-      changed: packs.customChanged,
-      deleted: packs.customDeleted
-    })
   }
 
   // A source finished. The eligible set is rebuilt from it whatever screen we
@@ -1435,7 +1358,6 @@ Item {
                 root.soundMenuOpen = false
                 root.languageMenuOpen = false
                 root.themeMenuOpen = false
-                root.optionsMenuOpen = false
               }
             }
           }
@@ -1457,31 +1379,6 @@ Item {
                 root.languageMenuOpen = false
                 root.excludedMenuOpen = false
                 root.themeMenuOpen = false
-                root.optionsMenuOpen = false
-              }
-            }
-          }
-          // Read-only provenance for the ground's configurable keys. Values
-          // come from the real application config, never from a second picker.
-          Rectangle {
-            id: optionsButton
-            visible: Profiles.optionNames(root.profileId).length > 0
-            width: Math.max(112, optionsLabel.implicitWidth + 22); height: 36
-            color: root.screenColor; border.width: 3; border.color: root.voidColor
-            SafeText {
-              id: optionsLabel
-              anchors.centerIn: parent
-              text: root.optionSummary() + " ⓘ"
-              color: root.inkColor; font.family: "monospace"; font.bold: true; font.pixelSize: 10
-            }
-            MouseArea {
-              anchors.fill: parent
-              onClicked: {
-                root.optionsMenuOpen = !root.optionsMenuOpen
-                root.languageMenuOpen = false
-                root.soundMenuOpen = false
-                root.excludedMenuOpen = false
-                root.themeMenuOpen = false
               }
             }
           }
@@ -1496,7 +1393,6 @@ Item {
                 root.soundMenuOpen = false
                 root.excludedMenuOpen = false
                 root.themeMenuOpen = false
-                root.optionsMenuOpen = false
               }
             }
           }
@@ -1516,7 +1412,6 @@ Item {
                 root.soundMenuOpen = false
                 root.languageMenuOpen = false
                 root.excludedMenuOpen = false
-                root.optionsMenuOpen = false
               }
             }
           }
@@ -1647,76 +1542,6 @@ Item {
               SafeText { anchors.centerIn: parent; text: i18n.t("excludedClearStale"); color: root.inkColor; font.family: "monospace"; font.pixelSize: 9; font.bold: true }
               MouseArea { anchors.fill: parent; onClicked: root.clearStaleExclusions() }
             }
-          }
-        }
-      }
-
-      Rectangle {
-        id: optionsMenu
-        x: Math.max(4, topbar.x + topControls.x + optionsButton.x + (optionsButton.width - width) / 2)
-        y: topbar.y + topbar.height + 8
-        width: 306
-        height: root.optionRows().length * 34 + 34 + (root.profileId === "lazyvim" ? 18 : 0)
-        visible: root.optionsMenuOpen && Profiles.optionNames(root.profileId).length > 0
-        z: 100
-        color: root.cabinetColor; border.width: 3; border.color: root.primaryColor
-        Column {
-          anchors.fill: parent; anchors.margins: 6; spacing: 4
-          SafeText {
-            width: parent.width
-            text: i18n.t("optionsTitle"); color: root.mutedColor
-            font.family: "monospace"; font.pixelSize: 9; font.bold: true; font.letterSpacing: 2
-            elide: Text.ElideRight; maximumLineCount: 1
-          }
-          Repeater {
-            model: root.optionRows()
-            delegate: Row {
-              id: optionRow
-              required property var modelData
-              spacing: 6
-              Column {
-                width: 180; anchors.verticalCenter: parent.verticalCenter
-                spacing: 0
-                SafeText {
-                  width: parent.width
-                  text: optionRow.modelData.name; color: root.inkColor
-                  font.family: "monospace"; font.pixelSize: 10; font.bold: true
-                  elide: Text.ElideRight; maximumLineCount: 1
-                }
-                // Where the value came from. A machine-read one needs nothing
-                // from the reader; one this could not read is the only case
-                // worth their attention, and it says so rather than sitting
-                // silently on a default.
-                SafeText {
-                  width: parent.width
-                  text: i18n.t(optionRow.modelData.unreadable ? "optionUnreadable"
-                               : "optionFrom_" + optionRow.modelData.origin)
-                  color: optionRow.modelData.unreadable ? root.coinColor
-                       : optionRow.modelData.origin === "machine" ? root.successColor
-                       : root.mutedColor
-                  font.family: "monospace"; font.pixelSize: 8
-                  elide: Text.ElideRight; maximumLineCount: 1
-                }
-              }
-              SafeText {
-                width: 102; height: 28
-                verticalAlignment: Text.AlignVCenter
-                horizontalAlignment: Text.AlignRight
-                text: root.optionLabel(optionRow.modelData.value)
-                color: optionRow.modelData.unreadable ? root.coinColor : root.primaryColor
-                font.family: "monospace"; font.pixelSize: 11; font.bold: true
-                elide: Text.ElideRight; maximumLineCount: 1
-              }
-            }
-          }
-          SafeText {
-            width: parent.width
-            visible: root.profileId === "lazyvim"
-            text: root.mappingConfigNotice()
-            color: appConfig.bindingSkipped + packs.customSkipped > 0
-                   ? root.coinColor : root.mutedColor
-            font.family: "monospace"; font.pixelSize: 8
-            elide: Text.ElideRight; maximumLineCount: 1
           }
         }
       }

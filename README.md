@@ -47,7 +47,8 @@ grounds are there when you want them.
   want to train, and restore it later with its progress intact.
 - Resolves a ground's configurable keys - LazyVim's leader, tmux's prefix -
   from the real local configuration, so nobody maintains a second, manual
-  copy of them. The top bar names what was detected and where it came from.
+  copy of them. What was resolved shows up on the cards, not as one more
+  panel in the top bar.
 - Includes English and Simplified Chinese, local feedback/countdown sounds,
   and five palettes: Catppuccin, Tokyo Night, Gruvbox, Everforest and
   Ristretto.
@@ -178,8 +179,8 @@ global `set` / `set-option` forms in the fixed XDG and `~/.tmux.conf` paths and
 keeps the shipped binding table. tmux fires on either prefix, so both are
 accepted: `C-b` is the one shown on the card whenever it is genuinely enabled,
 and the other stays a valid alternate. A machine that sets a different prefix
-alone is taken at its word. An unreadable prefix falls back to tmux's own `C-b`
-default and the top bar says so rather than hiding it.
+alone is taken at its word. A prefix that cannot be proved falls back to tmux's
+own `C-b` default.
 
 ### Application shortcut packs
 
