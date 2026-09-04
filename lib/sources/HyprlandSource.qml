@@ -2,6 +2,9 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 
+// The Hyprland training ground's source: it produces the bindings and the
+// keymap fingerprint for one snapshot of the running compositor. Every other
+// layer sees a loaded model and a fingerprint, never hyprctl.
 Item {
   id: root
 
@@ -14,10 +17,10 @@ Item {
   // emits the split marker would otherwise be retained in full before
   // any budget here could run. The limit is chosen and enforced
   // outside the process that produces the data.
-  readonly property string relayPath: String(Qt.resolvedUrl("../bin/bounded-relay")).replace("file://", "")
+  readonly property string relayPath: String(Qt.resolvedUrl("../../bin/bounded-relay")).replace("file://", "")
   readonly property int relayMaxBytes: 8 * 1024 * 1024
   readonly property real relayDeadline: 4.0
-  readonly property string helperPath: String(Qt.resolvedUrl("../bin/keybinds-json")).replace("file://", "")
+  readonly property string helperPath: String(Qt.resolvedUrl("../../bin/keybinds-json")).replace("file://", "")
   readonly property int maxPayloadChars: 8 * 1024 * 1024
   readonly property int maxRecordChars: 8 * 1024
   readonly property int maxBindings: 2000

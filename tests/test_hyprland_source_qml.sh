@@ -12,11 +12,11 @@ cleanup() {
 }
 trap cleanup EXIT
 
-mkdir -p -- "$test_root/config/lib" "$test_root/config/bin" "$test_root/runtime"
+mkdir -p -- "$test_root/config/lib/sources" "$test_root/config/bin" "$test_root/runtime"
 chmod 0700 "$test_root/runtime"
-cp -- "$repo_root/lib/KeybindSource.qml" "$test_root/config/lib/KeybindSource.qml"
+cp -- "$repo_root/lib/sources/HyprlandSource.qml" "$test_root/config/lib/sources/HyprlandSource.qml"
 cp -- "$repo_root/bin/keybinds-json" "$test_root/config/bin/keybinds-json"
-cp -- "$repo_root/tests/qml/keybind_source_smoke.qml" "$test_root/config/shell.qml"
+cp -- "$repo_root/tests/qml/hyprland_source_smoke.qml" "$test_root/config/shell.qml"
 cp -- "$repo_root/bin/bounded-relay" "$test_root/config/bin/bounded-relay"
 
 # Assert a real collection only when a compositor is actually reachable.
@@ -40,18 +40,18 @@ run_smoke() {
 }
 
 output=$(run_smoke KEYCADE_SMOKE_EXPECT_DEGRADED=0)
-grep -Fq -- "KEYBIND_SOURCE_SMOKE_OK" <<<"$output"
+grep -Fq -- "HYPRLAND_SOURCE_SMOKE_OK" <<<"$output"
 
 # A session that names an XKB source of its own compiles a different keymap
 # than this helper would, so the collection must fall back rather than publish
 # one. Only meaningful against a live compositor.
 if [[ $expect_live == 1 ]]; then
   output=$(run_smoke KEYCADE_SMOKE_EXPECT_DEGRADED=1 XKB_DEFAULT_LAYOUT=de)
-  grep -Fq -- "KEYBIND_SOURCE_SMOKE_OK" <<<"$output"
+  grep -Fq -- "HYPRLAND_SOURCE_SMOKE_OK" <<<"$output"
 fi
-if grep -Fq -- "KEYBIND_SOURCE_SMOKE_FAILED" <<<"$output"; then
+if grep -Fq -- "HYPRLAND_SOURCE_SMOKE_FAILED" <<<"$output"; then
   printf '%s\n' "$output" >&2
   exit 1
 fi
 
-printf 'keybind-source QML integration test passed\n'
+printf 'hyprland-source QML integration test passed\n'

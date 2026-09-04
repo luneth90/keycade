@@ -4,14 +4,16 @@ import QtQuick
 import Quickshell
 import Quickshell.Wayland
 import "lib"
+import "lib/sources"
 import "lib/InputNormalizer.js" as Normalizer
-import "lib/Eligibility.js" as Eligibility
+import "lib/Profiles.js" as Profiles
 import "lib/Scheduler.js" as Scheduler
 import "lib/Stats.js" as Stats
-import "lib/Categorizer.js" as Categorizer
-import "lib/ActionLocalizer.js" as Actions
 import "lib/Session.js" as Session
 import "lib/Palettes.js" as Palettes
+import "lib/sources/hyprland/Eligibility.js" as Eligibility
+import "lib/sources/hyprland/Categorizer.js" as Categorizer
+import "lib/sources/hyprland/ActionLocalizer.js" as Actions
 
 Item {
   id: root
@@ -73,13 +75,15 @@ Item {
   readonly property var currentCard: deck.length > cardIndex ? deck[cardIndex] : null
   readonly property var currentBinding: currentCard ? currentCard.binding : null
   readonly property int runCardLimit: 24
-  readonly property string profileId: "hyprland"
+  // The only training ground that exists today. Everything below reaches its
+  // rules through the profile rather than assuming them.
+  readonly property string profileId: Profiles.defaultId()
   // Long enough to read the stamp, not long enough to feel like a penalty.
   // 300 ms measured worse than it sounds: the 110 ms fade eats a third of it,
   // so the words were legible for under two tenths of a second.
   readonly property int excludeStampMs: 900
   readonly property bool reducedMotion: Boolean(store.settings.reducedMotion)
-  readonly property int activeRunId: Number(store.stats.runs || 0) + 1
+  readonly property int activeRunId: Stats.runsOf(store.stats, root.profileId) + 1
 
   readonly property var themePalette: Palettes.palette(root.themeName)
   readonly property color voidColor: root.themePalette.voidColor
@@ -169,15 +173,16 @@ Item {
       guard.fail(root.errorMessage)
       return
     }
-    root.runNumber = Number(store.stats.runs || 0) + 1
+    root.runNumber = root.activeRunId
     root.resumeAvailable = hasResumableSession()
     refreshProgressCounts()
     checkFirstMastery(root.activeRunId)
-    if (!root.resumeAvailable && Number(store.stats.firstMasteryAt || 0) > 0
-        && !Boolean(store.stats.firstMasteryCelebrated)
-        && Number(store.stats.firstMasteryRun || 0) <= Number(store.stats.runs || 0)) {
+    var counters = root.profileCounters()
+    if (!root.resumeAvailable && Number(counters.firstMasteryAt || 0) > 0
+        && !Boolean(counters.firstMasteryCelebrated)
+        && Number(counters.firstMasteryRun || 0) <= Number(counters.runs || 0)) {
       root.masterySnapshot = Stats.aggregate(store.stats, root.eligibleBindings)
-      Stats.markFirstMasteryCelebrated(store.stats)
+      Stats.markFirstMasteryCelebrated(store.stats, root.profileId)
       store.saveStats()
       root.view = "mastery"
       sounds.playMastery()
@@ -207,7 +212,7 @@ Item {
     for (var i = 0; i < result.excluded.length; i++) {
       if (result.excluded[i].reason !== "user-excluded") continue
       rows.push(result.excluded[i].binding)
-      matched[result.excluded[i].binding.id] = true
+      matched[result.excluded[i].binding.localId] = true
     }
     var stored = Session.excludedSet(store.settings.excludedBindings, root.profileId)
     var stale = 0
@@ -231,8 +236,8 @@ Item {
       root.feedbackText = i18n.t("excludeRejectedLast")
       return
     }
-    var id = root.currentBinding.id
-    var next = Session.withExclusion(store.settings.excludedBindings, root.profileId, id)
+    var next = Session.withExclusion(store.settings.excludedBindings, root.profileId,
+                                     root.currentBinding.localId)
     if (!next) {
       root.feedbackKind = "miss"
       root.feedbackText = i18n.t("excludeRejectedFull")
@@ -267,7 +272,7 @@ Item {
     // meantime - it is locked and its timers are stopped - and a crash inside
     // the beat is harmless, because a resumed deck keeps only cards whose
     // binding is still eligible.
-    root.excludedCardId = id
+    root.excludedCardId = root.currentBinding.id
     excludeStampTimer.restart()
   }
 
@@ -297,10 +302,12 @@ Item {
 
   // Restoring is offered while idle only: putting a bind back mid-run would
   // mean rebuilding the deck and its plan counts for no benefit.
-  function restoreBinding(bindingId) {
+  // Named by local id: that is what the stored exclusion holds, and what the
+  // restore rows carry.
+  function restoreBinding(localId) {
     if (root.view === "playing") return
     store.settings.excludedBindings =
-        Session.withoutExclusion(store.settings.excludedBindings, root.profileId, bindingId)
+        Session.withoutExclusion(store.settings.excludedBindings, root.profileId, localId)
     store.settings = Object.assign({}, store.settings)
     store.saveSettings()
     root.applyEligibility()
@@ -312,7 +319,7 @@ Item {
   // a button, because a bind commented out today may come back tomorrow.
   function clearStaleExclusions() {
     var live = Session.safeMap()
-    for (var i = 0; i < root.excludedRows.length; i++) live[root.excludedRows[i].id] = true
+    for (var i = 0; i < root.excludedRows.length; i++) live[root.excludedRows[i].localId] = true
     var prefix = root.profileId + ":"
     var stored = Session.excludedList(store.settings.excludedBindings)
     var keep = []
@@ -392,20 +399,26 @@ Item {
     }
   }
 
+  // Read at each use rather than cached in a property: a training ground's
+  // record is created the first time it records anything, and a binding taken
+  // before that would keep pointing at a detached copy of the defaults.
+  function profileCounters() { return Stats.counters(store.stats, root.profileId) }
+
   function refreshProgressCounts() {
     root.progressCounts = Stats.counts(store.stats, root.eligibleBindings, Date.now(), root.activeRunId)
   }
 
   function commitActiveTraining() {
     if (root.activeSegmentStartedAt <= 0) return
-    Stats.addTrainingTime(store.stats, Date.now() - root.activeSegmentStartedAt)
+    Stats.addTrainingTime(store.stats, root.profileId, Date.now() - root.activeSegmentStartedAt)
     root.activeSegmentStartedAt = 0
   }
 
   function checkFirstMastery(runId) {
     if (root.progressCounts.total <= 0
         || root.progressCounts.mastered !== root.progressCounts.total) return false
-    var reached = Stats.noteFirstMastery(store.stats, Date.now(), runId || root.activeRunId)
+    var reached = Stats.noteFirstMastery(store.stats, root.profileId, Date.now(),
+                                        runId || root.activeRunId)
     if (reached) store.saveStats()
     return reached
   }
@@ -451,7 +464,8 @@ Item {
   }
 
   function hasResumableSession() {
-    return Session.canResume(store.session, root.activeRunId, root.eligibleBindings, root.runCardLimit)
+    return Session.canResume(store.session, root.activeRunId, root.eligibleBindings,
+                             root.runCardLimit, root.profileId)
   }
 
   function saveRunSession() {
@@ -467,6 +481,7 @@ Item {
     }
     store.saveSession({
       schemaVersion: 1,
+      profileId: root.profileId,
       runId: root.activeRunId,
       offset: root.runOffset + resumeIndex,
       cards: cards,
@@ -540,7 +555,7 @@ Item {
     root.resumeAvailable = false
     root.runNumber = root.activeRunId
     root.deck = Scheduler.build(root.eligibleBindings, store.stats, root.runCardLimit,
-                                { runId: root.activeRunId })
+                                { runId: root.activeRunId, profile: root.profileId })
     var plan = Scheduler.planCounts(root.deck)
     root.runReviewTarget = plan.review
     root.runNewTarget = plan.added
@@ -758,13 +773,14 @@ Item {
     commitActiveTraining()
     store.clearSession()
     root.resumeAvailable = false
-    // Reassign (not just mutate) store.stats: it's a property var, so a
-    // plain store.stats.runs = ... update never fires statsChanged, and
-    // root.activeRunId (a binding on store.stats.runs) would stay frozen
-    // at whatever it last was for the rest of this keepLoaded session —
-    // every following run would reuse the same stale run number instead
-    // of counting up.
-    store.stats = Object.assign({}, store.stats, { runs: Number(store.stats.runs || 0) + 1 })
+    // The counter lives inside the profile record, so bumping it mutates
+    // store.stats in place. Reassign anyway: it's a property var, so a plain
+    // mutation never fires statsChanged, and root.activeRunId (a binding
+    // through store.stats) would stay frozen at whatever it last was for the
+    // rest of this keepLoaded session — every following run would reuse the
+    // same stale run number instead of counting up.
+    Stats.completeRun(store.stats, root.profileId)
+    store.stats = Object.assign({}, store.stats)
     var resultRows = Object.keys(root.runResults).map(function(id) { return root.runResults[id] })
     resultRows.sort(function(left, right) {
       if (left.misses !== right.misses) return right.misses - left.misses
@@ -773,11 +789,11 @@ Item {
     root.reviewSuggestions = resultRows.slice(0, 3)
     refreshProgressCounts()
     root.masterySnapshot = Stats.aggregate(store.stats, root.eligibleBindings)
-    if (Number(store.stats.firstMasteryAt || 0) > 0
-        && !Boolean(store.stats.firstMasteryCelebrated)) {
+    var counters = root.profileCounters()
+    if (Number(counters.firstMasteryAt || 0) > 0 && !Boolean(counters.firstMasteryCelebrated)) {
       if (showMastery === false) root.view = "summary"
       else {
-        Stats.markFirstMasteryCelebrated(store.stats)
+        Stats.markFirstMasteryCelebrated(store.stats, root.profileId)
         root.view = "mastery"
         sounds.playMastery()
       }
@@ -814,7 +830,7 @@ Item {
       guard.fail(message)
     }
   }
-  KeybindSource {
+  HyprlandSource {
     id: keybinds
     onLoaded: root.maybeShowHome()
     onFailed: function(message) {
@@ -1244,7 +1260,7 @@ Item {
                     visible: root.view !== "playing"
                     color: root.screenColor; border.width: 2; border.color: root.mutedColor
                     SafeText { anchors.centerIn: parent; text: i18n.t("restoreAction"); color: root.inkColor; font.family: "monospace"; font.pixelSize: 9; font.bold: true }
-                    MouseArea { anchors.fill: parent; onClicked: root.restoreBinding(excludedRow.modelData.id) }
+                    MouseArea { anchors.fill: parent; onClicked: root.restoreBinding(excludedRow.modelData.localId) }
                   }
                 }
               }
@@ -1796,11 +1812,11 @@ Item {
           Repeater {
             model: [
               { label: i18n.t("shortcutTotal"), value: root.progressCounts.total },
-              { label: i18n.t("totalRuns"), value: Number(store.stats.runs || 0) },
-              { label: i18n.t("trainingTime"), value: root.formatTrainingTime(store.stats.totalTrainingMs) },
+              { label: i18n.t("totalRuns"), value: Number(root.profileCounters().runs || 0) },
+              { label: i18n.t("trainingTime"), value: root.formatTrainingTime(root.profileCounters().totalTrainingMs) },
               { label: i18n.t("accuracy"), value: root.masterySnapshot.accuracy + "%" },
               { label: i18n.t("response"), value: root.masterySnapshot.response ? root.masterySnapshot.response + " ms" : "—" },
-              { label: i18n.t("masteryDate"), value: root.formatMasteryDate(store.stats.firstMasteryAt) }
+              { label: i18n.t("masteryDate"), value: root.formatMasteryDate(root.profileCounters().firstMasteryAt) }
             ]
             delegate: Rectangle {
               id: masteryDatum

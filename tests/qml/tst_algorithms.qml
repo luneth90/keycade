@@ -2,12 +2,13 @@ import QtQuick
 import QtTest
 import "../../lib"
 import "../../lib/InputNormalizer.js" as Normalizer
-import "../../lib/Eligibility.js" as Eligibility
+import "../../lib/Profiles.js" as Profiles
 import "../../lib/Scheduler.js" as Scheduler
 import "../../lib/Stats.js" as Stats
-import "../../lib/Categorizer.js" as Categorizer
-import "../../lib/ActionLocalizer.js" as Actions
 import "../../lib/Session.js" as Session
+import "../../lib/sources/hyprland/Eligibility.js" as Eligibility
+import "../../lib/sources/hyprland/Categorizer.js" as Categorizer
+import "../../lib/sources/hyprland/ActionLocalizer.js" as Actions
 import "../../lib/DotFont.js" as DotFont
 import "../../lib/Palettes.js" as Palettes
 import "../fixtures/canonical-keys.js" as CanonicalKeys
@@ -550,7 +551,7 @@ TestCase {
         }
       }
     })
-    compare(stats.bindings.one.state, "mastered")
+    compare(stats.bindings["hyprland/one"].state, "mastered")
   }
 
   function test_reactionHistoryKeepsOnlyTheLatestTenSamples() {
@@ -578,22 +579,80 @@ TestCase {
     compare(summary.accuracy, 67)
     compare(summary.response, 900)
 
-    verify(Stats.noteFirstMastery(stats, 12345, 7))
-    compare(stats.firstMasteryAt, 12345)
-    compare(stats.firstMasteryRun, 7)
-    verify(!stats.firstMasteryCelebrated)
-    verify(!Stats.noteFirstMastery(stats, 23456, 8))
-    verify(Stats.markFirstMasteryCelebrated(stats))
-    verify(!Stats.markFirstMasteryCelebrated(stats))
+    verify(Stats.noteFirstMastery(stats, "hyprland", 12345, 7))
+    var counters = Stats.counters(stats, "hyprland")
+    compare(counters.firstMasteryAt, 12345)
+    compare(counters.firstMasteryRun, 7)
+    verify(!counters.firstMasteryCelebrated)
+    verify(!Stats.noteFirstMastery(stats, "hyprland", 23456, 8))
+    verify(Stats.markFirstMasteryCelebrated(stats, "hyprland"))
+    verify(!Stats.markFirstMasteryCelebrated(stats, "hyprland"))
 
-    compare(Stats.addTrainingTime(stats, 654321), 654321)
-    compare(Stats.addTrainingTime(stats, -10), 654321)
+    compare(Stats.addTrainingTime(stats, "hyprland", 654321), 654321)
+    compare(Stats.addTrainingTime(stats, "hyprland", -10), 654321)
     var migrated = Stats.migrate(stats)
-    compare(migrated.schemaVersion, 3)
-    compare(migrated.totalTrainingMs, 654321)
-    compare(migrated.firstMasteryAt, 12345)
-    compare(migrated.firstMasteryRun, 7)
-    verify(migrated.firstMasteryCelebrated)
+    compare(migrated.schemaVersion, 4)
+    var migratedCounters = Stats.counters(migrated, "hyprland")
+    compare(migratedCounters.totalTrainingMs, 654321)
+    compare(migratedCounters.firstMasteryAt, 12345)
+    compare(migratedCounters.firstMasteryRun, 7)
+    verify(migratedCounters.firstMasteryCelebrated)
+  }
+
+  // Every training ground counts its own runs, its own coverage and its own
+  // full clear. Sharing them would make "everything mastered" mean whichever
+  // ground happened to finish first.
+  function test_countersAreKeptPerTrainingGround() {
+    var stats = Stats.defaults()
+    compare(Stats.completeRun(stats, "hyprland"), 1)
+    compare(Stats.completeRun(stats, "hyprland"), 2)
+    compare(Stats.completeRun(stats, "lazyvim"), 1)
+    compare(Stats.runsOf(stats, "hyprland"), 2)
+    compare(Stats.runsOf(stats, "lazyvim"), 1)
+
+    verify(Stats.noteFirstMastery(stats, "hyprland", 100, 2))
+    compare(Stats.counters(stats, "lazyvim").firstMasteryAt, 0)
+    verify(Stats.noteFirstMastery(stats, "lazyvim", 200, 1))
+
+    // Reading never creates a record: activeRunId is a binding on the stats
+    // object, and a read that wrote would mutate state from inside a binding.
+    compare(Stats.counters(stats, "tmux").runs, 0)
+    compare(stats.profiles["tmux"], undefined)
+    // A name outside the profile character set is refused outright.
+    compare(Stats.completeRun(stats, "__proto__"), 1)
+    compare(stats.profiles["__proto__"], undefined)
+    compare(Object.keys(stats.profiles).length, 2)
+  }
+
+  function test_qualifiedIdsCarryTheirProfileAndKeepTheLocalPart() {
+    compare(Profiles.qualify("hyprland", "64|K|exec|x"), "hyprland/64|K|exec|x")
+    compare(Profiles.profileOf("hyprland/64|K|exec|x"), "hyprland")
+    compare(Profiles.localOf("hyprland/64|K|exec|x"), "64|K|exec|x")
+
+    // A local id may hold a path of its own, so only the first segment counts.
+    compare(Profiles.profileOf("hyprland/64|E|exec|~/.local/bin/tool"), "hyprland")
+    compare(Profiles.localOf("hyprland/64|E|exec|~/.local/bin/tool"), "64|E|exec|~/.local/bin/tool")
+
+    // An id written before profiles existed has no readable ground in front
+    // of it, which is exactly how it is recognised on the way in.
+    compare(Profiles.profileOf("64|E|exec|~/.local/bin/tool"), "")
+    compare(Profiles.qualifyLegacy("64|K|exec|x"), "hyprland/64|K|exec|x")
+    compare(Profiles.qualifyLegacy("hyprland/64|K|exec|x"), "hyprland/64|K|exec|x")
+    compare(Profiles.qualify("Hyprland", "x"), "")
+    compare(Profiles.qualify("__proto__", "x"), "")
+    verify(Profiles.known("hyprland"))
+    verify(!Profiles.known("lazyvim"))
+  }
+
+  // The eligible model carries both: the local id is what an exclusion names
+  // and must stay byte for byte what it was, the qualified one is what the
+  // scheduler and stats key on.
+  function test_eligibleBindingsCarryBothIdForms() {
+    var item = binding({ key: "7", arg: "7", description: "Switch to workspace 7" })
+    var result = Eligibility.filter([item], {})
+    compare(result.eligible.length, 1)
+    compare(result.eligible[0].localId, Normalizer.bindingId(item))
+    compare(result.eligible[0].id, "hyprland/" + Normalizer.bindingId(item))
   }
 
   function test_v1StatsMigrateWithoutInventingMastery() {
@@ -615,15 +674,18 @@ TestCase {
         }
       }
     })
-    compare(migrated.schemaVersion, 3)
-    compare(migrated.runs, 9)
-    compare(migrated.totalTrainingMs, 0)
-    compare(migrated.firstMasteryAt, 0)
-    verify(!migrated.firstMasteryCelebrated)
-    compare(migrated.bindings.one.state, "learning")
-    compare(migrated.bindings.one.firstTryAttempts, 2)
-    compare(migrated.bindings.one.firstTryCorrect, 1)
-    compare(migrated.bindings.one.successfulRuns.length, 0)
+    compare(migrated.schemaVersion, 4)
+    var counters = Stats.counters(migrated, "hyprland")
+    compare(counters.runs, 9)
+    compare(counters.totalTrainingMs, 0)
+    compare(counters.firstMasteryAt, 0)
+    verify(!counters.firstMasteryCelebrated)
+    // The local part of the id is unchanged; only the ground moves in front.
+    compare(migrated.bindings["hyprland/one"].state, "learning")
+    compare(migrated.bindings["hyprland/one"].firstTryAttempts, 2)
+    compare(migrated.bindings["hyprland/one"].firstTryCorrect, 1)
+    compare(migrated.bindings["hyprland/one"].successfulRuns.length, 0)
+    compare(migrated.bindings.one, undefined)
   }
 
   function test_v2StatsPreserveProgressAndGainMilestoneDefaults() {
@@ -644,31 +706,119 @@ TestCase {
         }
       }
     })
-    compare(migrated.schemaVersion, 3)
-    compare(migrated.runs, 12)
-    compare(migrated.coverageCursor, 8)
-    compare(migrated.bindings.one.state, "mastered")
-    compare(migrated.bindings.one.firstTryCorrect, 5)
-    compare(migrated.totalTrainingMs, 0)
-    compare(migrated.firstMasteryAt, 0)
-    compare(migrated.firstMasteryRun, 0)
-    verify(!migrated.firstMasteryCelebrated)
+    compare(migrated.schemaVersion, 4)
+    var counters = Stats.counters(migrated, "hyprland")
+    compare(counters.runs, 12)
+    compare(counters.coverageCursor, 8)
+    compare(migrated.bindings["hyprland/one"].state, "mastered")
+    compare(migrated.bindings["hyprland/one"].firstTryCorrect, 5)
+    compare(counters.totalTrainingMs, 0)
+    compare(counters.firstMasteryAt, 0)
+    compare(counters.firstMasteryRun, 0)
+    verify(!counters.firstMasteryCelebrated)
+  }
+
+  // The upgrade that introduced training grounds must not cost anyone their
+  // progress: every stored entry keeps its history, and its id keeps its local
+  // part byte for byte, because that is what an exclusion already names.
+  function test_v3StatsMoveIntoTheHyprlandGroundWithoutLosingProgress() {
+    var localId = "64|K|exec|terminal"
+    var migrated = Stats.migrate({
+      schemaVersion: 3,
+      runs: 12,
+      coverageCursor: 8,
+      totalTrainingMs: 654321,
+      firstMasteryAt: 12345,
+      firstMasteryRun: 7,
+      firstMasteryCelebrated: true,
+      bindings: {
+        "64|K|exec|terminal": {
+          state: "mastered",
+          guidedCompleted: true,
+          firstTryAttempts: 6,
+          firstTryCorrect: 5,
+          recentFirstTry: [true, true],
+          reactions: [700, 650],
+          successfulRuns: [8, 10],
+          lastSuccessfulRun: 12,
+          intervalStep: 3
+        }
+      }
+    })
+    compare(migrated.schemaVersion, 4)
+    var counters = Stats.counters(migrated, "hyprland")
+    compare(counters.runs, 12)
+    compare(counters.coverageCursor, 8)
+    compare(counters.totalTrainingMs, 654321)
+    compare(counters.firstMasteryAt, 12345)
+    compare(counters.firstMasteryRun, 7)
+    verify(counters.firstMasteryCelebrated)
+
+    var entry = migrated.bindings["hyprland/" + localId]
+    compare(Profiles.localOf("hyprland/" + localId), localId)
+    compare(entry.state, "mastered")
+    compare(entry.firstTryAttempts, 6)
+    compare(entry.firstTryCorrect, 5)
+    compare(entry.intervalStep, 3)
+    compare(entry.successfulRuns.length, 2)
+
+    // Migrating the result again is a no-op rather than a second prefix.
+    var again = Stats.migrate(migrated)
+    compare(again.schemaVersion, 4)
+    compare(Stats.counters(again, "hyprland").runs, 12)
+    compare(again.bindings["hyprland/" + localId].firstTryCorrect, 5)
+    compare(again.bindings["hyprland/hyprland/" + localId], undefined)
+  }
+
+  // The longest id a source can mint still migrates: the local part is bounded
+  // before the prefix goes on, not after.
+  function test_longLegacyIdsSurviveTheMigrationWithTheirPrefix() {
+    var localId = "64|K|exec|" + "x".repeat(2290)
+    compare(localId.length, 2300)
+    var source = { schemaVersion: 3, runs: 1, bindings: {} }
+    source.bindings[localId] = { state: "learning", guidedCompleted: true }
+    var migrated = Stats.migrate(source)
+    compare(migrated.bindings["hyprland/" + localId].state, "learning")
+
+    var sanitized = Session.sanitize({
+      schemaVersion: 1,
+      runId: 1,
+      cards: [{ bindingId: localId, tier: "learning", queue: "due", remedial: false }]
+    })
+    compare(sanitized.cards[0].bindingId, "hyprland/" + localId)
+  }
+
+  // A v4 entry naming no readable ground cannot be loaded by any profile, so
+  // it is dropped rather than guessed at.
+  function test_v4StatsDropEntriesWithNoTrainingGround() {
+    var migrated = Stats.migrate({
+      schemaVersion: 4,
+      profiles: { hyprland: { runs: 3 }, "__proto__": { runs: 9 }, "Nope": { runs: 9 } },
+      bindings: { "hyprland/kept": { state: "learning" }, "orphan": { state: "learning" } }
+    })
+    compare(Stats.counters(migrated, "hyprland").runs, 3)
+    compare(migrated.profiles["__proto__"], undefined)
+    compare(migrated.profiles["Nope"], undefined)
+    compare(Object.keys(migrated.profiles).length, 1)
+    compare(migrated.bindings["hyprland/kept"].state, "learning")
+    compare(migrated.bindings["orphan"], undefined)
   }
 
   function test_persistedStatsRejectPrototypeKeysAndClampNumbers() {
     var source = JSON.parse('{"schemaVersion":3,"runs":1e100,"bindings":{"__proto__":{"state":"mastered"},"safe":{"firstTryAttempts":1e100,"firstTryCorrect":1e100}}}')
     var migrated = Stats.migrate(source)
     compare(migrated.bindings["__proto__"], undefined)
-    compare(migrated.runs, 1000000000)
-    compare(migrated.bindings.safe.firstTryAttempts, 1000000000)
-    compare(migrated.bindings.safe.firstTryCorrect, 1000000000)
+    compare(migrated.bindings["hyprland/__proto__"], undefined)
+    compare(Stats.counters(migrated, "hyprland").runs, 1000000000)
+    compare(migrated.bindings["hyprland/safe"].firstTryAttempts, 1000000000)
+    compare(migrated.bindings["hyprland/safe"].firstTryCorrect, 1000000000)
   }
 
   function test_schedulerSpreadsRepeatedBindingsAndAvoidsAdjacentRepeats() {
     var bindings = []
     for (var index = 0; index < 8; index++) {
       var item = binding({ key: String(index), arg: String(index), description: "Switch to workspace " + index })
-      item.id = Normalizer.bindingId(item)
+      item.id = Profiles.qualify("hyprland", Normalizer.bindingId(item))
       bindings.push(item)
     }
     var deck = Scheduler.build(bindings, Stats.defaults(), 24)
@@ -691,7 +841,7 @@ TestCase {
           description: categories[categoryIndex] + " " + itemIndex
         })
         item.category = categories[categoryIndex]
-        item.id = Normalizer.bindingId(item)
+        item.id = Profiles.qualify("hyprland", Normalizer.bindingId(item))
         bindings.push(item)
       }
     }
@@ -714,7 +864,7 @@ TestCase {
         arg: String(index),
         description: "Shortcut " + index
       })
-      item.id = "binding-" + String(index).padStart(2, "0")
+      item.id = "hyprland/binding-" + String(index).padStart(2, "0")
       item.category = ["windows", "workspaces", "system", "applications"][index % 4]
       bindings.push(item)
       if (index >= 30 && index < 40) {
@@ -751,13 +901,13 @@ TestCase {
     var bindings = []
     for (var index = 0; index < 10; index++) {
       var item = binding({ key: String(index), arg: String(index), description: "New " + index })
-      item.id = "new-" + index
+      item.id = "hyprland/new-" + index
       bindings.push(item)
     }
     var deck = Scheduler.build(bindings, stats, 8, { now: 100, runId: 1 })
-    compare(stats.coverageCursor, 0)
+    compare(Stats.counters(stats, "hyprland").coverageCursor, 0)
     Scheduler.markCovered(bindings, stats, deck[0].binding.id)
-    verify(stats.coverageCursor !== 0)
+    verify(Stats.counters(stats, "hyprland").coverageCursor !== 0)
   }
 
   function test_schedulerPrioritizesDueBeforeMaintenance() {
@@ -765,7 +915,7 @@ TestCase {
     var bindings = []
     for (var index = 0; index < 24; index++) {
       var item = binding({ key: String(index), arg: String(index), description: "Item " + index })
-      item.id = "item-" + index
+      item.id = "hyprland/item-" + index
       bindings.push(item)
       var progress = Stats.entry(stats, item.id)
       progress.guidedCompleted = true
@@ -782,7 +932,7 @@ TestCase {
     var bindings = []
     for (var index = 0; index < 8; index++) {
       var item = binding({ key: String(index), arg: String(index), description: "Review " + index })
-      item.id = "review-" + index
+      item.id = "hyprland/review-" + index
       bindings.push(item)
     }
     var deck = Scheduler.build(bindings, stats, 8, { now: 100, runId: 1 })
@@ -847,26 +997,58 @@ TestCase {
 
   function test_savedSessionRestoresRemainingCardsAndCorrection() {
     var first = binding({ key: "1", arg: "1", description: "First" })
-    first.id = "first"
+    first.id = "hyprland/first"
     var second = binding({ key: "2", arg: "2", description: "Second" })
-    second.id = "second"
+    second.id = "hyprland/second"
     var deck = [
       { binding: first, tier: "learning", queue: "due", remedial: false },
       { binding: second, tier: "learning", queue: "remedial", remedial: true }
     ]
     var cards = Session.cardsFrom(deck, 1)
     compare(cards.length, 1)
-    compare(cards[0].bindingId, "second")
+    compare(cards[0].bindingId, "hyprland/second")
     verify(cards[0].remedial)
-    var saved = { schemaVersion: 1, runId: 4, cards: cards, correctionRequired: true }
-    verify(Session.canResume(saved, 4, [first, second], 24))
-    verify(!Session.canResume(saved, 5, [first, second]))
+    var saved = {
+      schemaVersion: 1, profileId: "hyprland", runId: 4, cards: cards, correctionRequired: true
+    }
+    verify(Session.canResume(saved, 4, [first, second], 24, "hyprland"))
+    verify(!Session.canResume(saved, 5, [first, second], 24, "hyprland"))
+    // A run belongs to the ground it was played on.
+    verify(!Session.canResume(saved, 4, [first, second], 24, "lazyvim"))
     saved.offset = 24
-    verify(!Session.canResume(saved, 4, [first, second], 24))
+    verify(!Session.canResume(saved, 4, [first, second], 24, "hyprland"))
     var restored = Session.restoreCards(cards, [first, second])
     compare(restored.length, 1)
-    compare(restored[0].binding.id, "second")
+    compare(restored[0].binding.id, "hyprland/second")
     verify(restored[0].remedial)
+  }
+
+  // A run interrupted before training grounds existed still resumes after the
+  // upgrade: its ids name no ground, and everything stored back then was
+  // played on the default one.
+  function test_sessionsSavedBeforeProfilesStillResume() {
+    var first = binding({ key: "1", arg: "1", description: "First" })
+    first.id = "hyprland/first"
+    var sanitized = Session.sanitize({
+      schemaVersion: 1,
+      runId: 4,
+      offset: 1,
+      cards: [{ bindingId: "first", tier: "learning", queue: "due", remedial: false }],
+      currentBindingId: "first",
+      pendingReinforcements: ["first"],
+      runResults: { "first": { misses: 2, reactions: [800] } }
+    })
+    compare(sanitized.profileId, "hyprland")
+    compare(sanitized.cards[0].bindingId, "hyprland/first")
+    compare(sanitized.currentBindingId, "hyprland/first")
+    compare(sanitized.pendingReinforcements[0], "hyprland/first")
+    compare(sanitized.runResults["hyprland/first"].misses, 2)
+    verify(Session.canResume(sanitized, 4, [first], 24, "hyprland"))
+
+    // Sanitising twice must not prefix twice.
+    var again = Session.sanitize(sanitized)
+    compare(again.cards[0].bindingId, "hyprland/first")
+    compare(again.runResults["hyprland/first"].misses, 2)
   }
 
   function test_sessionSanitizerBoundsCollectionsAndDynamicKeys() {

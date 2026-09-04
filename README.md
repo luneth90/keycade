@@ -134,8 +134,8 @@ python3 -m unittest discover -s tests -p 'test_*.py' -v
 QT_QPA_PLATFORM=offscreen QT_QPA_PLATFORMTHEME= QT_STYLE_OVERRIDE=Fusion \
   /usr/lib/qt6/bin/qmltestrunner -input tests/qml/tst_algorithms.qml -import /usr/lib/qt6/qml
 ./tests/test_state_store_qml.sh
-./tests/test_keybind_source_qml.sh
-/usr/lib/qt6/bin/qmllint -I /usr/lib/qt6/qml Keycade.qml lib/*.qml dev/InputProbe.qml
+./tests/test_hyprland_source_qml.sh
+/usr/lib/qt6/bin/qmllint -I /usr/lib/qt6/qml Keycade.qml lib/*.qml lib/sources/*.qml dev/InputProbe.qml
 ```
 
 ## License

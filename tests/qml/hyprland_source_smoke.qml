@@ -1,6 +1,6 @@
 import QtQuick
 import Quickshell
-import "lib"
+import "lib/sources"
 
 ShellRoot {
   id: root
@@ -155,7 +155,7 @@ ShellRoot {
       root.liveMode = true
       liveRun.start()
     } catch (error) {
-      console.error("KEYBIND_SOURCE_SMOKE_FAILED: " + error)
+      console.error("HYPRLAND_SOURCE_SMOKE_FAILED: " + error)
       Qt.quit()
     }
   }
@@ -185,14 +185,14 @@ ShellRoot {
       } else {
         root.require(!source.loading, "live helper run never settled")
       }
-      console.log("KEYBIND_SOURCE_SMOKE_OK")
+      console.log("HYPRLAND_SOURCE_SMOKE_OK")
     } catch (error) {
-      console.error("KEYBIND_SOURCE_SMOKE_FAILED: " + error)
+      console.error("HYPRLAND_SOURCE_SMOKE_FAILED: " + error)
     }
     Qt.quit()
   }
 
-  KeybindSource {
+  HyprlandSource {
     id: source
     onLoaded: root.checkLiveRun()
     onFailed: root.checkLiveRun()
@@ -217,7 +217,7 @@ ShellRoot {
     running: true
     repeat: false
     onTriggered: {
-      console.error("KEYBIND_SOURCE_SMOKE_FAILED: timeout")
+      console.error("HYPRLAND_SOURCE_SMOKE_FAILED: timeout")
       Qt.quit()
     }
   }

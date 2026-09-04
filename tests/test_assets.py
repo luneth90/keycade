@@ -81,7 +81,9 @@ class AssetTests(unittest.TestCase):
         self.assertEqual(colour_type, 6)
 
     def test_chinese_covers_every_recognized_builtin_action(self):
-        source = (ROOT / "lib" / "ActionLocalizer.js").read_text(encoding="utf-8")
+        source = (
+            ROOT / "lib" / "sources" / "hyprland" / "ActionLocalizer.js"
+        ).read_text(encoding="utf-8")
         action_keys = set(re.findall(r'"(action_[A-Za-z]+)"', source))
         chinese = json.loads(
             (ROOT / "assets" / "locales" / "zh-CN.json").read_text(encoding="utf-8")
