@@ -20,14 +20,14 @@ of them at once:
 
 | Ground | Where its shortcuts come from |
 | --- | --- |
-| **Hyprland** | The shortcuts active on this machine, read from the running compositor |
+| **Omarchy** | The shortcuts active on this machine, read from the running compositor |
 | **herdr** | The bindings active on this machine, from Omarchy's read-only listing |
 | **tmux** | A running server's real prefixes and key table; with no server, the prefix from your config plus the shipped table |
 | **VIM** | Operators, motions, text objects and their compositions, each checked against Neovim's help |
 | **NEOVIM** | Neovim's built-in mappings, collected from a clean instance |
 | **LazyVim** | LazyVim's published keymaps, calibrated by your leader, extras and overrides |
 
-Hyprland is what you get on a fresh install and after an upgrade; the rest are
+Omarchy is what you get on a fresh install and after an upgrade; the rest are
 one click away.
 
 ## Core features
