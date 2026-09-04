@@ -170,6 +170,7 @@ Item {
       Stats.markFirstMasteryCelebrated(store.stats)
       store.saveStats()
       root.view = "mastery"
+      sounds.playMastery()
       return
     }
     root.view = "home"
@@ -767,6 +768,7 @@ Item {
       else {
         Stats.markFirstMasteryCelebrated(store.stats)
         root.view = "mastery"
+        sounds.playMastery()
       }
     } else root.view = "summary"
     store.saveStats()
@@ -1498,6 +1500,21 @@ Item {
           color: root.trainingLockedOut ? root.coinColor : root.mutedColor
           font.pixelSize: 15; wrapMode: Text.WordWrap
         }
+        // The coin line is ritual, not instruction: the line above it still
+        // says plainly how to start, and this one never replaces it.
+        SafeText {
+          width: parent.width; horizontalAlignment: Text.AlignHCenter
+          visible: root.view === "home" && !root.trainingLockedOut
+          text: i18n.t("insertCoin")
+          color: root.coinColor
+          font.family: "monospace"; font.bold: true; font.pixelSize: 12; font.letterSpacing: 4
+          SequentialAnimation on opacity {
+            running: root.view === "home" && !root.reducedMotion
+            loops: Animation.Infinite
+            NumberAnimation { to: 0.3; duration: 720; easing.type: Easing.InOutQuad }
+            NumberAnimation { to: 1; duration: 720; easing.type: Easing.InOutQuad }
+          }
+        }
         SafeText {
           width: parent.width; horizontalAlignment: Text.AlignHCenter
           text: root.categorySummary(); color: root.secondaryColor
@@ -1658,6 +1675,27 @@ Item {
     Item {
       Column {
         anchors.centerIn: parent; width: parent.width - 44; spacing: 10
+        // A stamp rather than an image: two nested frames and a word, so the
+        // celebration gains a cabinet's punch without an asset to ship.
+        Rectangle {
+          anchors.horizontalCenter: parent.horizontalCenter
+          width: Math.min(parent.width, 340); height: 60
+          color: "transparent"
+          border.width: 4; border.color: root.coinColor
+          Rectangle {
+            anchors.fill: parent; anchors.margins: 5
+            color: "transparent"
+            border.width: 2; border.color: root.coinColor
+          }
+          SafeText {
+            anchors.centerIn: parent; width: parent.width - 24
+            horizontalAlignment: Text.AlignHCenter
+            elide: Text.ElideRight; maximumLineCount: 1
+            text: i18n.t("perfectClear")
+            color: root.coinColor
+            font.family: "monospace"; font.bold: true; font.pixelSize: 22; font.letterSpacing: 3
+          }
+        }
         SafeText {
           width: parent.width; horizontalAlignment: Text.AlignHCenter
           text: "★  " + i18n.t("masteryCelebration") + "  ★"

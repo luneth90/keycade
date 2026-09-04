@@ -54,6 +54,7 @@ class AssetTests(unittest.TestCase):
             "countdown-final.wav",
             "eject.wav",
             "combo.wav",
+            "mastery.wav",
         }
         sound_dir = ROOT / "assets" / "sfx"
         self.assertEqual({path.name for path in sound_dir.glob("*.wav")}, expected)

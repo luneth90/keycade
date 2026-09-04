@@ -71,6 +71,8 @@
   "blocked": "INPUT GUARD BLOCKED",
   "closing": "Release held modifiers to close safely",
   "noBindings": "No eligible shortcuts were found. Add descriptions to your bindings and try again.",
+  "perfectClear": "PERFECT CLEAR",
+  "insertCoin": "INSERT COIN",
   "combo": "COMBO",
   "excludeAction": "✕ EXCLUDE",
   "excludedMenu": "EXCLUDED {count}",

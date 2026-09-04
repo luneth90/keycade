@@ -45,6 +45,14 @@ Item {
     comboSound.play()
   }
 
+  // The celebration is a one-off, so it bypasses the cooldown too rather than
+  // being swallowed by whichever answer sound ended the run.
+  function playMastery() {
+    if (!root.feedbackEnabled) return
+    masterySound.stop()
+    masterySound.play()
+  }
+
   function playCountdown(finalBeat) {
     if (!root.countdownEnabled) return
     if (finalBeat) countdownFinalSound.play()
@@ -78,6 +86,12 @@ Item {
     id: comboSound
     source: Qt.resolvedUrl("../assets/sfx/combo.wav")
     volume: root.volume * 0.4
+  }
+
+  SoundEffect {
+    id: masterySound
+    source: Qt.resolvedUrl("../assets/sfx/mastery.wav")
+    volume: root.volume * 0.5
   }
 
   SoundEffect {
