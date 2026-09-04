@@ -922,7 +922,7 @@
   "soundSettings": "音效设置",
   "soundVolume": "音效 {volume}%",
   "start": "按回车开始对局",
-  "startFresh": "开启新局",
+  "startFresh": "开始新局",
   "startRun": "开始对局",
   "summary": "对局完成",
   "timeout": "超时 · 已显示答案",
