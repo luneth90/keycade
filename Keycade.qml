@@ -1259,6 +1259,7 @@ Item {
       }
 
       Rectangle {
+        id: screenArea
         anchors.left: parent.left; anchors.right: parent.right
         anchors.top: topbar.bottom
         anchors.bottom: statusStrip.top
@@ -1266,6 +1267,22 @@ Item {
         color: root.screenColor
         border.width: 4
         border.color: "#05070e"
+
+        // Scanlines belong to the screen, so they live inside it: a child of
+        // this rectangle cannot reach the top bar however its z is set, and
+        // the exclude and drawer buttons up there must stay clickable. It
+        // takes no input of its own either.
+        Image {
+          anchors.fill: parent
+          anchors.margins: 4
+          z: 30
+          visible: !root.reducedMotion
+          enabled: false
+          source: Qt.resolvedUrl("assets/scanline.png")
+          fillMode: Image.Tile
+          opacity: 0.05
+          smooth: false
+        }
 
         Column {
           anchors.fill: parent

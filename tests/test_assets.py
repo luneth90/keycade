@@ -1,5 +1,6 @@
 import json
 import re
+import struct
 import sys
 import unittest
 import wave
@@ -63,6 +64,19 @@ class AssetTests(unittest.TestCase):
                 duration = sound.getnframes() / sound.getframerate()
                 self.assertGreater(duration, 0.04, name)
                 self.assertLess(duration, 0.35, name)
+
+    def test_scanline_tile_is_a_tiny_transparent_png(self):
+        # The overlay is a tiled 1x2 image rather than hundreds of rectangles
+        # or a shader, so the only thing worth pinning is that it stays tiny
+        # and keeps the shape that makes tiling produce lines.
+        tile = ROOT / "assets" / "scanline.png"
+        data = tile.read_bytes()
+        self.assertLess(len(data), 1024)
+        self.assertEqual(data[:8], b"\x89PNG\r\n\x1a\n")
+        width, height, depth, colour_type = struct.unpack(">IIBB", data[16:26])
+        self.assertEqual((width, height), (1, 2))
+        self.assertEqual(depth, 8)
+        self.assertEqual(colour_type, 6)
 
     def test_chinese_covers_every_recognized_builtin_action(self):
         source = (ROOT / "lib" / "ActionLocalizer.js").read_text(encoding="utf-8")
