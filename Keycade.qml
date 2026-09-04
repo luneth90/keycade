@@ -153,6 +153,12 @@ Item {
       savedLocale = "en"
     }
     if (!root.requestedLocale) i18n.locale = savedLocale
+    // open() reads the theme too, but the state files load asynchronously, so
+    // on a cold shell the overlay can be summoned before settings arrive and
+    // keep the default palette for that whole session. This runs once the
+    // store is ready, which is the point the saved theme is actually known.
+    root.themeName = ["tokyo", "gruvbox"].indexOf(String(store.settings.theme || "")) !== -1
+        ? String(store.settings.theme) : root.themeName
     root.applyEligibility()
     if (!root.eligibleBindings.length && !root.trainingLockedOut) {
       root.errorMessage = i18n.t("noBindings")
