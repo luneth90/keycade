@@ -2,6 +2,8 @@
 
 [English](README.md) | **简体中文**
 
+> 专为 Omarchy、herdr、tmux、Vim、Neovim 与 LazyVim 打造的快捷键记忆街机
+
 [![CI](https://github.com/luneth90/keycade/actions/workflows/ci.yml/badge.svg)](https://github.com/luneth90/keycade/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/luneth90/keycade/actions/workflows/codeql.yml/badge.svg)](https://github.com/luneth90/keycade/actions/workflows/codeql.yml)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/luneth90/keycade/badge)](https://scorecard.dev/viewer/?uri=github.com/luneth90/keycade)
@@ -10,8 +12,6 @@
 [![Omarchy Marketplace](https://img.shields.io/badge/Omarchy%20Marketplace-listed-2ea44f?logo=omarchy)](https://plugins.omarchy.org/plugin.html?id=luneth90.keycade)
 [![GitHub Release](https://img.shields.io/github/v/release/luneth90/keycade?logo=github)](https://github.com/luneth90/keycade/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-
-> 专为 Omarchy、herdr、tmux、Vim、Neovim 与 LazyVim 打造的快捷键记忆街机
 
 ![Keycade 简体中文学习界面](docs/screenshots/keycade-zh-CN.png)
 

@@ -2,6 +2,8 @@
 
 **English** | [简体中文](README.zh-CN.md)
 
+> A shortcut recall arcade for Omarchy, herdr, tmux, Vim, Neovim, and LazyVim
+
 [![CI](https://github.com/luneth90/keycade/actions/workflows/ci.yml/badge.svg)](https://github.com/luneth90/keycade/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/luneth90/keycade/actions/workflows/codeql.yml/badge.svg)](https://github.com/luneth90/keycade/actions/workflows/codeql.yml)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/luneth90/keycade/badge)](https://scorecard.dev/viewer/?uri=github.com/luneth90/keycade)
@@ -10,8 +12,6 @@
 [![Omarchy Marketplace](https://img.shields.io/badge/Omarchy%20Marketplace-listed-2ea44f?logo=omarchy)](https://plugins.omarchy.org/plugin.html?id=luneth90.keycade)
 [![GitHub Release](https://img.shields.io/github/v/release/luneth90/keycade?logo=github)](https://github.com/luneth90/keycade/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-
-> A shortcut recall arcade for Omarchy, herdr, tmux, Vim, Neovim, and LazyVim
 
 ![Keycade English learning screen](docs/screenshots/keycade-en.png)
 
