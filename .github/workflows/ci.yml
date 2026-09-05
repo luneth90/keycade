@@ -17,7 +17,7 @@ jobs:
       - name: Install system dependencies
         run: |
           pacman -Sy --noconfirm archlinux-keyring
-          pacman -S --noconfirm --needed git python tmux libxkbcommon qt6-declarative qt6-base quickshell jq
+          pacman -S --noconfirm --needed git python tmux libxkbcommon xkeyboard-config qt6-declarative qt6-base quickshell jq
       - name: Create non-root test user
         run: |
           useradd -m -u 1001 runner
