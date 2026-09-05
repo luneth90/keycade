@@ -6,6 +6,8 @@ on:
   pull_request:
     branches: [ main ]
 
+permissions: read-all
+
 jobs:
   test:
     name: Test & Security Verification
@@ -17,7 +19,7 @@ jobs:
       - name: Install system dependencies
         run: |
           pacman -Sy --noconfirm archlinux-keyring
-          pacman -S --noconfirm --needed git python tmux libxkbcommon xkeyboard-config qt6-declarative qt6-base quickshell jq
+          pacman -S --noconfirm --needed git python python-coverage tmux libxkbcommon xkeyboard-config qt6-declarative qt6-base quickshell jq
       - name: Create non-root test user
         run: |
           useradd -m -u 1001 runner
@@ -36,9 +38,17 @@ jobs:
           jq -e '(.kinds | length) > 0' manifest.json
           jq -e '.entryPoints.overlay == "Keycade.qml"' manifest.json
           test -f Keycade.qml
-      - name: Python Unit & Security Invariant Tests
+      - name: Python Unit & Security Invariant Tests (with Coverage)
         run: |
-          su runner -c "python3 -m unittest discover -s tests -p 'test_*.py' -v"
+          su runner -c "python3 -m coverage run --source=bin -m unittest discover -s tests -p 'test_*.py' -v"
+          su runner -c "python3 -m coverage report"
+          su runner -c "python3 -m coverage xml -o coverage.xml"
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          files: coverage.xml
+          fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}
       - name: QML Algorithm Tests
         run: |
           su runner -c "QT_QPA_PLATFORM=offscreen QT_QPA_PLATFORMTHEME= QT_STYLE_OVERRIDE=Fusion /usr/lib/qt6/bin/qmltestrunner -input tests/qml/tst_algorithms.qml -import /usr/lib/qt6/qml"
