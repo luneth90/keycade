@@ -96,6 +96,7 @@ Item {
   property bool excludeStampVisible: false
   property string excludedCardId: ""
   property bool trainingLockedOut: false
+  property string pendingExternalUrl: ""
 
   readonly property var currentCard: deck.length > cardIndex ? deck[cardIndex] : null
   readonly property var currentBinding: currentCard ? currentCard.binding : null
@@ -119,6 +120,7 @@ Item {
   readonly property int excludeStampMs: 900
   readonly property bool reducedMotion: Boolean(store.settings.reducedMotion)
   readonly property int activeRunId: Stats.runsOf(store.stats, root.profileId) + 1
+  readonly property string marketplaceUrl: "https://plugins.omarchy.org/plugin.html?id=luneth90.keycade"
 
   readonly property var themePalette: Palettes.palette(root.themeName)
   readonly property color voidColor: root.themePalette.voidColor
@@ -143,6 +145,7 @@ Item {
     root.requestedLocale = payload.locale && i18n.supported.indexOf(payload.locale) !== -1
         ? String(payload.locale) : ""
     root.activeSegmentStartedAt = 0
+    root.pendingExternalUrl = ""
     root.languageMenuOpen = false
     root.soundMenuOpen = false
     root.themeName = Palettes.supported(store.settings.theme) ? String(store.settings.theme)
@@ -163,10 +166,19 @@ Item {
   }
 
   function dismiss() {
+    var externalUrl = root.pendingExternalUrl
+    root.pendingExternalUrl = ""
     root.opened = false
     root.view = "closed"
     if (root.shell && typeof root.shell.hide === "function")
       root.shell.hide((root.manifest && root.manifest.id) || "luneth90.keycade")
+    if (externalUrl) Qt.openUrlExternally(externalUrl)
+  }
+
+  function openMarketplacePage() {
+    if (root.view !== "mastery") return
+    root.pendingExternalUrl = root.marketplaceUrl
+    root.requestSafeClose()
   }
 
   // Back to the cabinets, mid-run. The run is saved exactly as leaving the
@@ -563,11 +575,7 @@ Item {
     if (!root.resumeAvailable && Number(counters.firstMasteryAt || 0) > 0
         && !Boolean(counters.firstMasteryCelebrated)
         && Number(counters.firstMasteryRun || 0) <= Number(counters.runs || 0)) {
-      root.masterySnapshot = Stats.aggregate(store.stats, root.eligibleBindings)
-      Stats.markFirstMasteryCelebrated(store.stats, root.profileId)
-      store.saveStats()
-      root.view = "mastery"
-      sounds.playMastery()
+      root.showFirstMastery()
       return false
     }
     return true
@@ -700,9 +708,43 @@ Item {
     if (root.progressCounts.total <= 0
         || root.progressCounts.mastered !== root.progressCounts.total) return false
     var reached = Stats.noteFirstMastery(store.stats, root.profileId, Date.now(),
-                                        runId || root.activeRunId)
+                                         runId || root.activeRunId)
     if (reached) store.saveStats()
     return reached
+  }
+
+  function showFirstMastery() {
+    root.masterySnapshot = Stats.aggregate(store.stats, root.eligibleBindings)
+    Stats.markFirstMasteryCelebrated(store.stats, root.profileId)
+    store.saveStats()
+    root.view = "mastery"
+    sounds.playMastery()
+  }
+
+  // Reaching 100% is the end of this run even when there are cards left in
+  // the 24-card deal. The final mastery screen is the result that matters, so
+  // persist the run and move there on the exact answer that masters the last
+  // eligible binding instead of making the user finish unrelated review cards.
+  function finishAtFirstMastery() {
+    if (root.view !== "playing") return false
+    checkFirstMastery(root.activeRunId)
+    var counters = root.profileCounters()
+    if (Number(counters.firstMasteryAt || 0) <= 0
+        || Boolean(counters.firstMasteryCelebrated)) return false
+    cardTimer.stop()
+    feedbackTimer.stop()
+    excludeStampTimer.stop()
+    sounds.stopCountdown()
+    root.excludeStampVisible = false
+    root.excludedCardId = ""
+    commitActiveTraining()
+    store.clearSession()
+    root.resumeAvailable = false
+    Stats.completeRun(store.stats, root.profileId)
+    store.stats = Object.assign({}, store.stats)
+    refreshProgressCounts()
+    showFirstMastery()
+    return true
   }
 
   function formatTrainingTime(milliseconds) {
@@ -720,10 +762,6 @@ Item {
     var month = String(date.getMonth() + 1).padStart(2, "0")
     var day = String(date.getDate()).padStart(2, "0")
     return date.getFullYear() + "-" + month + "-" + day
-  }
-
-  function continueFromMastery() {
-    if (root.view === "mastery") root.view = "summary"
   }
 
   function completedCardCount() {
@@ -1010,7 +1048,7 @@ Item {
     }
     root.runResults[root.currentBinding.id] = hitResult
     refreshProgressCounts()
-    checkFirstMastery(root.activeRunId)
+    if (finishAtFirstMastery()) return
     store.saveStats()
     root.revealChord = true
     root.feedbackKind = "hit"
@@ -1098,11 +1136,7 @@ Item {
     var counters = root.profileCounters()
     if (Number(counters.firstMasteryAt || 0) > 0 && !Boolean(counters.firstMasteryCelebrated)) {
       if (showMastery === false) root.view = "summary"
-      else {
-        Stats.markFirstMasteryCelebrated(store.stats, root.profileId)
-        root.view = "mastery"
-        sounds.playMastery()
-      }
+      else root.showFirstMastery()
     } else root.view = "summary"
     store.saveStats()
   }
@@ -1228,6 +1262,7 @@ Item {
       root.excludeStampVisible = false
       if (root.excludedCardId) root.dropExcludedCard(root.excludedCardId)
       root.excludedCardId = ""
+      if (root.finishAtFirstMastery()) return
       if (root.view !== "playing") return
       if (root.cardIndex >= root.deck.length) root.finishRun()
       else root.showCard()
@@ -1312,7 +1347,6 @@ Item {
         }
         if (root.view === "mastery"
             && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter)) {
-          root.continueFromMastery()
           event.accepted = true
           return
         }
@@ -2252,28 +2286,6 @@ Item {
     Item {
       Column {
         anchors.centerIn: parent; width: parent.width - 44; spacing: 10
-        // A stamp rather than an image: two nested frames and a word, so the
-        // celebration gains a cabinet's punch without an asset to ship.
-        Rectangle {
-          anchors.horizontalCenter: parent.horizontalCenter
-          width: Math.min(parent.width, 340); height: 60
-          color: "transparent"
-          border.width: 4; border.color: root.coinColor
-          PixelFrame {
-            anchors.fill: parent
-            anchors.margins: 8
-            color: root.coinColor
-            running: !root.reducedMotion && root.view === "mastery"
-          }
-          SafeText {
-            anchors.centerIn: parent; width: parent.width - 24
-            horizontalAlignment: Text.AlignHCenter
-            elide: Text.ElideRight; maximumLineCount: 1
-            text: i18n.t("perfectClear")
-            color: root.coinColor
-            font.family: "monospace"; font.bold: true; font.pixelSize: 22; font.letterSpacing: 3
-          }
-        }
         SafeText {
           width: parent.width; horizontalAlignment: Text.AlignHCenter
           text: "★  " + i18n.t("masteryCelebration") + "  ★"
@@ -2313,11 +2325,28 @@ Item {
           text: i18n.t("maintenanceUnlocked")
           color: root.secondaryColor; font.pixelSize: 12; font.bold: true
         }
-        Rectangle {
-          width: 220; height: 36; anchors.horizontalCenter: parent.horizontalCenter
-          color: root.successColor; border.width: 3; border.color: root.voidColor
-          SafeText { anchors.centerIn: parent; text: i18n.t("continueSummary"); color: root.voidColor; font.family: "monospace"; font.pixelSize: 11; font.bold: true }
-          MouseArea { anchors.fill: parent; onClicked: root.continueFromMastery() }
+        SafeText {
+          width: parent.width; horizontalAlignment: Text.AlignHCenter; wrapMode: Text.WordWrap
+          text: i18n.t("supportPrompt")
+          color: root.inkColor; font.pixelSize: 12
+        }
+        Row {
+          anchors.horizontalCenter: parent.horizontalCenter
+          Rectangle {
+            width: 240; height: 36
+            color: marketplaceSupportMouse.containsMouse ? root.coinColor : root.dangerColor
+            border.width: 3; border.color: root.voidColor
+            SafeText {
+              anchors.centerIn: parent
+              text: i18n.t("supportMarketplace")
+              color: root.voidColor; font.family: "monospace"; font.pixelSize: 11; font.bold: true
+            }
+            MouseArea {
+              id: marketplaceSupportMouse
+              anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+              onClicked: root.openMarketplacePage()
+            }
+          }
         }
       }
     }
