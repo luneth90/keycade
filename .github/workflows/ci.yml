@@ -26,7 +26,7 @@ jobs:
           useradd -m -u 1001 runner
           chmod 1777 /tmp
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - name: Setup root-owned trusted commands and permissions
         run: |
           install -m 755 -o root -g root tests/mocks/hyprctl /usr/bin/hyprctl
@@ -53,7 +53,7 @@ jobs:
           echo "::add-mask::$CLEAN_TOKEN"
           echo "token=$CLEAN_TOKEN" >> "$GITHUB_OUTPUT"
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@5975040f7f7d40edaff8d784b576fd65ae95c073 # v5.5.5
         with:
           files: coverage.xml
           fail_ci_if_error: false
