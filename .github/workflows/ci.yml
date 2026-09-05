@@ -12,15 +12,22 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: archlinux:latest
+      options: --init
     steps:
       - name: Install system dependencies
         run: |
           pacman -Sy --noconfirm archlinux-keyring
-          pacman -S --noconfirm --needed git python libxkbcommon qt6-declarative qt6-base quickshell jq
-      - name: Configure git safe directory
-        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          pacman -S --noconfirm --needed git python tmux libxkbcommon qt6-declarative qt6-base quickshell jq
+      - name: Create non-root test user
+        run: |
+          useradd -m -u 1001 runner
+          chmod 1777 /tmp
       - name: Checkout repository
         uses: actions/checkout@v4
+      - name: Setup root-owned trusted commands and permissions
+        run: |
+          install -m 755 -o root -g root tests/mocks/hyprctl /usr/bin/hyprctl
+          chown -R runner:runner "$GITHUB_WORKSPACE"
       - name: Validate Plugin Manifest
         run: |
           jq -e '.schemaVersion == 1' manifest.json
@@ -31,18 +38,17 @@ jobs:
           test -f Keycade.qml
       - name: Python Unit & Security Invariant Tests
         run: |
-          python3 -m unittest discover -s tests -p 'test_*.py' -v
+          su runner -c "python3 -m unittest discover -s tests -p 'test_*.py' -v"
       - name: QML Algorithm Tests
         run: |
-          QT_QPA_PLATFORM=offscreen QT_QPA_PLATFORMTHEME= QT_STYLE_OVERRIDE=Fusion \
-            /usr/lib/qt6/bin/qmltestrunner -input tests/qml/tst_algorithms.qml -import /usr/lib/qt6/qml
+          su runner -c "QT_QPA_PLATFORM=offscreen QT_QPA_PLATFORMTHEME= QT_STYLE_OVERRIDE=Fusion /usr/lib/qt6/bin/qmltestrunner -input tests/qml/tst_algorithms.qml -import /usr/lib/qt6/qml"
       - name: QML Shell Integration Tests
         run: |
-          ./tests/test_state_store_qml.sh
-          ./tests/test_hyprland_source_qml.sh
-          ./tests/test_ground_switching_qml.sh
-          ./tests/test_run_counters_qml.sh
-          ./tests/test_mastery_transition_qml.sh
+          su runner -c "./tests/test_state_store_qml.sh"
+          su runner -c "./tests/test_hyprland_source_qml.sh"
+          su runner -c "./tests/test_ground_switching_qml.sh"
+          su runner -c "./tests/test_run_counters_qml.sh"
+          su runner -c "./tests/test_mastery_transition_qml.sh"
       - name: Lint QML Components
         run: |
-          /usr/lib/qt6/bin/qmllint -I /usr/lib/qt6/qml Keycade.qml lib/*.qml lib/sources/*.qml dev/InputProbe.qml
+          su runner -c "/usr/lib/qt6/bin/qmllint -I /usr/lib/qt6/qml Keycade.qml lib/*.qml lib/sources/*.qml dev/InputProbe.qml"
