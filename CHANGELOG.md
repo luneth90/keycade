@@ -5,20 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.0.1] - 2026-09-05
+
+### Security & Hardening
+
+- **Marketplace Security Review Hardening**: Addressed findings from the Omarchy marketplace security audit (invariants R1–R8):
+  - **Dual-Ended Input Bounds (R2)**: Enforced independent schema validation and resource caps on external input sources (live tmux, Herdr, and offline packs); bounded overlay launch payload to 16 KiB.
+  - **Prototype Pollution Defense (R4)**: Converted dynamic data stores and schedulers to null-prototype maps (`Object.create(null)`), rejecting prototype-special keys.
+  - **Hermetic Trusted Commands (R7)**: Verified child executables at the process relay boundary (`bounded-relay`) to reject relative, non-root, or writable paths; eliminated all `/usr/bin/env` references.
+  - **Plain Text UI (R5)**: Constrained dynamic UI texts and action buttons with strict line limits and plain text boundaries.
 
 ### Fixed
 
-- Require the active ground's current eligible model to be fully mastered before a persisted first-mastery milestone may end a run.
-- Independently bound and rebuild live tmux, Herdr, and packaged binding models before QML retains them; reject prototype-special dynamic keys.
-- Verify the child executable at the shared relay boundary and refuse relative, user-owned, or writable commands.
-- Bound the first-mastery support prompt and marketplace action label as plain text.
-- Bound the overlay open(payloadJson) entry point to 16 KiB and require a non-array JSON object.
+- **Mastery Transition Logic**: Fixed an issue where a stale milestone timestamp could prematurely end a session, ensuring completion triggers only when the active ground is 100% mastered.
 
-### Changed
+### CI & Tooling
 
-- Run the parser fuzzing smoke test in CI with a hash-locked Atheris dependency and explicit least-privilege workflow permissions.
-- Retire the former authoritative-sourcing rule as a security invariant. Local read-only state remains the source of truth for machine grounds; shared corpora and bundled-pack provenance remain functional data-quality checks.
+- Enforced least-privilege workflow permissions and added Atheris parser fuzz testing in CI.
 
 ## [1.0.0] - 2026-09-05
 
