@@ -33,7 +33,7 @@ Keycade 1.0.0 is the first major stable release, transforming shortcut memorizat
   - Test coverage generation (74% backend coverage) with Codecov integration.
   - OpenSSF-compliant `SECURITY.md` vulnerability reporting policy.
 - **Localization**:
-  - Complete English and Simplified Chinese (简体中文) support across all UI elements, tooltips, and documentation.
+  - Complete English and Simplified Chinese localization across all UI elements, tooltips, and documentation.
 
 ### Security & Hardening
 
