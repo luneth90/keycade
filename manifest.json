@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "luneth90.keycade",
   "name": "Keycade",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "author": "luneth90",
   "description": "A shortcut recall arcade for Omarchy, herdr, tmux, Vim, Neovim and LazyVim — six cabinets, each with its own deck, progress and mastery.",
   "kinds": [
