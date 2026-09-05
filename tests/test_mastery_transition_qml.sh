@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/bash
 
 # The first 100% is a terminal result, not something the player has to carry
 # through the rest of a 24-card deal. Drive one learning entry over the mastery
@@ -60,6 +60,15 @@ ShellRoot {
       alternates: []
     }
   })
+  readonly property var incompleteBinding: ({
+    id: "neovim/incomplete",
+    localId: "incomplete",
+    answer: {
+      judgeMode: "text",
+      steps: [{ mods: 0, text: "y" }],
+      alternates: []
+    }
+  })
 
   function check(label, actual, expected) {
     if (actual !== expected) {
@@ -83,6 +92,34 @@ ShellRoot {
       }
 
       running = false
+      check("oversized launch payload refused",
+            Object.keys(overlay.acceptedOpenPayload("x".repeat(
+                overlay.maxOpenPayloadChars + 1))).length, 0)
+      check("array launch payload refused",
+            Object.keys(overlay.acceptedOpenPayload("[]")).length, 0)
+      check("bounded launch payload accepted",
+            overlay.acceptedOpenPayload('{"locale":"zh-CN"}').locale, "zh-CN")
+      // A crash may leave a not-yet-celebrated timestamp behind. If the
+      // eligible set later grows, that stale milestone must not end a run
+      // whose current model is below 100%.
+      var pendingCounters = overlay.profileCounters()
+      pendingCounters.firstMasteryAt = 1
+      pendingCounters.firstMasteryRun = 1
+      pendingCounters.firstMasteryCelebrated = false
+      overlay.eligibleBindings = [finalBinding, incompleteBinding]
+      overlay.view = "playing"
+      overlay.refreshProgressCounts()
+      check("incomplete total", overlay.progressCounts.total, 2)
+      check("incomplete mastered", overlay.progressCounts.mastered, 0)
+      check("stale milestone refused", overlay.finishAtFirstMastery(), false)
+      check("incomplete run remains active", overlay.view, "playing")
+      if (failures) {
+        done.start()
+        return
+      }
+      pendingCounters.firstMasteryAt = 0
+      pendingCounters.firstMasteryRun = 0
+
       overlay.eligibleBindings = [finalBinding]
       // A second card proves that the transition is not the old end-of-deck
       // path: the current answer is only card 1 of 2.

@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/python3
 """Compile assets/packs/*.json into lib/Packs.js, and collect the sources.
 
 A pack is the reviewed table of an application-level training ground. It is

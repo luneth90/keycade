@@ -8,16 +8,17 @@ on:
   schedule:
     - cron: '30 2 * * 1'
 
-permissions: read-all
+permissions:
+  contents: read
 
 jobs:
   analyze:
     name: Analyze (${{ matrix.language }})
     runs-on: ubuntu-latest
     permissions:
+      contents: read
       security-events: write
       actions: read
-      contents: read
 
     strategy:
       fail-fast: false

@@ -7,7 +7,8 @@ on:
     branches: [ main ]
   workflow_dispatch:
 
-permissions: read-all
+permissions:
+  contents: read
 
 jobs:
   test:
@@ -20,7 +21,7 @@ jobs:
       - name: Install system dependencies
         run: |
           pacman -Sy --noconfirm archlinux-keyring
-          pacman -S --noconfirm --needed git python python-coverage tmux libxkbcommon xkeyboard-config qt6-declarative qt6-base quickshell jq
+          pacman -S --noconfirm --needed git python python-pip python-coverage tmux libxkbcommon xkeyboard-config qt6-declarative qt6-base quickshell jq
       - name: Create non-root test user
         run: |
           useradd -m -u 1001 runner
@@ -31,6 +32,10 @@ jobs:
         run: |
           install -m 755 -o root -g root tests/mocks/hyprctl /usr/bin/hyprctl
           chown -R runner:runner "$GITHUB_WORKSPACE"
+      - name: Install pinned fuzzing dependency as test user
+        run: |
+          su runner -c "python3 -m venv .venv"
+          su runner -c ".venv/bin/python -m pip install --require-hashes --only-binary=:all: --no-cache-dir -r requirements-dev.txt"
       - name: Validate Plugin Manifest
         run: |
           jq -e '.schemaVersion == 1' manifest.json
@@ -44,6 +49,9 @@ jobs:
           su runner -c "python3 -m coverage run --source=bin -m unittest discover -s tests -p 'test_*.py' -v"
           su runner -c "python3 -m coverage report"
           su runner -c "python3 -m coverage xml -o coverage.xml"
+      - name: Atheris Parser Fuzzing Smoke Test
+        run: |
+          su runner -c ".venv/bin/python tests/fuzz_keybinds.py -runs=1000"
       - name: Prepare Codecov Token
         id: codecov-token
         env:

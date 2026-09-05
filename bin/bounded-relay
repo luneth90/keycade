@@ -58,6 +58,19 @@ def _trusted_library(path: str) -> str:
     return path
 
 
+def _trusted_command(path: str) -> str:
+    """Return an absolute system command only after the R7 file checks.
+
+    The relay is the last process boundary shared by every QML data source.
+    Checking here prevents an accidentally relative command from reintroducing
+    ambient PATH lookup, and prevents a caller from selecting a writable
+    interpreter or executable as the child process.
+    """
+    if not os.path.isabs(path):
+        raise OSError(f"{path} is not an absolute command")
+    return _trusted_library(path)
+
+
 def _prepare_child() -> None:
     # Own session so the relay can signal the whole group, plus a kernel death
     # signal so an immediately killed relay cannot leave the child running.
@@ -112,6 +125,12 @@ def main() -> int:
         return 2
     if arguments.max_bytes <= 0 or arguments.deadline <= 0:
         _report("bounded-relay received an invalid budget")
+        return 2
+
+    try:
+        command[0] = _trusted_command(command[0])
+    except OSError as error:
+        _report(f"bounded-relay refused its command: {error}")
         return 2
 
     signal.signal(signal.SIGTERM, _terminate)

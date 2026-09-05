@@ -112,9 +112,9 @@ Saved data remains preserved in `${XDG_STATE_HOME:-$HOME/.local/state}/omarchy/k
 
 ### Host System Inspection
 
-Upstream defaults form the core table; user configuration files are inspected solely to calibrate leader and prefix keys. Files are parsed via descriptor-relative sandboxed reads adhering strictly to fixed paths and formats. Untrusted or complex constructs are safely skipped, recorded, and defaulted to upstream standards. No arbitrary Lua code is executed, no editors are spawned, and no `require` chains are followed.
+Upstream defaults form the core table. For LazyVim, bounded static readers inspect only fixed files to calibrate `mapleader` / `maplocalleader`, enabled `lazyvim.json` extras, the installed LazyVim commit in `lazy-lock.json`, and top-level literal `vim.keymap.set` / `vim.keymap.del` changes in `lua/config/keymaps.lua`. For tmux without a running server, they inspect only global `prefix` / `prefix2` assignments in `~/.config/tmux/tmux.conf` and `~/.tmux.conf`. Reads are descriptor-relative, reject symlinks, and accept only documented literal shapes. Complex constructs are skipped and counted; no Lua or shell configuration is executed, no editor is spawned, and no `require` or `source-file` chain is followed.
 
-tmux is the only service queried dynamically: once `has-session` confirms an active server, `show-options` retrieves `prefix` and `prefix2`, and `list-keys` fetches live bindings. When no server is running, Keycade parses global `set` directives in `~/.config/tmux/tmux.conf` and `~/.tmux.conf` while preserving default bindings. Both prefixes are accepted; if `C-b` is present, it is favored on the prompt card.
+tmux is the only service queried dynamically: once `has-session` confirms an active server, `show-options` retrieves `prefix` and `prefix2`, and `list-keys` fetches live bindings. Herdr consumes the bounded plain-text `--print` listing from Omarchy's fixed, root-owned binding-list command. Both helpers run behind deadlines and output limits, and QML independently rebuilds bounded whitelist models before retaining them.
 
 ### Tests & Screenshots
 

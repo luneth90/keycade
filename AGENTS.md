@@ -27,8 +27,8 @@ keycade/
 ├── bin/                       # Sandboxed runtime helpers (Python)
 │   ├── bounded-relay          # Timeout/resource guardian with setsid & PDEATHSIG
 │   ├── keybinds-json          # Hyprland active binding & keymap extractor
-│   ├── app-config-json        # Static config parser for nvim/helix/lazyvim
-│   ├── tmux-keys-json         # Tmux live server & static fallback key reader
+│   ├── app-config-json        # Static LazyVim calibration and tmux prefix parser
+│   ├── tmux-keys-json         # Existing tmux server's live key reader
 │   ├── herdr-keys-json        # Herdr multiplexer binding reader
 │   └── state-store            # Descriptor-relative atomic state storage
 ├── lib/                       # QML components, business logic, and sound assets
@@ -40,22 +40,22 @@ keycade/
 │   ├── Scheduler.js           # Spaced repetition engine (24-card sessions)
 │   └── sources/               # Data sources connecting helpers to QML models
 ├── tests/                     # Automated test suites
-│   ├── test_*.py              # Python unit and security invariant tests (188+)
+│   ├── test_*.py              # Python unit and security invariant tests (189+)
 │   ├── fuzz_keybinds.py       # Atheris fuzzing harness for keybinding parsers
 │   ├── qml/                   # QML algorithm verification tests
 │   └── fixtures/              # Test data fixtures and cross-language corpora
 ├── tools/                     # Build tools (packs, locales, screenshots)
 ├── docs/                      # Technical plans, review invariants, and specs
-│   └── review-invariants.md   # Authoritative review invariants (R1–R8, L1)
+│   └── review-invariants.md   # Authoritative marketplace invariants (R1–R8)
 ├── .bestpractices.json        # OpenSSF Best Practices criteria responses
 └── .github/                   # Workflows, rulesets, and Dependabot config
 ```
 
 ---
 
-## 3. Mandatory Security Invariants (R1–R8, L1)
+## 3. Mandatory Security Invariants (R1–R8)
 
-All changes interacting with external processes, files, or user environments **MUST** uphold these non-negotiable invariants established during the Omarchy marketplace security audits:
+R1–R8 are non-negotiable security invariants established during the Omarchy marketplace audits.
 
 | Invariant | Title | Core Requirement |
 | :--- | :--- | :--- |
@@ -67,7 +67,6 @@ All changes interacting with external processes, files, or user environments **M
 | **R6** | **Standard Packaging Only** | No custom clone-and-run installers (`install.sh`, `setup.py`, `git pull`). Strictly follow the official Omarchy plugin lifecycle (`omarchy plugin add/update/remove`). |
 | **R7** | **Hermetic & Trusted Binaries** | No reliance on ambient `PATH` or `#!/usr/bin/env`. Commands and dynamic libraries (`libc.so.6`, `libxkbcommon.so`) must use absolute paths verified by `trusted_command()` (root-owned, non-writable). Subprocesses run in a sanitized whitelist environment. |
 | **R8** | **Incremental Consumption & Process Reaping** | QML stream consumers must bound inputs incrementally on arrival (not retain full stream before checking). Teardown must terminate the entire process group (`setsid` + `PR_SET_PDEATHSIG` + fallback SIGKILL). |
-| **L1** | **Authoritative Upstream Sourcing** | Any code enumerating externally defined inputs (environment variables, XKB keysyms) must cite its authoritative source (e.g. `/usr/include/xkbcommon/xkbcommon.h`). Shared logic across Python and JS must be pinned by a single shared corpus (e.g. `tests/fixtures/canonical-keys.js`). |
 
 ---
 
@@ -125,7 +124,7 @@ Examples:
 Before committing or opening a PR, agents **MUST** run and pass the automated test suites:
 
 ```bash
-# 1. Run full Python test suite (188+ tests)
+# 1. Run full Python test suite (189+ tests)
 python3 -m unittest discover -s tests -p "test_*.py"
 
 # 2. Run Atheris fuzzing smoke test

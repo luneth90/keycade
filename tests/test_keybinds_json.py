@@ -223,6 +223,7 @@ class KeybindHelperTests(unittest.TestCase):
             if helper.poll() is None:
                 helper.kill()
                 helper.wait()
+            helper.stdout.close()
 
     def test_stream_records_stay_small_and_line_delimited(self):
         # The QML consumer bounds the stream while reading, which only works

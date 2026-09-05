@@ -42,6 +42,8 @@ Item {
   readonly property int maxDescriptionChars: 512
   readonly property int maxOptionChars: 32
   readonly property int maxExtras: 128
+  readonly property int maxCategories: 32
+  readonly property int maxAlternates: 4
 
   property var bindings: []
   property string fingerprint: ""
@@ -64,7 +66,8 @@ Item {
   signal failed(string message)
 
   function safeText(value, limit) {
-    var text = String(value === undefined || value === null ? "" : value)
+    if (typeof value !== "string") return ""
+    var text = value
     if (!text.length || text.length > limit) return ""
     return text.replace(/[\u0000-\u001f\u007f-\u009f\u200e\u200f\u202a-\u202e\u2066-\u2069]/g, " ")
   }
@@ -74,6 +77,19 @@ Item {
   function usableKey(value) {
     var key = String(value === undefined || value === null ? "" : value)
     return key && ["__proto__", "constructor", "prototype"].indexOf(key) === -1 ? key : ""
+  }
+
+  function acceptedCategories(value) {
+    if (!Array.isArray(value) || !value.length || value.length > root.maxCategories) return null
+    var accepted = []
+    var seen = root.safeMap()
+    for (var index = 0; index < value.length; index++) {
+      var name = root.usableKey(root.safeText(value[index], 32))
+      if (!name || seen[name]) return null
+      seen[name] = true
+      accepted.push(name)
+    }
+    return accepted
   }
 
   // What a named option resolves to, as a person would write it.
@@ -131,9 +147,10 @@ Item {
     if (!Array.isArray(record.steps) || !record.steps.length
         || record.steps.length > root.maxSteps) return null
     var providers = []
+    if (record.extras !== undefined && !Array.isArray(record.extras)) return null
     if (Array.isArray(record.extras)) {
-      for (var provider = 0; provider < record.extras.length
-           && providers.length <= root.maxExtras; provider++) {
+      if (record.extras.length > root.maxExtras) return null
+      for (var provider = 0; provider < record.extras.length; provider++) {
         var name = root.safeText(record.extras[provider], 128)
         if (name && providers.indexOf(name) === -1) providers.push(name)
       }
@@ -146,8 +163,10 @@ Item {
     var alternates = []
     var primaryKey = JSON.stringify(steps)
     var alternateKeys = root.safeMap()
+    if (record.alternates !== undefined && !Array.isArray(record.alternates)) return null
     if (Array.isArray(record.alternates)) {
-      for (var other = 0; other < record.alternates.length && alternates.length < 4; other++) {
+      if (record.alternates.length > root.maxAlternates) return null
+      for (var other = 0; other < record.alternates.length; other++) {
         var sequence = root.resolvedSteps(record.alternates[other])
         var sequenceKey = root.usableKey(sequence ? JSON.stringify(sequence) : "")
         if (sequence && sequenceKey && sequenceKey !== primaryKey && !alternateKeys[sequenceKey]) {
@@ -296,7 +315,17 @@ Item {
       }
     }
 
-    var categories = Array.isArray(pack.categories) ? pack.categories : root.packCategories(pack)
+    var categories = root.acceptedCategories(
+        Array.isArray(pack.categories) ? pack.categories : root.packCategories(pack))
+    if (!categories) {
+      if (liveOverride) {
+        root.packOverride = null
+        root.refresh()
+        return
+      }
+      root.fail("Pack categories exceeded their limits")
+      return
+    }
     var accepted = []
     var refused = 0
     var disabled = 0
@@ -332,8 +361,13 @@ Item {
   function packCategories(pack) {
     var names = []
     for (var index = 0; index < pack.bindings.length; index++) {
-      var name = pack.bindings[index] ? String(pack.bindings[index].category || "") : ""
-      if (name && names.indexOf(name) === -1) names.push(name)
+      var name = pack.bindings[index]
+          ? root.usableKey(root.safeText(pack.bindings[index].category, 32)) : ""
+      if (!name) return []
+      if (names.indexOf(name) === -1) {
+        if (names.length >= root.maxCategories) return []
+        names.push(name)
+      }
     }
     return names
   }

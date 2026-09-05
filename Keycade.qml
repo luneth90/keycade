@@ -46,15 +46,15 @@ Item {
   property int newLearned: 0
   property int masteredGained: 0
   property var reactions: []
-  property var runResults: ({})
-  property var pendingReinforcements: ({})
+  property var runResults: Object.create(null)
+  property var pendingReinforcements: Object.create(null)
   property var reviewSuggestions: []
   property var masterySnapshot: ({ attempts: 0, correct: 0, accuracy: 0, response: 0 })
   property var progressCounts: ({ unseen: 0, learning: 0, mastered: 0, due: 0, total: 0 })
   // Every ground's last known { mastered, total }, by id - what the cabinet
   // row draws. The active one is live; the rest are what they recorded when
   // they were last open.
-  property var groundProgress: ({})
+  property var groundProgress: Object.create(null)
   property double activeSegmentStartedAt: 0
   property double cardStartedAt: 0
   property double deadline: 0
@@ -118,6 +118,7 @@ Item {
   // 300 ms measured worse than it sounds: the 110 ms fade eats a third of it,
   // so the words were legible for under two tenths of a second.
   readonly property int excludeStampMs: 900
+  readonly property int maxOpenPayloadChars: 16 * 1024
   readonly property bool reducedMotion: Boolean(store.settings.reducedMotion)
   readonly property int activeRunId: Stats.runsOf(store.stats, root.profileId) + 1
   readonly property string marketplaceUrl: "https://plugins.omarchy.org/plugin.html?id=luneth90.keycade"
@@ -134,10 +135,21 @@ Item {
   readonly property color dangerColor: root.themePalette.dangerColor
   readonly property color coinColor: root.themePalette.coinColor
 
+  function acceptedOpenPayload(payloadJson) {
+    var rawPayload = typeof payloadJson === "string" ? payloadJson : "{}"
+    if (rawPayload.length > root.maxOpenPayloadChars) return ({})
+    try {
+      var parsedPayload = JSON.parse(rawPayload || "{}")
+      return parsedPayload && typeof parsedPayload === "object" && !Array.isArray(parsedPayload)
+          ? parsedPayload : ({})
+    } catch (error) {
+      return ({})
+    }
+  }
+
   function open(payloadJson) {
     if (root.opened) return
-    var payload = {}
-    try { payload = JSON.parse(String(payloadJson || "{}")) } catch (error) { payload = {} }
+    var payload = root.acceptedOpenPayload(payloadJson)
     root.opened = true
     root.view = "loading"
     root.errorMessage = ""
@@ -374,7 +386,7 @@ Item {
     // The miss that led here stays in stats - it happened - but the run's own
     // tally drops the row, so an excluded bind cannot head the review list.
     if (root.runResults[bindingId]) {
-      var results = {}
+      var results = Session.safeMap()
       Object.keys(root.runResults).forEach(function(key) {
         if (key !== bindingId) results[key] = root.runResults[key]
       })
@@ -610,8 +622,8 @@ Item {
     root.runNewTarget = session ? Math.max(0, Number(session.runNewTarget || 0)) : 0
     root.reactions = session && Array.isArray(session.reactions) ? session.reactions : []
     root.runResults = session
-        ? Session.restoreResults(session.runResults, root.eligibleBindings) : ({})
-    root.pendingReinforcements = ({})
+        ? Session.restoreResults(session.runResults, root.eligibleBindings) : Session.safeMap()
+    root.pendingReinforcements = Session.safeMap()
     var pending = session && Array.isArray(session.pendingReinforcements)
         ? session.pendingReinforcements : []
     for (var index = 0; index < pending.length; index++)
@@ -670,7 +682,7 @@ Item {
   // to them would never hear that they moved.
   function refreshGroundProgress() {
     var ids = Profiles.ids()
-    var progress = ({})
+    var progress = Session.safeMap()
     for (var index = 0; index < ids.length; index++) {
       var counters = Stats.counters(store.stats, ids[index])
       progress[ids[index]] = {
@@ -727,6 +739,12 @@ Item {
   // eligible binding instead of making the user finish unrelated review cards.
   function finishAtFirstMastery() {
     if (root.view !== "playing") return false
+    // A pending milestone in persisted state is not proof that this ground is
+    // still complete: exclusions or a refreshed source may have changed its
+    // eligible set since the milestone was recorded. Only the current,
+    // independently counted model may end the active run.
+    if (root.progressCounts.total <= 0
+        || root.progressCounts.mastered !== root.progressCounts.total) return false
     checkFirstMastery(root.activeRunId)
     var counters = root.profileCounters()
     if (Number(counters.firstMasteryAt || 0) <= 0
@@ -777,7 +795,10 @@ Item {
   }
 
   function setReinforcementPending(bindingId, pending) {
-    var updated = Object.assign({}, root.pendingReinforcements)
+    var updated = Session.safeMap()
+    Object.keys(root.pendingReinforcements || {}).forEach(function(id) {
+      updated[id] = root.pendingReinforcements[id]
+    })
     if (pending) updated[bindingId] = true
     else delete updated[bindingId]
     root.pendingReinforcements = updated
@@ -846,7 +867,7 @@ Item {
                                              ? plan.review : session.runReviewTarget))
     root.runNewTarget = Math.max(0, Number(session.runNewTarget === undefined
                                           ? plan.added : session.runNewTarget))
-    root.pendingReinforcements = ({})
+    root.pendingReinforcements = Session.safeMap()
     var pendingIds = Array.isArray(session.pendingReinforcements) ? session.pendingReinforcements : []
     for (var pendingIndex = 0; pendingIndex < pendingIds.length; pendingIndex++)
       root.setReinforcementPending(String(pendingIds[pendingIndex]), true)
@@ -890,8 +911,8 @@ Item {
     root.masteredGained = 0
     root.reactions = []
     root.combo = 0
-    root.runResults = ({})
-    root.pendingReinforcements = ({})
+    root.runResults = Session.safeMap()
+    root.pendingReinforcements = Session.safeMap()
     root.reviewSuggestions = []
     root.correctionRequired = false
     refreshProgressCounts()
@@ -2326,7 +2347,8 @@ Item {
           color: root.secondaryColor; font.pixelSize: 12; font.bold: true
         }
         SafeText {
-          width: parent.width; horizontalAlignment: Text.AlignHCenter; wrapMode: Text.WordWrap
+          width: parent.width; height: 34; horizontalAlignment: Text.AlignHCenter
+          wrapMode: Text.WordWrap; maximumLineCount: 2; elide: Text.ElideRight; clip: true
           text: i18n.t("supportPrompt")
           color: root.inkColor; font.pixelSize: 12
         }
@@ -2337,7 +2359,9 @@ Item {
             color: marketplaceSupportMouse.containsMouse ? root.coinColor : root.dangerColor
             border.width: 3; border.color: root.voidColor
             SafeText {
-              anchors.centerIn: parent
+              anchors.centerIn: parent; width: parent.width - 12
+              horizontalAlignment: Text.AlignHCenter
+              maximumLineCount: 1; elide: Text.ElideRight; clip: true
               text: i18n.t("supportMarketplace")
               color: root.voidColor; font.family: "monospace"; font.pixelSize: 11; font.bold: true
             }
