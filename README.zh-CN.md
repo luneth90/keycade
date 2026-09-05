@@ -112,9 +112,9 @@ omarchy plugin remove luneth90.keycade
 
 ### 本机配置读取策略
 
-内置词条库采用官方默认标准；读取本机配置仅用于校准 leader 键与 prefix 前缀。所有读取均采用基于文件描述符的沙盒相对路径，严格限定固定路径与预期格式；遇到不可信或复杂写法时安全跳过并计数，回退至官方默认。绝不执行外部 Lua 脚本、不拉起外部编辑器，亦不递归追踪 `require` 依赖链。
+内置词条库采用官方默认标准。LazyVim 仅以有界静态解析读取固定文件，用于校准 `mapleader` / `maplocalleader`、`lazyvim.json` 中启用的 extras、`lazy-lock.json` 中已安装的 LazyVim commit，以及 `lua/config/keymaps.lua` 顶层字面量 `vim.keymap.set` / `vim.keymap.del` 改动。tmux 未运行时，仅读取 `~/.config/tmux/tmux.conf` 与 `~/.tmux.conf` 的全局 `prefix` / `prefix2` 赋值。所有读取均基于目录描述符、拒绝符号链接，只接受文档化的字面量形式；复杂写法会被跳过并计数。绝不执行 Lua 或 shell 配置，不启动编辑器，也不追踪 `require` 或 `source-file` 依赖链。
 
-tmux 是唯一的运行时动态查询：在通过 `has-session` 校验服务存活后，依次通过 `show-options` 读取实际生效的 `prefix` / `prefix2` 并用 `list-keys` 读取键位。若无正在运行的 server，则仅安全解析 `~/.config/tmux/tmux.conf` 与 `~/.tmux.conf` 中的全局 `set` 选项，键位沿用内置标准表。两个前缀均可触发，若包含默认前缀 `C-b` 则优先展示在题目卡上。
+tmux 是唯一被动态查询的服务：通过 `has-session` 确认已有 server 后，才用 `show-options` 读取 `prefix` / `prefix2`，并用 `list-keys` 读取实时键位。Herdr 只消费 Omarchy 固定、root-owned 键位清单命令输出的有界纯文本。两类 helper 都受 deadline 和输出上限保护，QML 在保留数据前还会独立重建有界白名单模型。
 
 ### 自动化测试与截图
 

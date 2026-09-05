@@ -5,24 +5,39 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- Require the active ground's current eligible model to be fully mastered before a persisted first-mastery milestone may end a run.
+- Independently bound and rebuild live tmux, Herdr, and packaged binding models before QML retains them; reject prototype-special dynamic keys.
+- Verify the child executable at the shared relay boundary and refuse relative, user-owned, or writable commands.
+- Bound the first-mastery support prompt and marketplace action label as plain text.
+- Bound the overlay open(payloadJson) entry point to 16 KiB and require a non-array JSON object.
+
+### Changed
+
+- Run the parser fuzzing smoke test in CI with a hash-locked Atheris dependency and explicit least-privilege workflow permissions.
+- Retire the former authoritative-sourcing rule as a security invariant. Local read-only state remains the source of truth for machine grounds; shared corpora and bundled-pack provenance remain functional data-quality checks.
+
 ## [1.0.0] - 2026-09-05
 
 ### Highlights
 
-Keycade 1.0.0 is the first major stable release, transforming shortcut memorization into an arcade-style recall training platform. This release introduces six dedicated training cabinets, Wayland input isolation, end-to-end security hardening (review invariants R1–R8 and L1), full test automation, and complete third-party verified CI/CD workflows.
+Keycade 1.0.0 is the first major stable release, transforming shortcut memorization into an arcade-style recall training platform. This release introduces six dedicated training cabinets, Wayland input isolation, end-to-end security hardening (review invariants R1–R8), full test automation, and complete third-party verified CI/CD workflows.
 
 ### Added
 
 - **Six Dedicated Training Grounds (Cabinets)**:
-  - **Omarchy**: Live compositor shortcut extraction directly from running Hyprland instances with authoritative XKB keymap compilation.
-  - **Herdr**: Workspace and window layout manager shortcut practice.
+  - **Omarchy**: Live compositor shortcut extraction directly from running Hyprland instances with validated XKB keymap compilation.
+  - **Herdr**: Terminal multiplexer bindings from Omarchy's bounded local listing.
   - **Tmux**: Dynamic key bindings queried safely from active tmux servers via bounded, deadline-enforced listing.
   - **Vim**: Offline curated core editing bindings and operator-motion cards.
-  - **Neovim**: Safe static parsing of user configurations in `~/.config/nvim/` without executing arbitrary Lua code.
-  - **LazyVim**: Static detection of LazyVim bundle plugins, `lazyvim.json`, and custom leader key bindings.
+  - **Neovim**: Shipped default upstream reference table; no user configuration is read.
+  - **LazyVim**: Shipped upstream table calibrated by bounded static reads of literal leader, extras, installed commit, and top-level keymap changes.
 - **Arcade Dashboard & Progression**:
   - Home screen tracking every cabinet's cards, progress, and mastery status independently.
-  - Visual first-time 100% mastery celebration animations and smooth transition back to cabinet selection.
+  - Visual first-time 100% mastery result with an optional official marketplace heart action.
   - Reset and "Start New Run" capabilities per cabinet.
 - **Wayland Input Isolation**:
   - Integration with `zwlr_input_inhibit_manager_v1` ensuring all keystrokes during practice sessions are intercepted and judged locally without triggering system or desktop actions.
@@ -37,16 +52,15 @@ Keycade 1.0.0 is the first major stable release, transforming shortcut memorizat
 
 ### Security & Hardening
 
-- **Compliance with Review Invariants R1–R8 and L1**:
-  - **R1 (Deadline Enforcement)**: Strict timeouts on all helper subcommands with graceful SIGTERM and immediate SIGKILL fallbacks.
-  - **R2 (Trusted Binaries & Libraries)**: Executables (`/usr/bin/hyprctl`, `/usr/bin/tmux`, `/usr/bin/herdr`) and dynamic libraries (`/usr/lib/libxkbcommon.so.0`) are verified to be root-owned, non-writable regular files. Ambient `PATH` resolution is completely eliminated.
-  - **R3 (Process Lifecycle)**: Process groups are tracked and killed on helper exit; `PR_SET_PDEATHSIG` ensures child processes die immediately if the helper process terminates.
-  - **R4 (Environment Scrubbing)**: Child process environments are rebuilt from a strict whitelist. Dangerous XKB environment variables (`XKB_CONFIG_VERSIONED_EXTENSIONS_PATH`, `XKB_CONFIG_UNVERSIONED_EXTENSIONS_PATH`) are scrubbed before keymap compilation.
-  - **R5 (Static-Only Analysis)**: Configuration readers for Lua and Vim use custom static tokenizers; zero arbitrary user code or scripts are executed.
-  - **R6 (Data Sanitization & Prototype Defense)**: All keys and descriptions are sanitized of terminal escape codes and control characters. JSON dictionaries and map stores are created with null prototypes (`Object.create(null)`) to prevent prototype pollution attacks.
-  - **R7 (State Quarantine)**: Persistent state directories under `~/.local/state/omarchy/plugins/luneth90.keycade/` refuse symlinks, preventing symlink traversal and arbitrary file write attacks.
-  - **R8 (Bounded Resources)**: Enforced maximum line, byte, and record limits on all external inputs and IPC communication streams.
-  - **L1 (Leader Safety)**: Leader keys and prefix chords are validated to ensure only well-formed single-chord prefixes are admitted.
+- **Compliance with marketplace security invariants R1–R8**:
+  - **R1 (No User Config Execution)**: User configuration is never executed or evaluated; declared readers accept only bounded literal shapes or read-only APIs.
+  - **R2 (Dual-Ended Bounds)**: Producers bound bytes, time, records, and child trees; QML independently validates and rebuilds retained models.
+  - **R3 (Descriptor-Relative State I/O)**: State under `~/.local/state/omarchy/keycade/` rejects links and uses verified directory descriptors, 0600 temporary files, `fsync`, and atomic rename.
+  - **R4 (Prototype Safety)**: Dynamic maps use null prototypes and reject prototype-special keys.
+  - **R5 (Plain Text Dynamic UI)**: External text is stripped of controls and rendered through bounded plain-text components.
+  - **R6 (Standard Packaging Only)**: Installation, updates, and removal use only Omarchy's plugin lifecycle.
+  - **R7 (Hermetic Trusted Binaries)**: `/usr/bin/python3`, `/usr/bin/hyprctl`, `/usr/bin/tmux`, the root-owned Omarchy Herdr listing command, and required libraries are addressed absolutely and verified where opened by helpers; child environments are whitelisted.
+  - **R8 (Incremental Consumption & Reaping)**: Streams are bounded while read and complete process groups are terminated and reaped.
 
 ### Testing
 

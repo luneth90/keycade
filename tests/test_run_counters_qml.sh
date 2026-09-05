@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/bash
 
 # Every number Keycade shows belongs to one training ground, and the ones a run
 # produces belong to one run inside it. Both kinds are drawn on the home screen

@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/bash
 # Reshoot every image the READMEs and the plugin listing use - the three
 # each README shows, in both languages, plus the listing preview.
 #

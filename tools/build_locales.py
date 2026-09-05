@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/python3
 """Compile assets/locales/*.json into lib/Locales.js.
 
 The catalogue is static data that ships with the plugin, so it is embedded in

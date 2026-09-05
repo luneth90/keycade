@@ -1,6 +1,6 @@
 import QtQuick
 import Quickshell.Io
-import "../TextKey.js" as TextKey
+import "ExternalPackValidation.js" as ExternalPack
 
 // Optional live tmux table. Failure is not an error: the shipped pack is the
 // fallback, and in particular no server is ever started just to collect keys.
@@ -10,6 +10,10 @@ Item {
   readonly property string interpreterPath: "/usr/bin/python3"
   readonly property string relayPath: String(Qt.resolvedUrl("../../bin/bounded-relay")).replace("file://", "")
   readonly property string helperPath: String(Qt.resolvedUrl("../../bin/tmux-keys-json")).replace("file://", "")
+  readonly property int maxBindings: 512
+  readonly property int maxCategories: 32
+  readonly property int maxSteps: 8
+  readonly property int maxAlternates: 4
   property var pack: null
   property var options: ({})
   property bool loading: false
@@ -39,16 +43,10 @@ Item {
     root.finished()
   }
 
-  function acceptedOptions(value) {
-    if (!value || typeof value !== "object" || Array.isArray(value)) return null
-    var prefix = String(value.prefix || "")
-    var prefix2 = String(value.prefix2 || "")
-    if (!prefix.length || prefix.length > 32 || /[\u0000-\u001f\u007f]/.test(prefix)) return null
-    if (prefix2.length > 32 || /[\u0000-\u001f\u007f]/.test(prefix2)) return null
-    if (!TextKey.parseKeySpec(prefix) || (prefix2 && !TextKey.parseKeySpec(prefix2))) return null
-    var result = ({ prefix: prefix })
-    if (prefix2 && prefix2 !== prefix) result.prefix2 = prefix2
-    return result
+  // The helper's limits are not inherited by this process boundary. Rebuild a
+  // fixed-schema pack and retain none of JSON.parse's original objects.
+  function acceptedPack(record) {
+    return ExternalPack.acceptedTmuxPack(record)
   }
 
   Process {
@@ -66,11 +64,10 @@ Item {
           var text = String(line || "")
           if (!text.length || text.length > 512 * 1024) return
           var record = JSON.parse(text)
-          var options = root.acceptedOptions(record ? record.options : null)
-          if (record && record.schemaVersion === 1 && record.profile === "tmux"
-              && record.available === true && Array.isArray(record.bindings) && options) {
-            root.options = options
-            root.pack = record
+          var pack = root.acceptedPack(record)
+          if (pack) {
+            root.options = ExternalPack.acceptedTmuxOptions(record.options)
+            root.pack = pack
           }
         } catch (error) {
           root.pack = null

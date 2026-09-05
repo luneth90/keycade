@@ -3,6 +3,7 @@ import Quickshell
 import Quickshell.Io
 import "../Profiles.js" as Profiles
 import "../TextKey.js" as TextKey
+import "ExternalPackValidation.js" as ExternalPack
 
 // The herdr training ground's source. Unlike LazyVim and tmux this one ships
 // no table: Omarchy provides a tool that already resolves herdr's bindings
@@ -26,6 +27,8 @@ Item {
   readonly property int maxSteps: 8
   readonly property int maxLocalIdChars: 128
   readonly property int maxDescriptionChars: 512
+  readonly property int maxCategories: 32
+  readonly property int maxAlternates: 4
 
   readonly property string profileId: "herdr"
 
@@ -59,9 +62,18 @@ Item {
   }
 
   function safeText(value, limit) {
-    var text = String(value === undefined || value === null ? "" : value)
+    if (typeof value !== "string") return ""
+    var text = value
     if (!text.length || text.length > limit) return ""
     return text.replace(/[\u0000-\u001f\u007f-\u009f\u200e\u200f\u202a-\u202e\u2066-\u2069]/g, " ")
+  }
+
+  function usableKey(value) {
+    return ExternalPack.usableKey(value)
+  }
+
+  function acceptedCategories(value) {
+    return ExternalPack.acceptedCategories(value, root.maxCategories)
   }
 
   // One sequence, or null when any step of it cannot be judged: an answer
@@ -81,7 +93,7 @@ Item {
 
   function acceptedBinding(record, contexts, categories) {
     if (!record || typeof record !== "object" || Array.isArray(record)) return null
-    var localId = root.safeText(record.localId, root.maxLocalIdChars)
+    var localId = root.usableKey(root.safeText(record.localId, root.maxLocalIdChars))
     var description = root.safeText(record.desc, root.maxDescriptionChars)
     var category = root.safeText(record.category, 32)
     var context = root.safeText(record.context, 32)
@@ -94,8 +106,10 @@ Item {
     // The other ways in. One that cannot be read is left out on its own
     // rather than costing the card the answer it does have.
     var alternates = []
+    if (record.alternates !== undefined && !Array.isArray(record.alternates)) return null
     if (Array.isArray(record.alternates)) {
-      for (var other = 0; other < record.alternates.length && alternates.length < 4; other++) {
+      if (record.alternates.length > root.maxAlternates) return null
+      for (var other = 0; other < record.alternates.length; other++) {
         var sequence = root.resolvedSteps(record.alternates[other])
         if (sequence) alternates.push(sequence)
       }
@@ -123,7 +137,8 @@ Item {
   }
 
   function accept(record) {
-    if (record.schemaVersion !== 1 || record.profile !== root.profileId
+    if (!record || typeof record !== "object" || Array.isArray(record)
+        || record.schemaVersion !== 1 || record.profile !== root.profileId
         || record.judgeMode !== "text" || !Array.isArray(record.bindings)) {
       root.fail("Unsupported herdr listing")
       return
@@ -133,7 +148,11 @@ Item {
       return
     }
     var contexts = Profiles.contexts(root.profileId)
-    var categories = Array.isArray(record.categories) ? record.categories : []
+    var categories = root.acceptedCategories(record.categories)
+    if (!categories) {
+      root.fail("herdr listing named invalid categories")
+      return
+    }
     var accepted = []
     var refused = 0
     var seen = Object.create(null)

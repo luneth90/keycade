@@ -78,8 +78,8 @@ Item {
   // Everything libxkbcommon reads when it assembles a keymap. The first four
   // steer the include path; the rest supply the default rule names, which
   // Hyprland picks up wherever its own input:kb_* option is empty.
-  // Authoritative list: /usr/include/xkbcommon/xkbcommon.h (see the env var
-  // sections around the xkb_context and xkb_keymap_new_from_names docs).
+  // This compatibility list is regression-tested with the helper's sanitized
+  // environment. It is not a second source for the machine's live bindings.
   readonly property var xkbEnvironmentKeys: [
     "XKB_CONFIG_ROOT", "XKB_CONFIG_EXTRA_PATH",
     "XKB_CONFIG_VERSIONED_EXTENSIONS_PATH", "XKB_CONFIG_UNVERSIONED_EXTENSIONS_PATH",
@@ -160,7 +160,7 @@ Item {
       throw new Error("Invalid keybinding match mode")
     if (!Array.isArray(record.flags) || record.flags.length > 16)
       throw new Error("Invalid keybinding flags")
-    var seenFlags = ({})
+    var seenFlags = Object.create(null)
     var flags = record.flags.map(function(flag) {
       var safeFlag = root.safeText(flag, 32, "flag")
       if (root.allowedFlags.indexOf(safeFlag) === -1 || seenFlags[safeFlag])

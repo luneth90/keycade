@@ -17,6 +17,7 @@ import "../../lib/Palettes.js" as Palettes
 import "../fixtures/canonical-keys.js" as CanonicalKeys
 import "../fixtures/text-keys.js" as TextKeys
 import "../../lib/sources/pack/Eligibility.js" as PackEligibility
+import "../../lib/sources/ExternalPackValidation.js" as ExternalPack
 import "../../lib/Packs.js" as Packs
 
 TestCase {
@@ -1807,6 +1808,70 @@ TestCase {
     compare(good.id, "lazyvim/normal/x")
     compare(good.actionName, "Find")
     compare(AnswerMatcher.stepCount(good.answer), 1)
+  }
+
+  function test_externalPackEnvelopesAreBoundedBeforeRetention() {
+    compare(testPack.acceptedCategories(["find", "git"]).join(","), "find,git")
+    compare(testPack.acceptedCategories(["find", "find"]), null)
+    compare(testPack.acceptedCategories(["__proto__"]), null)
+    var tooManyCategories = []
+    for (var category = 0; category < 33; category++) tooManyCategories.push("c" + category)
+    compare(testPack.acceptedCategories(tooManyCategories), null)
+
+    var tooManyExtras = []
+    for (var extra = 0; extra < 129; extra++) tooManyExtras.push("extra." + extra)
+    compare(testPack.acceptedBinding({
+      localId: "normal/x", desc: "Find", category: "find", context: "normal",
+      steps: [{ text: "x" }], extras: tooManyExtras
+    }, ["find"]), null)
+    var tooManyAlternates = []
+    for (var other = 0; other < 5; other++) tooManyAlternates.push([{ text: "x" }])
+    compare(testPack.acceptedBinding({
+      localId: "normal/x", desc: "Find", category: "find", context: "normal",
+      steps: [{ text: "x" }], alternates: tooManyAlternates
+    }, ["find"]), null)
+  }
+
+  function test_liveTmuxPayloadIsRebuiltFromAWhitelistedSchema() {
+    var raw = {
+      schemaVersion: 1, profile: "tmux", judgeMode: "text", available: true,
+      options: { prefix: "C-b", prefix2: "C-a" }, categories: ["misc"],
+      provenance: { upstream: "tmux", source: { tag: "live", checksum: "a".repeat(64),
+                                                 ignored: { nested: true } }, ignored: true },
+      bindings: [{
+        localId: "prefix/x", context: "prefix", notation: "prefix x",
+        steps: [{ option: "prefix", ignored: true }, { mods: 0, text: "x", ignored: true }],
+        alternates: [[{ option: "prefix2" }, { text: "x" }]], category: "misc",
+        descKey: "tmuxdesc_x", desc: "Do x", extras: [], ignored: { nested: true }
+      }],
+      ignored: { nested: true }
+    }
+    var accepted = ExternalPack.acceptedTmuxPack(raw)
+    verify(accepted !== null)
+    compare(accepted.ignored, undefined)
+    compare(accepted.bindings[0].ignored, undefined)
+    compare(accepted.bindings[0].steps[0].ignored, undefined)
+    compare(accepted.provenance.ignored, undefined)
+    compare(accepted.provenance.source.ignored, undefined)
+    raw.bindings[0].desc = "mutated"
+    compare(accepted.bindings[0].desc, "Do x")
+
+    raw.categories = ["__proto__"]
+    compare(ExternalPack.acceptedTmuxPack(raw), null)
+    compare(ExternalPack.acceptedCategories(["pane", "misc"], 32).join(","), "pane,misc")
+    compare(ExternalPack.acceptedCategories(["prototype"], 32), null)
+  }
+
+  function test_schedulerCountsPrototypeNamedExternalIds() {
+    var deck = [
+      { binding: { id: "__proto__" }, tier: "guided", queue: "unseen" },
+      { binding: { id: "constructor" }, tier: "guided", queue: "unseen" },
+      { binding: { id: "prototype" }, tier: "learning", queue: "due" }
+    ]
+    var counts = Scheduler.planCounts(deck)
+    compare(counts.added, 2)
+    compare(counts.review, 1)
+    compare(({}).polluted, undefined)
   }
 
   // Dynamic keys from a helper or a pack must not land on a normal {}.

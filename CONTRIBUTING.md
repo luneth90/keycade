@@ -37,17 +37,22 @@ We are committed to providing a welcoming, inclusive, and harassment-free enviro
 - Prevent prototype pollution: always use `Object.create(null)` for keymap dictionaries and dynamic lookups.
 - Sanitize external string inputs before rendering.
 
-### Security Invariants (R1–R8, L1)
+### Security Invariants (R1–R8)
 All code changes interacting with external processes, files, or user environments must uphold our security invariants:
-- **R1 (Deadlines)**: Subcommands must have bounded timeouts with SIGTERM and SIGKILL fallbacks.
-- **R2 (Trusted Binaries)**: Hardcoded executable paths must be validated as root-owned, non-writable regular files. Do not use ambient `PATH`.
-- **R3 (Lifecycle)**: Child processes must be bound with `PR_SET_PDEATHSIG` and cleaned up on helper exit.
-- **R4 (Environment)**: Scrub dangerous environment variables before executing subprocesses.
-- **R5 (Static Parsing)**: Never execute arbitrary user configuration scripts (`~/.config/nvim/` etc.); parse statically.
-- **R6 (Sanitization)**: Strip terminal control codes and escape sequences from external keys or descriptions.
-- **R7 (State Quarantine)**: State directories must reject symlinks to prevent symlink traversal attacks.
-- **R8 (Bounded Resources)**: Enforce line, byte, and record limits on all inputs.
-- **L1 (Leader Safety)**: Validate leader chords to ensure only well-formed single chords are accepted.
+- **R1 (No User Config Execution)**: Never execute, load, or evaluate user configuration. Use only declared bounded static parsing or read-only compositor APIs.
+- **R2 (Dual-Ended Bounds)**: Bound producer bytes, deadlines, records, and child trees; QML independently validates and rebuilds retained models.
+- **R3 (Descriptor-Relative State I/O)**: Use verified directory descriptors with `O_NOFOLLOW`, 0600 exclusive temporary files, `fsync`, and atomic rename.
+- **R4 (Prototype Safety)**: Dynamic lookups use `Object.create(null)` and reject `__proto__`, `constructor`, and `prototype`.
+- **R5 (Plain Text Dynamic UI)**: Render external text through bounded `SafeText`, strip controls, and cap visual layout.
+- **R6 (Standard Packaging Only)**: Use only the official Omarchy add, update, and remove lifecycle.
+- **R7 (Hermetic Trusted Binaries)**: Use verified absolute command and library paths, no `/usr/bin/env`, and whitelist child environments.
+- **R8 (Incremental Consumption & Reaping)**: Bound streams as bytes arrive and terminate/reap complete process groups.
+
+### Functional Consistency Tests
+
+When Python and JavaScript implement the same normalization rule, keep them pinned to one shared fixture corpus. Parsers for local command output must carry representative fixtures, reject malformed records, and fail closed when the installed output no longer matches. These are ordinary correctness tests, not additional security invariants and not permission to add runtime lookups or inputs.
+
+Do not treat an upstream citation or version pin as a security gate for machine-read inputs: the current read-only local output is their source of truth. Bundled reference packs should still record reproducible provenance as a data-quality requirement, independently of R1–R8.
 
 ## Running Tests Locally
 
@@ -55,13 +60,16 @@ Before submitting your PR, ensure all test suites pass:
 
 ```bash
 # Run Python unit and security invariant tests
-pytest -v tests/
+python3 -m unittest discover -s tests -p "test_*.py"
+
+# Run the parser fuzzing smoke test
+python3 tests/fuzz_keybinds.py -runs=1000
 
 # Run QML algorithm tests (requires Qt6)
 QT_QPA_PLATFORM=offscreen /usr/lib/qt6/bin/qmltestrunner -input tests/qml/tst_algorithms.qml -import /usr/lib/qt6/qml
 
 # Lint QML components
-qmllint src/qml/*.qml
+qmllint Keycade.qml lib/*.qml lib/sources/*.qml
 ```
 
 ## License

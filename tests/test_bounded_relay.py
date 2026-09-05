@@ -63,6 +63,26 @@ class BoundedRelayTests(unittest.TestCase):
             with self.assertRaises(OSError):
                 module._trusted_library(str(Path(directory) / "missing"))
 
+    def test_relative_and_untrusted_child_commands_are_refused(self):
+        relative = self.run_relay(
+            "--max-bytes", "1024", "--deadline", "5",
+            "--", "python3", "-c", "print('must not run')",
+        )
+        self.assertEqual(relative.returncode, 2)
+        self.assertIn("not an absolute command", json.loads(relative.stdout)["error"])
+
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as directory:
+            planted = Path(directory) / "planted-command"
+            planted.write_text("#!/usr/bin/bash\nprintf 'must not run\\n'\n", encoding="utf-8")
+            planted.chmod(0o755)
+            result = self.run_relay(
+                "--max-bytes", "1024", "--deadline", "5", "--", str(planted),
+            )
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("not owned by root", json.loads(result.stdout)["error"])
+
     def test_output_within_budget_passes_through_unchanged(self):
         payload = "hello\nworld\n"
         result = self.run_relay(

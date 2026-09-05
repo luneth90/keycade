@@ -8,7 +8,7 @@ Keycade (`luneth90/keycade`) is a native Omarchy/Wayland desktop overlay for arc
 
 ### Testing & Verification
 ```bash
-# Run all Python unit and security tests (188+ tests)
+# Run all Python unit and security tests (189+ tests)
 python3 -m unittest discover -s tests -p "test_*.py"
 
 # Run a single test module
@@ -41,7 +41,7 @@ omarchy restart shell
 - **Cabinets (Grounds)**:
   1. `Omarchy`: Live Hyprland shortcuts from `bin/keybinds-json` via `hyprctl`.
   2. `herdr`: Multiplexer bindings from `bin/herdr-keys-json`.
-  3. `tmux`: Live server or static configuration from `bin/tmux-keys-json`.
+  3. `tmux`: Live bindings from `bin/tmux-keys-json`; static prefix calibration from `bin/app-config-json` with a shipped fallback table.
   4. `VIM`: Curated upstream reference tables (`lib/Packs.js`).
   5. `NEOVIM`: Default upstream reference tables (`lib/Packs.js`).
   6. `LazyVim`: Dynamic leader calibration & extra plugins via `bin/app-config-json`.
@@ -51,7 +51,7 @@ omarchy restart shell
 
 ---
 
-## 3. Critical Security Invariants (R1–R8, L1)
+## 3. Critical Security Invariants (R1–R8)
 
 Every change touching external commands, files, or configs **MUST** adhere to:
 
@@ -63,7 +63,6 @@ Every change touching external commands, files, or configs **MUST** adhere to:
 - **R6 (Standard Packaging Only)**: No custom `install*` or `git pull` scripts. Respect Omarchy's plugin lifecycle.
 - **R7 (Hermetic & Trusted Binaries)**: Never use ambient `PATH` or `#!/usr/bin/env`. Commands and dynamic libraries must use absolute paths verified by `trusted_command()`.
 - **R8 (Incremental Consumption & Reaping)**: QML streams must bound inputs incrementally on arrival. Child processes must be reaped via `bounded-relay` (`setsid` + `PR_SET_PDEATHSIG`).
-- **L1 (Authoritative Upstream Sourcing)**: Any enumeration of external inputs (environment variables, keysyms) must cite its authoritative upstream header/doc. Shared logic across Python and JS must share a corpus (`tests/fixtures/canonical-keys.js`).
 
 ---
 

@@ -10,8 +10,6 @@
 // canonical-keys.js exists to prevent on the Hyprland side, and the same trap
 // is here, one layer over.
 //
-// Authority for the notation: Neovim's `:help key-notation`.
-//
 // The rules this corpus pins, in the order they bite:
 //   - <leader> is resolved before parsing, so it never appears here.
 //   - S- is folded into the character it shifts: <S-h> is "H", not Shift+h.

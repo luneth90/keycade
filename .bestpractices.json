@@ -273,8 +273,8 @@
   "build_common_tools_justification": "No build step required.",
   "build_floss_tools_justification": "No build step required.",
   "test_justification": "Documented in https://github.com/luneth90/keycade/blob/main/CONTRIBUTING.md#running-tests-locally",
-  "test_invocation_justification": "Standard pytest and qmltestrunner commands.",
-  "test_most_justification": "74% line coverage with 188 Python tests and 92 QML tests.",
+  "test_invocation_justification": "Standard unittest, Atheris, and qmltestrunner commands.",
+  "test_most_justification": "74% line coverage with 189 Python tests and 95 QML tests.",
   "test_continuous_integration_justification": "https://github.com/luneth90/keycade/actions/workflows/ci.yml",
   "test_policy_justification": "Policy documented in CONTRIBUTING.md requiring automated tests for new features.",
   "tests_are_added_justification": "Recent commits and PRs include extensive unit and QML tests.",
@@ -282,7 +282,7 @@
   "warnings_justification": "qmllint and CodeQL security checks enforced in CI.",
   "warnings_fixed_justification": "All linter warnings and CodeQL alerts are resolved (0 alerts).",
   "warnings_strict_justification": "CI fails on syntax or lint errors.",
-  "know_secure_design_justification": "Maintainer adheres to defense-in-depth and security invariants R1\u2013R8 and L1.",
+  "know_secure_design_justification": "Maintainer adheres to defense-in-depth and marketplace security invariants R1\u2013R8.",
   "know_common_errors_justification": "Codebase prevents prototype pollution, injection, and path traversal.",
   "crypto_published_justification": "Software does not implement or use custom cryptography.",
   "crypto_call_justification": "No cryptography required.",
@@ -303,6 +303,6 @@
   "static_analysis_often_justification": "CodeQL runs on every commit and pull request.",
   "dynamic_analysis_justification": "Automated tests actively execute dynamic paths and runtime assertions in CI.",
   "dynamic_analysis_unsafe_justification": "Software is written in memory-safe languages: Python and QML/JavaScript.",
-  "dynamic_analysis_enable_assertions_justification": "Runtime invariant assertions (R1\u2013R8, L1) are actively verified during tests.",
+  "dynamic_analysis_enable_assertions_justification": "Runtime security invariant assertions (R1\u2013R8) are actively verified during tests.",
   "dynamic_analysis_fixed_justification": "Any dynamic issues identified are resolved before merging."
 }

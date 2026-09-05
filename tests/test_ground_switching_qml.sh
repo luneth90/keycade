@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/bash
 
 # Picking a training ground is asynchronous now: a pack ground reads the
 # machine's own configuration through a subprocess before its table can be
