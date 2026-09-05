@@ -2,9 +2,9 @@
 
 [English](README.md) | **简体中文**
 
-[![Omarchy Marketplace Review](https://img.shields.io/badge/Omarchy%20Marketplace-Audited%20%26%20Approved-2ea44f?logo=checkmarx&logoColor=white)](https://github.com/omacom/omarchy-plugin-marketplace/issues/4305)
+[![CI](https://github.com/luneth90/keycade/actions/workflows/ci.yml/badge.svg)](https://github.com/luneth90/keycade/actions/workflows/ci.yml)
+[![Omarchy Marketplace](https://img.shields.io/badge/Omarchy%20Marketplace-listed-2ea44f?logo=omarchy)](https://plugins.omarchy.org/plugin.html?id=luneth90.keycade)
 [![Security Invariants](https://img.shields.io/badge/Security-8%20Review%20Invariants-blue?logo=securityscorecard&logoColor=white)](docs/review-invariants.md)
-[![Tests](https://img.shields.io/badge/Tests-188%20Unit%20%7C%2092%20QML%20Pass-brightgreen?logo=pytest&logoColor=white)](#自动化测试与截图)
 [![Version](https://img.shields.io/badge/version-0.7.0-informational)](manifest.json)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 

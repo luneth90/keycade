@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, feat/*, fix/*, docs/* ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    name: Test & Security Verification
+    runs-on: ubuntu-latest
+    container:
+      image: archlinux:latest
+    steps:
+      - name: Install system dependencies
+        run: |
+          pacman -Sy --noconfirm archlinux-keyring
+          pacman -S --noconfirm --needed git python libxkbcommon qt6-declarative qt6-base quickshell jq
+      - name: Configure git safe directory
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Validate Plugin Manifest
+        run: |
+          jq -e '.schemaVersion == 1' manifest.json
+          jq -e '.id == "luneth90.keycade"' manifest.json
+          jq -e '.version != null' manifest.json
+          jq -e '(.kinds | length) > 0' manifest.json
+          jq -e '.entryPoints.overlay == "Keycade.qml"' manifest.json
+          test -f Keycade.qml
+      - name: Python Unit & Security Invariant Tests
+        run: |
+          python3 -m unittest discover -s tests -p 'test_*.py' -v
+      - name: QML Algorithm Tests
+        run: |
+          QT_QPA_PLATFORM=offscreen QT_QPA_PLATFORMTHEME= QT_STYLE_OVERRIDE=Fusion \
+            /usr/lib/qt6/bin/qmltestrunner -input tests/qml/tst_algorithms.qml -import /usr/lib/qt6/qml
+      - name: QML Shell Integration Tests
+        run: |
+          ./tests/test_state_store_qml.sh
+          ./tests/test_hyprland_source_qml.sh
+          ./tests/test_ground_switching_qml.sh
+          ./tests/test_run_counters_qml.sh
+          ./tests/test_mastery_transition_qml.sh
+      - name: Lint QML Components
+        run: |
+          /usr/lib/qt6/bin/qmllint -I /usr/lib/qt6/qml Keycade.qml lib/*.qml lib/sources/*.qml dev/InputProbe.qml
