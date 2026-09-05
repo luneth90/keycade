@@ -2,6 +2,12 @@
 
 **English** | [简体中文](README.zh-CN.md)
 
+[![Omarchy Marketplace Review](https://img.shields.io/badge/Omarchy%20Marketplace-Audited%20%26%20Approved-2ea44f?logo=checkmarx&logoColor=white)](https://github.com/omacom/omarchy-plugin-marketplace/issues/4305)
+[![Security Invariants](https://img.shields.io/badge/Security-8%20Review%20Invariants-blue?logo=securityscorecard&logoColor=white)](docs/review-invariants.md)
+[![Tests](https://img.shields.io/badge/Tests-188%20Unit%20%7C%2092%20QML%20Pass-brightgreen?logo=pytest&logoColor=white)](#tests--screenshots)
+[![Version](https://img.shields.io/badge/version-0.7.0-informational)](manifest.json)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 > A shortcut recall arcade for Omarchy, herdr, tmux, Vim, Neovim, and LazyVim
 
 ![Keycade English learning screen](docs/screenshots/keycade-en.png)
