@@ -8,4 +8,18 @@ if [[ ${1:-} == -j && ${2:-} == binds ]]; then
   else
     printf '[]\n'
   fi
+elif [[ ${1:-} == -j && ${2:-} == --batch* ]]; then
+  printf '{"option": "input:kb_file", "str": "[[EMPTY]]", "set": false}\n\n'
+  printf '{"option": "input:kb_rules", "str": "", "set": true}\n\n'
+  printf '{"option": "input:kb_model", "str": "", "set": true}\n\n'
+  printf '{"option": "input:kb_layout", "str": "us", "set": true}\n\n'
+  printf '{"option": "input:kb_variant", "str": "", "set": true}\n\n'
+  printf '{"option": "input:kb_options", "str": "", "set": true}\n\n'
+  printf '{"option": "input:resolve_binds_by_sym", "bool": false, "set": false}\n\n'
+elif [[ ${1:-} == -j && ${2:-} == getoption* ]]; then
+  printf '{"option": "binds:disable_keybind_grabbing", "bool": false, "int": 0, "str": "false", "set": false}\n'
+elif [[ ${1:-} == binds ]]; then
+  printf ''
+elif [[ ${1:-} == devices ]]; then
+  printf ''
 fi

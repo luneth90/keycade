@@ -4,7 +4,6 @@
 
 [![CI](https://github.com/luneth90/keycade/actions/workflows/ci.yml/badge.svg)](https://github.com/luneth90/keycade/actions/workflows/ci.yml)
 [![Omarchy Marketplace](https://img.shields.io/badge/Omarchy%20Marketplace-listed-2ea44f?logo=omarchy)](https://plugins.omarchy.org/plugin.html?id=luneth90.keycade)
-[![Security Invariants](https://img.shields.io/badge/Security-8%20Review%20Invariants-blue?logo=securityscorecard&logoColor=white)](docs/review-invariants.md)
 [![Version](https://img.shields.io/badge/version-0.7.0-informational)](manifest.json)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
